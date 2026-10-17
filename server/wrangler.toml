@@ -7,7 +7,7 @@ compatibility_date = "2026-09-30"
 [[d1_databases]]
 binding = "DB"
 database_name = "earthworx-board"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "a1163be6-6e55-48b3-8965-4e3ecd5bfce0"
 
 [observability]
 enabled = true

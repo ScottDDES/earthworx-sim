@@ -146,7 +146,7 @@ Still open:
 - [x] Seasons on screen: the picker (setup screen, and the Career tab once a career's found its feet), the season card, the end screen. A season has its own save; careers aren't touched. Every move on every screen goes through the recorded commands (`play.*`).
 - [x] The board server (`server/`): a Cloudflare Worker with a D1 database. It takes a season's moves, plays them again with the engine, and keeps the score the moves earn; best per player, nicknames checked, 20 posts an hour per address. Tested end to end on this PC (`npm run dev` in `server/`).
 - [x] The app posts a finished season (nickname, then the moves) and shows the board; the board address is `VITE_BOARD_URL` at build time
-- [ ] Still to come: deploying the server to Cloudflare (needs the account), then building the app with its address (fixed-length challenge runs; they need the leaderboard, which stays private)
+- [x] The board is live: https://earthworx-board.scott-6da.workers.dev (Cloudflare account scott@ddes.biz, D1 database in APAC). The app is built with that address (`app/.env.production`) (fixed-length challenge runs; they need the leaderboard, which stays private)
 - [x] Office: the dashboard (what's worth a look, cash, runway, work in hand, the 12-week cash forecast, trend charts, profit and loss, how the jobs went, the branch, head contractors, past years, the gear, safety, people, tenders, who owes what) and the bank page (borrowing against the fleet, paying the loan down, ringing around about selling)
 - [x] Map: the district roads by state, tap a road for its story, your roads
 
