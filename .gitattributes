@@ -1,0 +1,4 @@
+# Files the Mac and Android build tools run as-is: keep Unix line endings on every machine
+app/android/gradlew text eol=lf
+*.sh text eol=lf
+*.pbxproj text eol=lf
