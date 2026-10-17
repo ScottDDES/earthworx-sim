@@ -67,6 +67,8 @@ export interface Machine {
 
 export const SVC_EVERY = 250;
 export const GPS_COST = 85000;
+/** GPS machine control: a grader gets 7% more done a day. */
+export const GPS_MUL = 1.07;
 export const HOURS_PER_DAY = 9;
 
 const round = (n: number, to: number) => Math.round(n / to) * to;

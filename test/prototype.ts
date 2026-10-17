@@ -34,6 +34,8 @@ const EXPORTS = [
   'flow', 'cartLoads', 'truckM3', 'weeksFor', 'planCounts', 'crewPeople', 'crewRoad', 'newCrew', 'autoPlan', 'tidyCrew',
   'planEval', 'stdPlan', 'subCrewTerms', 'councilPrice', 'genCouncil', 'genMajor', 'juneWeek', 'closeCouncil', 'submitCouncil',
   'signOwn', 'setPlan', 'setHm', 'progAct', 'canPrestige', 'jobEnds', 'capFull',
+  'staffSubs', 'staffOwn', 'subQuotes', 'subOut', 'takeBack', 'canTakeBack', 'addDays', 'swapIn', 'finishPts',
+  'programCheck', 'cutWork',
 ];
 
 export interface Proto {
@@ -69,10 +71,12 @@ function weekHooks(): string {
   const setOpen = '  S.jobs.slice().forEach(function(j){ var c0 = rep.costs; (function(){\n';
   const settle = inner(cut(setOpen + '    if(j.after) return;', '  fitterWeek(rep); wsmWeek(rep);', week), setOpen, '})(); jobCost(j, rep.costs-c0); jobDone(j); });');
   const recv = cut('  // money coming in\n', '  // the bank\n', week);
+  const start = cut('  acc(); staffSubs(); staffOwn();\n', '  var p = rainP(), downDays = {};', week);
   return `__day: function(j, d, wet, rep, downDays){ var c0 = rep.costs; (function(){\n${day}})(); jobCost(j, rep.costs-c0); },
     __afterDay: function(d, rep){\n${afterDay}},
     __settle: function(j, rep, downDays){ var c0 = rep.costs; (function(){\n${settle}})(); jobCost(j, rep.costs-c0); jobDone(j); },
     __recv: function(rep){\n${recv}},
+    __weekStart: function(rep){\n${start}},
     __startWeek: function(){ S.jobs.forEach(function(j){ j.wk = 0; j.wkDays = 0; }); },`;
 }
 

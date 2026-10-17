@@ -33,13 +33,14 @@ npm run check      # type-check, then test: run this before every commit
 | `src/overheads.ts` | Weekly running costs: insurance (base, plant, workers' comp, your record), drawings, rent, wages, safety system, toolbox talks. |
 | `src/market.ts` | The plant market: the mood (boom to bust, driven by last year's rain), listings, distress sales, the auction lot, finance, buying, inspecting, bidding, selling. |
 | `src/safety.ts` | Incident odds, the register, safety points on tenders, stepping up the system, and the serious-incident, near-miss, quiet-crew and SWMS cards. |
-| `src/hire.ts` | Hire work: wet, dry, council day labour and private jobs. Offers, taking them, booking the next one in behind, the working day, the week's invoices, getting paid, late payers. |
+| `src/hire.ts` | Hire work: wet, dry, council day labour and private jobs. Offers, taking them, booking the next one in behind, the hire working day, getting paid, late payers. (The end of the day and the week's settle for every kind of job live in `contracts.ts`.) |
 | `src/relations.ts` | Standing with each head contractor: −10 to +10, tiers, tender points, fading. |
 | `src/rivals.ts` | The other outfits: their books, who prices what, what a win really costs them, growing, selling gear, folding, buy-outs, new outfits. |
 | `src/map.ts` | The district map: every road, damaged or sound, who's on it. Goondiwindi's generated areas, Charters Towers' real localities, flood events. |
 | `src/tenders.ts` | Subbie tenders: what comes up, pricing (crew-day, overheads share, margin), non-price points, closing and scoring, direct offers, signing or pulling out. |
 | `src/planning.ts` | Planning a council job: crews, water carts, trucks, pits, weeks lost to rain, cost, what's holding it up; programs crew by crew and road by road with floats; the plan a rival would draw up. |
 | `src/council.ts` | Council packages and flood recovery programs: what comes up, deadlines, pricing, the plan controls, closing and scoring, signing your own contract. |
+| `src/contracts.ts` | Running contracts: staffing subbie and council jobs, the working day for every kind of job, programs crew by crew, claims, retention and damages, the halfway and deadline checks, subbing out and taking back, the contract cards. |
 | `src/text/` | Words the player reads, kept out of the rules. The engine records which story happened; screens look up the words here. |
 | `src/index.ts` | The front door. Screens import from here only. |
 | `test/parity.test.ts` | Runs the prototype and this engine side by side and fails if they ever disagree. |
@@ -51,6 +52,7 @@ npm run check      # type-check, then test: run this before every commit
 | `test/rivals.test.ts` | Rivals, including 60 runs of four years each through every market and difficulty. |
 | `test/tenders.test.ts` | The map and subbie tenders: 3,000 tenders made, 3,000 closed and scored, three years of map changes. |
 | `test/council.test.ts` | Planning and council tenders: 1,500 packages and 600 programs made, 1,500 plans and 400 programs evaluated after random changes, 1,500 closed, 600 signed. |
+| `test/contracts.test.ts` | Contracts: 160 businesses run up to 40 weeks each, 300 subbed out, 1,500 program checks, 600 contract cards. |
 | `test/safety.test.ts` | The same for safety, including the words in `src/text/safety.ts`. |
 | `test/prototype.ts` | Loads the prototype for the tests (from `../game-prototype`, or set `PROTOTYPE`). Also cuts blocks out of its week loop and compiles them inside it, so tests can run them word for word. |
 
@@ -81,5 +83,5 @@ Things the prototype does that should change, kept for now so careers match it e
 - [x] The district map
 - [x] Subbie tenders: pricing, scoring, closing, direct offers, signing
 - [x] Council tenders, flood recovery programs and job planning
-- [ ] Running contracts
-- [ ] The week loop (`endWeek`), plus a full-career parity test
+- [x] Running contracts: staffing, the working day, programs, claims, retention, damages, subbing out, contract cards
+- [ ] The week loop (`endWeek`): the rest of the curve-ball cards, rain calls, paying subbies, then a full-career parity test

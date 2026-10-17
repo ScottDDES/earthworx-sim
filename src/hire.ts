@@ -9,6 +9,7 @@
 import { book, type Accounts } from './ledger';
 import { breakdown, breaks, TYPES, wear, type Machine, type MachineType, type WorkshopCtx } from './machines';
 import { HEAD_CONTRACTORS } from './market';
+import { mapDone, type DistrictMap } from './map';
 import { relAdd } from './relations';
 import { int, pick, type Rand } from './rng';
 import { SKILLS, ROLES, type Person } from './staff';
@@ -135,6 +136,8 @@ export interface Biz {
   /** Flood funding paused until this week. */
   freeze?: number;
   jlog?: JobLog[];
+  /** The district map, once made (map.ts). */
+  dmap?: DistrictMap;
 }
 
 export interface JobLog { w: number; kind: string; client: string; rev: number; cost: number; cut: boolean; sub: boolean; part: boolean; plan: number | null; oh: number }
@@ -390,6 +393,8 @@ export function freeUp(b: Biz, j: Job, d: number | null, events: HireEvent[]): v
 
 /** Off the books: machines and people back, and whatever's booked behind it starts. */
 export function release(b: Biz, j: Job, events: HireEvent[]): void {
+  // a contract's roads: fixed if it finished, back to damaged if it was cut short or never done
+  if (j.mapIds && b.dmap) mapDone(b.dmap, j.mapIds as string[], !!j.finished && !j.cut, b.week);
   for (const id of [j.mId, j.rollerId, j.cartId, j.cart2Id]) {
     const m = id ? b.fleet.find((x) => x.id === id) : undefined;
     if (m && (m.jobId === j.id || (!j.freed && m.jobId == null))) {
@@ -440,7 +445,7 @@ export interface WeekReport {
  * One day on a hire job. Returns false for jobs that aren't hire work (contracts run their own day).
  * downDays counts dry-hire days lost to breakdowns, which the client knocks off the week.
  */
-export function hireDay(rand: Rand, b: Biz, j: Job, d: number, wet: boolean, w: WorkshopCtx, rep: WeekReport, downDays: Record<string, number>, events: HireEvent[]): boolean {
+export function hireDay(rand: Rand, b: Biz, j: Job, d: number, wet: boolean, w: WorkshopCtx, rep: WeekReport, downDays: Record<string, number>, events: HireEvent[], contract?: () => void): boolean {
   const c0 = rep.costs;
   const run = (): boolean => {
     if (j.finished || j.after) return true;
@@ -449,9 +454,19 @@ export function hireDay(rand: Rand, b: Biz, j: Job, d: number, wet: boolean, w: 
       return true;
     }
     if (j.mob && j.mob.w === b.week && d <= j.mob.d) return true;
-    if (j.state === 'subbed' || j.kind === 'own' || j.kind === 'sub') return false;
+    // contracts run their own day (contracts.ts), inside the same cost wrapper
+    if (j.state === 'subbed' || j.kind === 'own') {
+      if (!contract) return false;
+      contract();
+      return true;
+    }
     const m = b.fleet.find((x) => x.id === j.mId);
     if (!m) return true;
+    if (j.kind === 'sub') {
+      if (!contract) return false;
+      contract();
+      return true;
+    }
     const working = m.down === 0 || m.cover > 0;
     const brk = (x: Machine, mult: number) => {
       if (breaks(rand, x, mult, w)) {
@@ -501,73 +516,6 @@ export function hireDay(rand: Rand, b: Biz, j: Job, d: number, wet: boolean, w: 
   const ok = run();
   jobCost(b, j, rep.costs - c0);
   return ok;
-}
-
-/** End of a working day: anything that finished hands over to what's waiting, and broken-down gear gets a day closer. */
-export function endOfDay(b: Biz, d: number, events: HireEvent[]): void {
-  if (d < 4 && b.jobs.some((j) => j.finished && !j.freed)) for (const j of b.jobs.slice()) if (j.finished && !j.freed) freeUp(b, j, d, events);
-  for (const m of b.fleet) {
-    if (m.down > 0 && m.down < 99) {
-      if (m.cover > 0) m.cover--;
-      m.down--;
-    }
-  }
-}
-
-/** Track record for finishing: council work counts double, a head contractor's subbie job triple. */
-const GAIN: Record<string, number> = { sub: 3, council: 2 };
-
-/**
- * End of the week on a hire job: invoice the week, pay any hired-in roller, give up on a job nobody could drive
- * for two weeks, and on finishing invoice a private job, add to the track record and pay the demob.
- * oldhand: the ops manager who gets hire-ins 10% cheaper.
- */
-export function settleHire(b: Biz, j: Job, rep: WeekReport, downDays: Record<string, number>, oldhand: boolean, events: HireEvent[]): void {
-  const c0 = rep.costs;
-  (() => {
-    if (j.after) return;
-    if (j.kind === 'own' || j.kind === 'sub') return;
-    if (j.kind === 'dry') {
-      const amt = j.rate * (1 - (downDays[j.id] || 0) / 5);
-      j.done++;
-      j.earned += amt;
-      invoice(b, j.client, amt, j.terms, rep);
-      if (downDays[j.id]) events.push({ k: 'downtime', client: j.client, off: j.rate - amt });
-      if (j.done >= j.days) j.finished = true;
-    } else if ((j.wk ?? 0) > 0) {
-      j.earned += j.wk!;
-      invoice(b, j.client, j.wk!, j.terms, rep);
-    }
-    if (j.hireIn) {
-      const hi = Math.round(j.hireIn * (oldhand ? 0.9 : 1));
-      b.bank -= hi;
-      rep.costs += hi;
-    }
-    if (!j.finished && j.kind !== 'dry' && j.wkDays === 0 && driverOff(b, j)) {
-      j.idleWeeks++;
-      if (j.idleWeeks >= 2 && j.kind !== 'private') {
-        events.push({ k: 'gaveUp', client: j.client });
-        b.rep = Math.max(0, b.rep - 1);
-        release(b, j, events);
-        return;
-      }
-    }
-    if (j.finished) {
-      const gain = GAIN[j.kind] ?? 1;
-      if (j.kind === 'private') {
-        invoice(b, j.client, (j.fixed || 0) + j.extra, j.terms, rep);
-        j.earned = (j.fixed || 0) + j.extra;
-      }
-      b.rep += gain;
-      const fl = j.kind === 'private' ? 0 : 1100;
-      b.bank -= fl;
-      rep.costs += fl;
-      events.push({ k: 'finished', jobId: j.id, kind: j.kind, client: j.client, gain, earned: j.earned });
-      release(b, j, events);
-    }
-  })();
-  jobCost(b, j, rep.costs - c0);
-  jobDone(b, j);
 }
 
 /** A finished job goes in the job log (last 40), for the year in review. */

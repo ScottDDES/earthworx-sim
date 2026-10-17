@@ -100,3 +100,13 @@ export function workshopCtx(staff: readonly Person[], homeFleet: number, yardSvc
   const wsm = w && (w.trait === 'dealer' || w.trait === 'diesel' || w.trait === 'planner') ? w.trait : null;
   return { yardSvc, fitCov: fitCov(staff, homeFleet, yardSvc), wsm, bigNoWsm: bigNoWsm(staff, homeFleet), brk, costIdx };
 }
+
+/**
+ * The managers' weekly quirks, after the applicants are refreshed: the numbers person's crews let culture
+ * slip 2 every 4 weeks (not below 25), and about one week in three the young gun's swaps wait a week.
+ * Returns the week the young gun is slow (0 if not).
+ */
+export function mgrTraitsWeek(rand: Rand, staff: readonly Person[], week: number, whs: { cult: number }): number {
+  if (mgrIs(staff, 'numbers') && week % 4 === 0) whs.cult = Math.max(25, whs.cult - 2);
+  return mgrIs(staff, 'younggun') && rand() < 0.33 ? week : 0;
+}

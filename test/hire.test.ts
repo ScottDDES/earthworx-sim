@@ -6,8 +6,8 @@ import { describe, expect, it } from 'vitest';
 import {
   CLIENTS, DIFFICULTY, HEAD_CONTRACTORS, NAMES, YARDS, accept, askWait, bookable, costIdx, endOfDay, genOffers, hireDay,
   int, lateChase, lateFriendly, latePark, lateWait, newAccounts, newLoan, pick, rateFactor, recvWeek, relAdd, relPts,
-  relTier, relWeek, seedRand, settleHire, startWeek, stars, waitOdds, wetDay, whyNot, workshopCtx,
-  type Biz, type Difficulty, type HireEvent, type Machine, type MachineType, type Person, type Role, type TownId, type WeekReport,
+  relTier, relWeek, seedRand, settleJob, startWeek, stars, waitOdds, wetDay, whyNot, workshopCtx,
+  type Biz, type ContractBiz, type Difficulty, type HireEvent, type Machine, type MachineType, type Person, type Role, type TownId, type WeekReport,
 } from '../src';
 import { loadPrototype } from './prototype';
 
@@ -156,9 +156,9 @@ describe('a few weeks of hire work', () => {
         for (let day = 0; day < 5; day++) {
           const wet = wetDay(wx, b.week, day), w = ctx();
           for (const j of b.jobs) hireDay(rand, b, j, day, wet, w, rep, dd, ev);
-          endOfDay(b, day, ev);
+          endOfDay(b as ContractBiz, day, ev);
         }
-        for (const j of b.jobs.slice()) settleHire(b, j, rep, dd, false, ev);
+        for (const j of b.jobs.slice()) settleJob(rand, b as ContractBiz, j, rep, dd, false, ev);
         recvWeek(rand, b, rep, lateMult, false, ev);
 
         expectSame(b, S);

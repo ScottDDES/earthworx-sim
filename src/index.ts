@@ -22,3 +22,4 @@ export * from './map';
 export * from './tenders';
 export * from './planning';
 export * from './council';
+export * from './contracts';
