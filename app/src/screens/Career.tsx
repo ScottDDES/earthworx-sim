@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { MOODS, TICKETS, TIER, canBuyOut, checks, checks2, checks3, checks4, checks5, ownedCounts, rung, rvForm, rvPhase, stars, game } from '@engine';
 import { STEPS, TICKET_CATS, TICKET_TEXT, checkWords, districtForm, starTxt } from '@engine/text/career';
 import { diaryLines } from '@engine/text/diary';
+import { sfx } from '../sound';
 import { f } from '../format';
 import { SlotsBar, SlotsCard, type Saves } from '../Slots';
 
@@ -138,7 +139,7 @@ function RetireSheet({ c, act, onClose }: { c: Career; act: Act; onClose: () => 
           <div className="tiny muted">After the loan, overdraft and anything owed to subbies are paid out, plus what clients still owe you. The market is {MOODS[game.mood(c)].t.toLowerCase()}: offers are better in a boom.</div>
         </div>
         <div className="small">This ends the career. What you walk away with goes on the board as your final result.</div>
-        <button type="button" className="big" onClick={() => { act((x) => game.retireNow(x)); onClose(); }}>Sign and retire · {f(o.walk)}</button>
+        <button type="button" className="big" onClick={() => { act((x) => { game.retireNow(x); sfx('win', x.sound); }); onClose(); }}>Sign and retire · {f(o.walk)}</button>
         <button type="button" className="btn full" onClick={onClose}>Not yet</button>
       </div>
     </div>
@@ -193,6 +194,12 @@ export function CareerTab({ c, act, onNew, saves }: { c: Career; act: Act; onNew
       <div className="card">
         <div className="sub">Site diary</div>
         <Log lines={diaryLines(c, (c.log || []).slice(0, 14))} />
+      </div>
+      <div className="card">
+        <div className="row">
+          <span className="grow"><b className="small">Sound</b><br /><span className="tiny muted">A stamp for wins and tickets, a diesel turn-over each week.</span></span>
+          <button type="button" className={'btn' + (c.sound ? ' dark' : '')} aria-pressed={!!c.sound} onClick={() => act((x) => { x.sound = !x.sound; sfx('win', x.sound); })}>{c.sound ? 'On' : 'Off'}</button>
+        </div>
       </div>
       {c.won && c.phase === 'play' && (
         <div className="card">

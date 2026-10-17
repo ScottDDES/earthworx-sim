@@ -10,6 +10,7 @@ import { COACH_TEXT, nextGoal } from '@engine/text/coach';
 import { COACH } from '@engine';
 import { Mentor } from '../Mentor';
 import { Icon, WeatherIcon } from '../Icon';
+import { sfx } from '../sound';
 import { MONTHS, f, fk } from '../format';
 import { YardTab } from './Yard';
 import { WorkTab } from './Work';
@@ -96,6 +97,8 @@ function CardSheet({ c, act, onDone }: { c: Career; act: Act; onDone: (o: Outcom
   if (!d) return null;
   const v = cardView(c, q, d);
   const pick = (i: number) => act((x) => {
+    // winning a tender gets the two bright notes
+    if ((q.k === 'tresult' || q.k === 'cresult') && /^You won|^The council picked you/.test(v.title)) sfx('win', x.sound);
     const a = choose(x, i);
     if (a) onDone({ tag: v.tag, title: v.title, chosen: v.opts[i]!.label, res: resultText(x, a) });
   });
@@ -213,8 +216,10 @@ export function GameScreen({ c, act, onNew, saves, saveFailed, demo }: { c: Care
   const [tab0, setTab0] = useState<Tab>(coachStep(c)?.id === 'earn' ? 'work' : 'yard');
   const [report, setReport] = useState<(game.Report & { run?: RunSummary }) | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
-  const endWeek = () => act((x) => { const r = game.endWeek(x); if (r) setReport(r); });
-  const runWeeks = () => act((x) => { const r = runOn(x); if (r) setReport(r); });
+  // a stamp for a week with a ticket or something finished, otherwise the diesel turning over
+  const weekSound = (x: Career, r: game.Report) => sfx(r.tix.length || docketStamps(x, r).length ? 'stamp' : 'start', x.sound);
+  const endWeek = () => act((x) => { const r = game.endWeek(x); if (r) { weekSound(x, r); setReport(r); } });
+  const runWeeks = () => act((x) => { const r = runOn(x); if (r) { weekSound(x, r); setReport(r); } });
   // a tab that hasn't appeared yet can't be open; looking at a new one clears its NEW badge
   const tab: Tab = tabShown(c, tab0) ? tab0 : 'yard';
   const setTab = (t: Tab) => setTab0(t);
