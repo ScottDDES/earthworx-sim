@@ -6,6 +6,7 @@ import { MOODS, TICKETS, TIER, canBuyOut, checks, checks2, checks3, checks4, che
 import { STEPS, TICKET_CATS, TICKET_TEXT, checkWords, districtForm, starTxt } from '@engine/text/career';
 import { diaryLines } from '@engine/text/diary';
 import { f } from '../format';
+import { SlotsBar, SlotsCard, type Saves } from '../Slots';
 
 type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
@@ -144,12 +145,28 @@ function RetireSheet({ c, act, onClose }: { c: Career; act: Act; onClose: () => 
   );
 }
 
-export function CareerTab({ c, act, onNew }: { c: Career; act: Act; onNew: () => void }) {
+/** Starting again wipes this save only. */
+function ResetSheet({ c, slot, onYes, onNo }: { c: Career; slot: number; onYes: () => void; onNo: () => void }) {
+  return (
+    <div className="overlay" role="dialog" aria-modal="true" aria-label="Start again">
+      <div className="sheet">
+        <h2>Start a new career in save {slot}?</h2>
+        <div className="small muted">{c.co} and everything in it will be gone. Your other saves stay as they are.</div>
+        <button type="button" className="big" onClick={onYes}>Yes, start again</button>
+        <button type="button" className="btn full" onClick={onNo}>Keep playing</button>
+      </div>
+    </div>
+  );
+}
+
+export function CareerTab({ c, act, onNew, saves }: { c: Career; act: Act; onNew: () => void; saves: Saves }) {
   const [retire, setRetire] = useState(false);
   const [wipe, setWipe] = useState(false);
+  const [slots, setSlots] = useState(false);
   const n = stars(c.rep);
   return (
     <>
+      {slots ? <SlotsCard saves={saves} onClose={() => setSlots(false)} /> : <SlotsBar saves={saves} onOpen={() => setSlots(true)} />}
       <Wallet c={c} />
       {(c.ownWon ?? 0) > 0 && (
         <div className="card">
@@ -185,10 +202,11 @@ export function CareerTab({ c, act, onNew }: { c: Career; act: Act; onNew: () =>
         </div>
       )}
       <div className="card">
-        <div className="small muted">Starting again wipes this career.</div>
-        <button type="button" className="btn full" onClick={() => (wipe ? onNew() : setWipe(true))}>{wipe ? 'Tap again to wipe it and start over' : 'Start a new career'}</button>
+        <div className="small muted">Starting again wipes save {saves.slot}. Your other saves aren't touched.</div>
+        <button type="button" className="btn full" onClick={() => setWipe(true)}>Start a new career in save {saves.slot}</button>
       </div>
       {retire && <RetireSheet c={c} act={act} onClose={() => setRetire(false)} />}
+      {wipe && <ResetSheet c={c} slot={saves.slot} onYes={() => { setWipe(false); onNew(); }} onNo={() => setWipe(false)} />}
     </>
   );
 }

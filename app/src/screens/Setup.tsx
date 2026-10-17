@@ -1,6 +1,8 @@
 // Starting a career: company name, the start-up loan (which sets the difficulty), Hardcore, then the town.
 
 import { useState } from 'react';
+import { SlotsCard, type Saves } from '../Slots';
+import { slotMetaAll } from '../store';
 import { TOWNS, weeklyRepay, type game, type TownId } from '@engine';
 import { MachineIcon } from '../Icon';
 import { f, fk } from '../format';
@@ -11,7 +13,7 @@ const LOANS = [
   { a: 350000, n: 'Go big', d: 'EASY', chip: 'c-job', b: 'Grader and roller both earning. Ready to subcontract within about 10 weeks, if the repayments don\'t bite. No tax paperwork.' },
 ];
 
-export function SetupScreen({ onStart }: { onStart: (s: game.Setup) => void }) {
+export function SetupScreen({ onStart, saves }: { onStart: (s: game.Setup) => void; saves: Saves }) {
   const [step, setStep] = useState(0);
   const [co, setCo] = useState('Black Soil Earthmoving');
   const [loan, setLoan] = useState(180000);
@@ -57,6 +59,7 @@ export function SetupScreen({ onStart }: { onStart: (s: game.Setup) => void }) {
         </button>
         <div className="small note">{hc ? 'Hardcore: no second chances. You\'ll get a warning the first week you\'re under water.' : 'Miss three repayments and the bank takes your best machine. You keep going with what\'s left.'}</div>
         <button type="button" className="big" onClick={() => setStep(1)}>Next: pick your base</button>
+        {Object.keys(slotMetaAll()).length > 0 && <SlotsCard saves={saves} />}
       </div>
     );
   }

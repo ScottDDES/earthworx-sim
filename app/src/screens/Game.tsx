@@ -15,6 +15,7 @@ import { YardTab } from './Yard';
 import { WorkTab } from './Work';
 import { MarketTab } from './Market';
 import { CareerTab } from './Career';
+import type { Saves } from '../Slots';
 import { OfficeTab } from './Office';
 import { MapTab } from './Map';
 
@@ -208,7 +209,7 @@ function CoachCard({ c, tab, act, go }: { c: Career; tab: Tab; act: Act; go: (t:
   );
 }
 
-export function GameScreen({ c, act, onNew }: { c: Career; act: Act; onNew: () => void }) {
+export function GameScreen({ c, act, onNew, saves, saveFailed, demo }: { c: Career; act: Act; onNew: () => void; saves: Saves; saveFailed: boolean; demo: boolean }) {
   const [tab0, setTab0] = useState<Tab>(coachStep(c)?.id === 'earn' ? 'work' : 'yard');
   const [report, setReport] = useState<(game.Report & { run?: RunSummary }) | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
@@ -233,13 +234,20 @@ export function GameScreen({ c, act, onNew }: { c: Career; act: Act; onNew: () =
               <div className="small">You owe more than the business is worth. Get above water or it goes into administration.</div>
             </div>
           ) : null}
+          {saveFailed && (
+            <div className="card" style={{ border: '2px solid var(--rust)' }}>
+              <b style={{ color: 'var(--rust)' }}>This device couldn't save your game</b>
+              <div className="small">Its storage may be full or blocked (a private window does this). Keep this tab open, or your progress since the last save is lost.</div>
+            </div>
+          )}
+          {demo && <div className="card"><div className="small muted">A demo career: nothing you do here is saved, and your own saves aren't touched.</div></div>}
           <CoachCard c={c} tab={tab} act={act} go={setTab} />
           {!coachOn(c) && c.week >= 6 && tab !== 'bank' && <Mentor c={c} k="runon" act={act} />}
           {tab === 'yard' && <YardTab c={c} act={act} go={setTab} />}
           {tab === 'work' && <WorkTab c={c} act={act} />}
           {tab === 'map' && <MapTab c={c} />}
           {tab === 'market' && <MarketTab c={c} act={act} />}
-          {tab === 'career' && <CareerTab c={c} act={act} onNew={onNew} />}
+          {tab === 'career' && <CareerTab c={c} act={act} onNew={onNew} saves={saves} />}
           {tab === 'bank' && <OfficeTab c={c} act={act} go={setTab} />}
         </main>
       </div>
