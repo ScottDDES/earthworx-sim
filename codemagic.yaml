@@ -14,7 +14,7 @@ workflows:
         distribution_type: app_store
         bundle_identifier: biz.ddes.earthmoving
       vars:
-        APP_STORE_APPLE_ID: 0 # fill in once the app exists in App Store Connect
+        APP_STORE_APPLE_ID: 6824078099 # Earthworx Sim in App Store Connect
       node: 22
       xcode: latest
     triggering:
