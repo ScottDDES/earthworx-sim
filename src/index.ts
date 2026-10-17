@@ -20,3 +20,5 @@ export * from './hire';
 export * from './rivals';
 export * from './map';
 export * from './tenders';
+export * from './planning';
+export * from './council';

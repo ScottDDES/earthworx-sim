@@ -38,6 +38,8 @@ npm run check      # type-check, then test: run this before every commit
 | `src/rivals.ts` | The other outfits: their books, who prices what, what a win really costs them, growing, selling gear, folding, buy-outs, new outfits. |
 | `src/map.ts` | The district map: every road, damaged or sound, who's on it. Goondiwindi's generated areas, Charters Towers' real localities, flood events. |
 | `src/tenders.ts` | Subbie tenders: what comes up, pricing (crew-day, overheads share, margin), non-price points, closing and scoring, direct offers, signing or pulling out. |
+| `src/planning.ts` | Planning a council job: crews, water carts, trucks, pits, weeks lost to rain, cost, what's holding it up; programs crew by crew and road by road with floats; the plan a rival would draw up. |
+| `src/council.ts` | Council packages and flood recovery programs: what comes up, deadlines, pricing, the plan controls, closing and scoring, signing your own contract. |
 | `src/text/` | Words the player reads, kept out of the rules. The engine records which story happened; screens look up the words here. |
 | `src/index.ts` | The front door. Screens import from here only. |
 | `test/parity.test.ts` | Runs the prototype and this engine side by side and fails if they ever disagree. |
@@ -48,6 +50,7 @@ npm run check      # type-check, then test: run this before every commit
 | `test/hire.test.ts` | Hire work, including 400 businesses run side by side for six weeks each through the prototype's own week-loop code. |
 | `test/rivals.test.ts` | Rivals, including 60 runs of four years each through every market and difficulty. |
 | `test/tenders.test.ts` | The map and subbie tenders: 3,000 tenders made, 3,000 closed and scored, three years of map changes. |
+| `test/council.test.ts` | Planning and council tenders: 1,500 packages and 600 programs made, 1,500 plans and 400 programs evaluated after random changes, 1,500 closed, 600 signed. |
 | `test/safety.test.ts` | The same for safety, including the words in `src/text/safety.ts`. |
 | `test/prototype.ts` | Loads the prototype for the tests (from `../game-prototype`, or set `PROTOTYPE`). Also cuts blocks out of its week loop and compiles them inside it, so tests can run them word for word. |
 
@@ -62,7 +65,7 @@ npm run check      # type-check, then test: run this before every commit
 
 Things the prototype does that should change, kept for now so careers match it exactly:
 
-- Dry-hire enquiries shuffle idle machines with `sort(() => rand() - 0.5)`, which is biased and depends on the browser's sort.
+- Several places shuffle with `sort(() => rand() - 0.5)`, which is biased and depends on the browser's sort: dry-hire enquiries, council package road names, and program roads and Charters Towers road names. Marked `TODO after the port` in the code.
 
 ## Ported so far
 
@@ -77,6 +80,6 @@ Things the prototype does that should change, kept for now so careers match it e
 - [x] Rivals: books, pricing odds, wins, growth, selling up, folding, new outfits
 - [x] The district map
 - [x] Subbie tenders: pricing, scoring, closing, direct offers, signing
-- [ ] Council tenders and job planning
+- [x] Council tenders, flood recovery programs and job planning
 - [ ] Running contracts
 - [ ] The week loop (`endWeek`), plus a full-career parity test

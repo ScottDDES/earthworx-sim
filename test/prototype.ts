@@ -31,6 +31,9 @@ const EXPORTS = [
   'dmap', 'pickRoads', 'placePos', 'mapWeek', 'mapStats', 'mapWork', 'mapDone', 'mapRival', 'BOQ', 'PLACE_POS',
   'genTenders', 'closeTender', 'tCost', 'subPrice', 'npOf', 'canTender', 'crewDayCost', 'dayCostOf', 'carryCash', 'subTerms',
   'signSub', 'TREAT', 'otherContracts', 'ohShareDefault', 'playerStretched', 'submitBid', 'setMk',
+  'flow', 'cartLoads', 'truckM3', 'weeksFor', 'planCounts', 'crewPeople', 'crewRoad', 'newCrew', 'autoPlan', 'tidyCrew',
+  'planEval', 'stdPlan', 'subCrewTerms', 'councilPrice', 'genCouncil', 'genMajor', 'juneWeek', 'closeCouncil', 'submitCouncil',
+  'signOwn', 'setPlan', 'setHm', 'progAct', 'canPrestige', 'jobEnds', 'capFull',
 ];
 
 export interface Proto {
