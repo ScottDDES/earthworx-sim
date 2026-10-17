@@ -44,6 +44,8 @@ npm run check      # type-check, then test: run this before every commit
 | `src/office.ts` | The office: paying subbies and the tax office, the overdraft limit and the bank's calls, net worth, GST and the BAS, closing the books each week, the year in review, Hardcore insolvency, and the bank and BAS cards. |
 | `src/shocks.ts` | Outside shocks (a head contractor collapsing, a funding freeze, an insurance spike) and their cards; selling up when you're stretched; buying out a rival who's going under. |
 | `src/branch.ts` | The branch depot in the other town: opening it, floating gear there, its week on that town's real rain, its manager's cards. |
+| `src/cards.ts` | Curve balls: which card turns up each week, the rain call, and the clearing sale, bad back, break-in, extra work, call-out, early payer, breakdown, service find and turnover cards. |
+| `src/career.ts` | The career ladder (eight rungs), its checks, what unlocks, the milestones, and the tickets. |
 | `src/text/` | Words the player reads, kept out of the rules. The engine records which story happened; screens look up the words here. |
 | `src/index.ts` | The front door. Screens import from here only. |
 | `test/parity.test.ts` | Runs the prototype and this engine side by side and fails if they ever disagree. |
@@ -59,6 +61,7 @@ npm run check      # type-check, then test: run this before every commit
 | `test/safety.test.ts` | The same for safety, including the words in `src/text/safety.ts`. |
 | `test/office.test.ts` | The office, on 100+ snapshots of careers the prototype played itself. |
 | `test/outside.test.ts` | Shocks, selling up, buy-outs and the branch, on careers the prototype played. |
+| `test/cards.test.ts` | Cards, the rain call and the ladder, on careers the prototype played. |
 | `test/bot.ts` | A simple bot that plays the prototype, so tests get real, lived-in careers to check against. |
 | `test/prototype.ts` | Loads the prototype for the tests (from `../game-prototype`, or set `PROTOTYPE`). Also cuts blocks out of its week loop and compiles them inside it, so tests can run them word for word. |
 
@@ -92,5 +95,5 @@ Things the prototype does that should change, kept for now so careers match it e
 - [x] Running contracts: staffing, the working day, programs, claims, retention, damages, subbing out, contract cards
 - [x] The office: payables, the bank's calls, GST and BAS, closing the books, the year in review, Hardcore
 - [x] Outside events: shocks, selling up, buying out a rival, the branch depot
-- [ ] The remaining cards and rain calls; unlocks and the career ladder
+- [x] The remaining cards and rain calls; unlocks, the career ladder and tickets (ticket counters get wired in during assembly)
 - [ ] Career start, the week loop (`endWeek`), and a full-career parity test

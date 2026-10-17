@@ -23,7 +23,9 @@ export interface Incident {
 export type Story =
   | { k: 'lti'; i: number; machine: number }
   | { k: 'serious'; i: number }
-  | { k: 'nearmiss'; i: number };
+  | { k: 'nearmiss'; i: number }
+  /** Kept working with a bad back (the hurt card). */
+  | { k: 'badBack' };
 
 export interface Whs {
   /** System level, 0 to 3. */

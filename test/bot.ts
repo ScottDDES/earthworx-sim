@@ -48,10 +48,18 @@ export function playProto(P: Proto, seed: number, o: BotOpts): any {
       for (const t of S.tenders || []) if (!t.bid) P.submitBid(t.id);
       for (const t of S.ctenders || []) if (!t.bid) P.submitCouncil(t.id);
       // grow a little when there's money about
-      if (S.bank > 120000 && S.fleet.length < 10) {
-        const need = ['roller', 'cart', 'grader', 'cart', 'truck'].find((k) => S.fleet.filter((m: any) => m.type === k).length < (k === 'cart' ? 2 : 1)) || 'grader';
+      // a bigger yard when this one's full: fenced, then a depot once subcontracting, then regional
+      if (P.room() <= 0) {
+        const next = S.yard === 'home' ? 'fenced' : S.yard === 'fenced' && S.won ? 'depot' : S.yard === 'depot' && S.won2 ? 'regional' : null;
+        const cost: Record<string, number> = { fenced: 4000, depot: 18000, regional: 60000 };
+        if (next && S.bank > cost[next]! + 40000) P.moveYard(next);
+      }
+      // build a crew as soon as it's affordable, keeping a buffer: roller, cart, a second cart, then more
+      if (S.fleet.length < 10 && P.room() > 0) {
+        const want: Record<string, number> = { roller: 1, cart: 2, grader: 2, truck: 1 };
+        const need = ['roller', 'cart', 'grader', 'truck'].find((k) => S.fleet.filter((m: any) => m.type === k).length < want[k]!) || 'grader';
         const m = cheapest(need);
-        if (m) P.buy(m.id);
+        if (m && S.bank > m.price * 1.1 + 15000) P.buy(m.id);
       }
       if (S.bank > 80000 && (S.cands || []).length && (S.staff || []).length < 4) P.hireCand(S.cands[0].id);
       for (let guard = 0; S.queue.length && guard < 20; guard++) P.choose(0);
@@ -71,4 +79,16 @@ export function accFromProto(A: any) {
     openingBank: A.b0, jobCosts: A.jc || 0, jobCostsOwed: A.jco || 0, workshop: A.ws || 0, capital: A.cap || 0, loan: A.loan || 0,
     collections: A.coll || 0, machineDays: A.md || 0, breakdowns: A.brk || 0, badDebts: A.bd || 0, branch: A.br || 0, gst: A.gst || 0,
   };
+}
+
+/** Snapshots of real careers the bot played: a few per career, across difficulties, towns and Hardcore. */
+export function snapshots(P: Proto, n: number, seed: number, rand: (seed: number) => () => number): any[] {
+  const R = rand(seed), out: any[] = [];
+  const int = (a: number, b: number) => a + Math.floor(R() * (b - a + 1));
+  for (let i = 0; i < n; i++) {
+    const loan = [80000, 180000, 350000][int(0, 2)]!, town = (['gdi', 'ct'] as const)[int(0, 1)]!, hc = R() < 0.25, weeks = int(30, 160);
+    const at = new Set([int(10, weeks), int(10, weeks), int(10, weeks)]);
+    playProto(P, int(1, 1e9), { loan, town, hc, weeks, each: (S, w) => { if (at.has(w)) out.push(JSON.parse(JSON.stringify(S))); } });
+  }
+  return out;
 }

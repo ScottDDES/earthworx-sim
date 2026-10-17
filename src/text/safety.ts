@@ -29,3 +29,5 @@ export const QUIET_REPLIES = [
   (n: string) => `${n} said they're right, but thanked you for asking. They seem lighter this week.`,
   (n: string) => `You talked for an hour. ${n} is going to see their GP. Good on them.`,
 ] as const;
+
+export const BAD_BACK_STORY = 'kept working with a bad back';

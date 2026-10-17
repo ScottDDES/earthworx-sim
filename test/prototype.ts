@@ -41,6 +41,8 @@ const EXPORTS = [
   'start', 'endWeek', 'choose', 'hireCand', 'submitBid', 'tPrice', 'rung', 'checkWin', 'unlockWeek',
   'shockWeek', 'meStretched', 'sellBuyer', 'sellUpWeek', 'askSellUp', 'sellPrice', 'walkAway', 'sellBest', 'rvYard', 'buyOutPay',
   'canBuyOut', 'branchWeek', 'openBranch', 'toBranch', 'toHome', 'closeBranch', 'brCrews', 'canBranch', 'room',
+  'callGrader', 'earlyClient', 'rainCallCheck', 'checks', 'checks2', 'checks3', 'checks4', 'checks5', 'TICKETS', 'checkTix',
+  'tc', 'UNLOCKS', 'lastInc', 'hasCrew', 'ownedCounts', 'moveYard',
 ];
 
 export interface Proto {
@@ -80,6 +82,8 @@ function weekHooks(): string {
   const payables = cut('  // paying the subbies\n', '  // money coming in\n', week);
   // the bank's calls sit inside the loan block; reopen it so the braces balance
   const calls = 'var L = S.loan, od = odLimit(); if(L.bal>0){\n' + cut('    if(L.missed>=3 && !S.queue.some(', '  shockWeek(rep); relWeek();', week);
+  const curveBit = cut('  if(hasCrew() && stars()>=1 && whs().sys<1', "  (S.tenders||[]).slice().forEach(function(t){ if(t.close===S.week)", week);
+  const rainDay = cut('    var wet = wetDay(S.week, d), rc =', '    if(wet) rep.rain++;', week);
   return `__day: function(j, d, wet, rep, downDays){ var c0 = rep.costs; (function(){\n${day}})(); jobCost(j, rep.costs-c0); },
     __afterDay: function(d, rep){\n${afterDay}},
     __settle: function(j, rep, downDays){ var c0 = rep.costs; (function(){\n${settle}})(); jobCost(j, rep.costs-c0); jobDone(j); },
@@ -87,6 +91,8 @@ function weekHooks(): string {
     __weekStart: function(rep){\n${start}},
     __payables: function(rep, BK){\n${payables}},
     __bankCalls: function(rep){\n${calls}},
+    __curve: function(){\n${curveBit}},
+    __rainDay: function(d, rep){\n${rainDay}  return wet; },
     __startWeek: function(){ S.jobs.forEach(function(j){ j.wk = 0; j.wkDays = 0; }); },`;
 }
 
