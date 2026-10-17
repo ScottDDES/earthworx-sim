@@ -46,6 +46,8 @@ npm run check      # type-check, then test: run this before every commit
 | `src/branch.ts` | The branch depot in the other town: opening it, floating gear there, its week on that town's real rain, its manager's cards. |
 | `src/cards.ts` | Curve balls: which card turns up each week, the rain call, and the clearing sale, bad back, break-in, extra work, call-out, early payer, breakdown, service find and turnover cards. |
 | `src/career.ts` | The career ladder (eight rungs), its checks, what unlocks, the milestones, and the tickets. |
+| `src/game.ts` | The whole game: a career, starting one, opening for business, the player's actions, and the week in the prototype's exact order. Exported as `game`. |
+| `src/choose.ts` | Answering the card at the front of the queue: every kind of card, its options in order, drawn on its own seed. |
 | `src/text/` | Words the player reads, kept out of the rules. The engine records which story happened; screens look up the words here. |
 | `src/index.ts` | The front door. Screens import from here only. |
 | `test/parity.test.ts` | Runs the prototype and this engine side by side and fails if they ever disagree. |
@@ -62,6 +64,7 @@ npm run check      # type-check, then test: run this before every commit
 | `test/office.test.ts` | The office, on 100+ snapshots of careers the prototype played itself. |
 | `test/outside.test.ts` | Shocks, selling up, buy-outs and the branch, on careers the prototype played. |
 | `test/cards.test.ts` | Cards, the rain call and the ladder, on careers the prototype played. |
+| `test/career.test.ts` | Whole careers: 40 careers of four years, prototype and engine side by side, compared after every move and every week. |
 | `test/bot.ts` | A simple bot that plays the prototype, so tests get real, lived-in careers to check against. |
 | `test/prototype.ts` | Loads the prototype for the tests (from `../game-prototype`, or set `PROTOTYPE`). Also cuts blocks out of its week loop and compiles them inside it, so tests can run them word for word. |
 
@@ -73,6 +76,9 @@ npm run check      # type-check, then test: run this before every commit
 4. **Small files, one topic each.**
 
 ## To fix after the port
+
+- The prototype picks which real year's rain a career replays with `Math.random()`, outside the career's seed. The engine takes it from a separate seed (or as a parameter), so careers are fully reproducible from their seed alone.
+- The whole-career test plays a simple bot (first choice on every card). It never reaches flood recovery programs, the branch or managers; those are covered by their own side-by-side tests, but a stronger bot would cover them in whole careers too.
 
 Things the prototype does that should change, kept for now so careers match it exactly:
 
@@ -96,4 +102,4 @@ Things the prototype does that should change, kept for now so careers match it e
 - [x] The office: payables, the bank's calls, GST and BAS, closing the books, the year in review, Hardcore
 - [x] Outside events: shocks, selling up, buying out a rival, the branch depot
 - [x] The remaining cards and rain calls; unlocks, the career ladder and tickets (ticket counters get wired in during assembly)
-- [ ] Career start, the week loop (`endWeek`), and a full-career parity test
+- [x] Career start, the week loop (`endWeek`), card answers, ticket counters, and a full-career parity test

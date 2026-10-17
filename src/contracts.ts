@@ -47,7 +47,7 @@ export type ContractEvent =
   | { k: 'deadline'; jobId: string; cut: number }
   | { k: 'subFinished'; jobId: string; late: number; ld: number; retained: number; extra: number; terms: number }
   | { k: 'finishPoints'; jobId: string; pts: number; council: boolean }
-  | { k: 'ownFinished'; jobId: string; major: boolean; late: number; ld: number; gain: number; subbedTo: string | null };
+  | { k: 'ownFinished'; jobId: string; major: boolean; late: number; ld: number; gain: number; subbedTo: string | null; early: boolean };
 
 const round = (n: number, to: number) => Math.round(n / to) * to;
 const mach = (b: Biz, id: string | null | undefined): Machine | undefined => (id ? b.fleet.find((m) => m.id === id) : undefined);
@@ -741,7 +741,7 @@ export function ownWeek(rand: Rand, b: ContractBiz, j: Job, rep: WeekReport, old
       rep.costs += (j.crews as number) * MOB;
     }
     // a program cut at the deadline has already said so (programCheck)
-    if (!j.cut) events.push({ k: 'ownFinished', jobId: j.id, major: !!j.major, late, ld, gain, subbedTo: subbed ? sub!.name : null });
+    if (!j.cut) events.push({ k: 'ownFinished', jobId: j.id, major: !!j.major, late, ld, gain, subbedTo: subbed ? sub!.name : null, early: !!j.major && b.week <= (j.due as number) - 1 });
     release(b, j, events as HireEvent[]);
   }
 }

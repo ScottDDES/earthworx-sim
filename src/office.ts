@@ -153,17 +153,24 @@ export type TaxEvent = { k: 'bookkeeperLodged'; qm: number; qy: number; amt: num
  * (due in 4 weeks, 8 over Christmas). Returns true when 30 June has passed, so the year can be reviewed.
  * Due BAS: the bookkeeper lodges it from what's set aside; or a refund comes in; or it's a card for you.
  */
-export function taxWeek(st: { week: number; bank: number; seq: number; acc: Accounts; queue: { k: string; id?: string }[]; gst?: GstState }, w0: number, mode: TaxMode, events: TaxEvent[]): boolean {
+export function taxWeek(st: { week: number; bank: number; seq: number; acc: Accounts; queue: { k: string; id?: string }[]; gst?: GstState }, w0: number, mode: TaxMode, events: TaxEvent[], yearEndNow?: () => void): boolean {
   const G = (st.gst = st.gst || newGst()), m1 = monthIdx(st.week), quarter = monthIdx(w0) !== m1 && (QUARTER_OPENS as readonly number[]).includes(m1);
   let yearDone = false;
-  if (quarter && mode === 'off' && m1 === 6) yearDone = true;
+  // the year's reviewed at the same moment the prototype does it: before any BAS card goes in the queue
+  if (quarter && mode === 'off' && m1 === 6) {
+    yearDone = true;
+    yearEndNow?.();
+  }
   if (quarter && mode !== 'off') {
     const amt = G.qIn - G.qOut, yr = m1 === 0 ? yearOf(w0) : yearOf(st.week), due = st.week + (m1 === 0 ? 8 : 4);
     G.due.push({ id: uid(st), amt, qIn: G.qIn, qOut: G.qOut, qm: m1, qy: yr, due });
     G.qIn = 0;
     G.qOut = 0;
     events.push({ k: 'quarterClosed', qm: m1, qy: yr, amt, due });
-    if (m1 === 6) yearDone = true;
+    if (m1 === 6) {
+      yearDone = true;
+      yearEndNow?.();
+    }
   }
   for (const d of G.due.slice()) {
     if (d.due > st.week) continue;

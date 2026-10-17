@@ -93,6 +93,7 @@ function weekHooks(): string {
     __bankCalls: function(rep){\n${calls}},
     __curve: function(){\n${curveBit}},
     __rainDay: function(d, rep){\n${rainDay}  return wet; },
+    __open: function(){ S.phase='play'; withRNG(worldRNG('open'), function(){ genOffers(); genMarket(); genTenders(); }); },
     __startWeek: function(){ S.jobs.forEach(function(j){ j.wk = 0; j.wkDays = 0; }); },`;
 }
 
