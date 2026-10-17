@@ -28,6 +28,9 @@ const EXPORTS = [
   'relAdd', 'relTier', 'relWeek', 'relPts', 'stars',
   'rivalsWeek', 'mkRivals', 'newRival', 'rvPhase', 'rvForm', 'rvFree', 'whoPrices', 'rvWin', 'rvOH', 'rvOHFor', 'rvWhs',
   'RIVALS', 'TIER', 'NEW_NAMES', 'BID_ODDS',
+  'dmap', 'pickRoads', 'placePos', 'mapWeek', 'mapStats', 'mapWork', 'mapDone', 'mapRival', 'BOQ', 'PLACE_POS',
+  'genTenders', 'closeTender', 'tCost', 'subPrice', 'npOf', 'canTender', 'crewDayCost', 'dayCostOf', 'carryCash', 'subTerms',
+  'signSub', 'TREAT', 'otherContracts', 'ohShareDefault', 'playerStretched', 'submitBid', 'setMk',
 ];
 
 export interface Proto {

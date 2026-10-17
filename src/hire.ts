@@ -61,11 +61,12 @@ export interface Job {
   days: number;
   done: number;
   rate: number;
-  fixed: number;
+  /** Private jobs: the price. */
+  fixed?: number;
   terms: number;
   fuelPaid: boolean;
-  /** The machine on it. */
-  mId: string;
+  /** The machine on it (none yet on a contract waiting to start). */
+  mId: string | null;
   /** Who's driving: a person's id, 'you', or null (dry hire). */
   who: string | null;
   rollerId: string | null;
@@ -246,7 +247,7 @@ export function jobCost(b: Pick<Biz, 'acc'>, j: Job, amt: number): void {
   book(b.acc, 'jobCosts', amt);
 }
 
-function newJob(b: Biz, o: Offer, mId: string): Job {
+function newJob(b: Biz, o: Offer, mId: string | null): Job {
   return { id: uid(b), kind: o.kind, type: o.type, client: o.client, place: o.place, days: o.days, done: 0, rate: o.rate || 0, fixed: o.fixed || 0,
     terms: o.terms, fuelPaid: !!o.fuelPaid, mId, who: null, rollerId: null, hireIn: 0, extra: 0, earned: 0, idleWeeks: 0 };
 }
@@ -554,8 +555,8 @@ export function settleHire(b: Biz, j: Job, rep: WeekReport, downDays: Record<str
     if (j.finished) {
       const gain = GAIN[j.kind] ?? 1;
       if (j.kind === 'private') {
-        invoice(b, j.client, j.fixed + j.extra, j.terms, rep);
-        j.earned = j.fixed + j.extra;
+        invoice(b, j.client, (j.fixed || 0) + j.extra, j.terms, rep);
+        j.earned = (j.fixed || 0) + j.extra;
       }
       b.rep += gain;
       const fl = j.kind === 'private' ? 0 : 1100;

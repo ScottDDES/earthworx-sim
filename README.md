@@ -36,6 +36,8 @@ npm run check      # type-check, then test: run this before every commit
 | `src/hire.ts` | Hire work: wet, dry, council day labour and private jobs. Offers, taking them, booking the next one in behind, the working day, the week's invoices, getting paid, late payers. |
 | `src/relations.ts` | Standing with each head contractor: −10 to +10, tiers, tender points, fading. |
 | `src/rivals.ts` | The other outfits: their books, who prices what, what a win really costs them, growing, selling gear, folding, buy-outs, new outfits. |
+| `src/map.ts` | The district map: every road, damaged or sound, who's on it. Goondiwindi's generated areas, Charters Towers' real localities, flood events. |
+| `src/tenders.ts` | Subbie tenders: what comes up, pricing (crew-day, overheads share, margin), non-price points, closing and scoring, direct offers, signing or pulling out. |
 | `src/text/` | Words the player reads, kept out of the rules. The engine records which story happened; screens look up the words here. |
 | `src/index.ts` | The front door. Screens import from here only. |
 | `test/parity.test.ts` | Runs the prototype and this engine side by side and fails if they ever disagree. |
@@ -45,6 +47,7 @@ npm run check      # type-check, then test: run this before every commit
 | `test/market.test.ts` | The same for the market. |
 | `test/hire.test.ts` | Hire work, including 400 businesses run side by side for six weeks each through the prototype's own week-loop code. |
 | `test/rivals.test.ts` | Rivals, including 60 runs of four years each through every market and difficulty. |
+| `test/tenders.test.ts` | The map and subbie tenders: 3,000 tenders made, 3,000 closed and scored, three years of map changes. |
 | `test/safety.test.ts` | The same for safety, including the words in `src/text/safety.ts`. |
 | `test/prototype.ts` | Loads the prototype for the tests (from `../game-prototype`, or set `PROTOTYPE`). Also cuts blocks out of its week loop and compiles them inside it, so tests can run them word for word. |
 
@@ -72,7 +75,8 @@ Things the prototype does that should change, kept for now so careers match it e
 - [x] The market: mood, listings, auctions, finance, buying and selling
 - [x] Hire work: offers, booking in, the working day, invoices, getting paid, late payers, head contractor standing
 - [x] Rivals: books, pricing odds, wins, growth, selling up, folding, new outfits
-- [ ] Subbie tenders
+- [x] The district map
+- [x] Subbie tenders: pricing, scoring, closing, direct offers, signing
 - [ ] Council tenders and job planning
 - [ ] Running contracts
 - [ ] The week loop (`endWeek`), plus a full-career parity test
