@@ -8,6 +8,7 @@ import {
   type RivalSale, type SaleEvent, type TownId,
 } from '../src';
 import { loadPrototype, prototypeSalesStep } from './prototype';
+import { hammerText } from '../src/text/market';
 
 const P = loadPrototype();
 const MOOD_IDS: Mood[] = ['boom', 'steady', 'tight', 'bust'];
@@ -181,6 +182,7 @@ describe('buying', () => {
       expect(b.bank).toBe(S.bank);
       expect(b.fleet).toEqual(S.fleet);
       expect(b.acc.capital).toBe(S.acc.cap);
+      expect(hammerText(res)).toBe(S.market.lot.result);
       if (res.k === 'won') won++; else if (res.k === 'lost') lost++; else broke++;
     }
     expect(won).toBeGreaterThan(200);

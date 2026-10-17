@@ -10,6 +10,7 @@ import { Icon, WeatherIcon } from '../Icon';
 import { MONTHS, f, fk } from '../format';
 import { YardTab } from './Yard';
 import { WorkTab } from './Work';
+import { MarketTab } from './Market';
 
 type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
@@ -196,7 +197,7 @@ export function GameScreen({ c, act, onNew }: { c: Career; act: Act; onNew: () =
           ) : null}
           {tab === 'yard' && <YardTab c={c} act={act} />}
           {tab === 'work' && <WorkTab c={c} act={act} />}
-          {tab === 'market' && <ComingNext name="Market: buying and the auction" />}
+          {tab === 'market' && <MarketTab c={c} act={act} />}
           {tab === 'career' && <ComingNext name="Career: the ladder and your tickets" />}
           {tab === 'bank' && <ComingNext name="Office: money, the bank and the books" />}
           <div className="btns"><button type="button" className="btn" onClick={() => { if (confirm('Start a new career? This one will be gone.')) onNew(); }}>Start a new career</button></div>

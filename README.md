@@ -64,6 +64,7 @@ npm run check      # type-check, then test: run this before every commit
 | `src/career.ts` | The career ladder (eight rungs), its checks, what unlocks, the milestones, and the tickets. |
 | `src/game.ts` | The whole game: a career, starting one, opening for business, the player's actions, and the week in the prototype's exact order. Exported as `game`. |
 | `src/choose.ts` | Drawing the card at the front of the queue (its options in order and its numbers, on its own seed) and answering it (what happened). |
+| `src/text/market.ts` | Where an auction lot came from, its guide, and how the hammer fell. |
 | `src/text/docket.ts` | The week's docket lines and stamps from the engine's events. Checked against the prototype every week of the whole-career test, and in the workshop, rivals, contracts and branch tests. |
 | `src/text/cardView.ts` | Every card's words with names and amounts, and the result line after choosing. Checked word for word against the prototype in the whole-career test, taking every option in turn. |
 | `src/text/` | Words the player reads, kept out of the rules. The engine records which story happened; screens look up the words here. |
@@ -123,7 +124,8 @@ Still open:
 - [x] The docket: stamps, the rain day by day, totals, new tickets, and every event in words
 - [x] Work: hire offers (take it, or ring to book it in), jobs on the go (progress, what a waiting job needs, subbing out and taking back), subbie tenders with the full pricing sheet
 - [x] Work: council tender planning (crews, graders, rollers, carts, trucks, pit, who supplies the plant, program, price) and flood recovery programs (map, crews road by road, timeline, holdups, plant, price)
-- [ ] Market, Career, Office, Map
+- [x] Market: this week's auction (bid, let the hammer fall) and machines for sale (buy, finance, a mechanic's check)
+- [ ] Career, Office, Map
 
 ## Ported so far
 

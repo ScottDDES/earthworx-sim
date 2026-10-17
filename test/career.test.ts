@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { choose, drawCard, game, int, pick, seedRand } from '../src';
 import { cardView, resultText } from '../src/text/cardView';
+import { hammerText, lotFrom, lotGuide } from '../src/text/market';
 import { docketLines, docketStamps, eventText } from '../src/text/docket';
 import { LTI_STORIES } from '../src/text/safety';
 import { loadPrototype } from './prototype';
@@ -35,8 +36,7 @@ function common(S: any, engine: boolean): any {
   // the auction lot: the engine keeps codes and a number range, the prototype words
   if (c.market?.lot) {
     const L = c.market.lot;
-    if (engine) { delete L.guideLo; delete L.guideHi; L.from = L.from.k === 'clearance' ? L.from.name + ' clearance sale' : { council: 'Ex-council clearance', dispersal: 'Contractor dispersal', repo: 'Finance repossession' }[L.from.k as string]; }
-    else delete L.guide;
+    if (engine) { L.guide = lotGuide(L); delete L.guideLo; delete L.guideHi; L.from = lotFrom(L.from); if (L.result) L.result = hammerText(L.result); }
   }
   // GST quarters in words
   if (engine && c.gst) c.gst.due = c.gst.due.map(({ qm, qy, ...d }: any) => ({ ...d, q: QNAME[qm] + ' ' + qy }));
@@ -125,6 +125,14 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
         const need = ['roller', 'cart', 'grader', 'truck'].find((k) => S.fleet.filter((m: any) => m.type === k).length < want[k]!) || 'grader';
         const m = (S.market.listings || []).filter((x: any) => x.type === need).sort((a: any, b: any) => a.price - b.price)[0];
         if (m && S.bank > m.price * 1.1 + 15000) both(`week ${W} buy ${need}`, () => P.buy(m.id), () => game.buy(c, m.id));
+      }
+      // now and then: a mechanic's check on a private listing, and a go at the auction
+      const pv = (S.market.listings || []).find((x: any) => x.seller === 'private' && !x.revealed);
+      if (pv && W % 4 === 1 && S.bank > 20000) both(`week ${W} inspect`, () => P.inspect(pv.id), () => game.inspectListing(c, pv.id));
+      const lot = S.market.lot;
+      if (lot && !lot.done && W % 5 === 2 && P.room() > 0 && S.bank > 60000) {
+        for (let k = 0; k < 1 + (W % 3); k++) both(`week ${W} bid`, () => P.bid(5000), () => game.bid(c, 5000));
+        both(`week ${W} hammer`, () => P.hammer(), () => game.hammer(c));
       }
       // service the most overdue machine when there's money for it, and now and then sell a worn one
       const due = S.fleet.filter((m: any) => m.hours - m.svcAt > 250 && m.status !== 'auction' && m.status !== 'listed').sort((a: any, b: any) => (b.hours - b.svcAt) - (a.hours - a.svcAt))[0];

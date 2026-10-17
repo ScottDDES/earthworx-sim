@@ -7,7 +7,7 @@ import { yearOf } from './calendar';
 import { DIFFICULTY, costIdx as costIdxOf, difficultyOf, type Difficulty } from './difficulty';
 import { book, newAccounts, type Accounts } from './ledger';
 import { TYPES, newMachine, serviced, svcCost, value, type Machine } from './machines';
-import { MOODS, fmul as fmulOf, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
+import { MOODS, fmul as fmulOf, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, inspect as inspectL, bid as bidL, hammer as hammerL, type HammerResult, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
 import { fromState, hashN, int, seedRand, type Rand } from './rng';
 import { mkRivals, rivalsWeek, type Rival, type RivalEvent } from './rivals';
 import { newWhs, safetyWeek, type SafetyEvent, type Whs } from './safety';
@@ -231,6 +231,30 @@ export function buy(c: Career, id: string, fin = false): boolean {
   const res = buyListing(stream(c), c as never, id, fin, room(c), lendCap(fleetValue(c.fleet, c.week), c.won, c.won2, c.won3), c.won, '');
   if (res.ok) res.machine.id = uid(c);
   return res.ok;
+}
+
+/** Pay a mechanic $600 to check a listing's real condition. */
+export function inspectListing(c: Career, id: string): boolean {
+  return inspectL(c as never, id);
+}
+
+/** Raise your bid at this week's auction. */
+export function bid(c: Career, n: number): void {
+  if (c.market) bidL(c.market.lot, n, room(c));
+}
+
+/** Let the hammer fall on this week's lot. */
+export function hammer(c: Career): HammerResult | null {
+  if (!c.market) return null;
+  const lot = c.market.lot;
+  if (lot.done) return null;
+  const res = hammerL(stream(c), c as never, lot, '');
+  if (res && res.k === 'won') {
+    res.machine.id = uid(c);
+    tcAdd(c as never, 'auction');
+    tickets(c);
+  }
+  return res;
 }
 
 export function accept(c: Career, id: string): boolean {
