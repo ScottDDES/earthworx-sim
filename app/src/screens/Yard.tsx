@@ -6,7 +6,7 @@ import {
   BR_FLOAT, BR_MGR, BR_RENT, BR_SETUP, BR_SLOTS, GPS_COST, MGR, ROLES, SKILLS, TOWNS, WHS_SYS, YARDS, YARD_ORDER,
   bigNoWsm, brCrews, brMachines, brProfit, brTown, canBranch, fitPer, fitters, forecast, lastInc, machineAlerts, machineName,
   mgrOf, mgrUnlocked, monthIdx, nextWhs, odLimit, premParts, recentInc, riskMult, svcCost, unlocked, value, whsNp, fleetValue, wages,
-  game, type Machine, type MachineType, type YardId,
+  game, type Machine, type MachineType, type YardId, play,
 } from '@engine';
 import { alertText } from '@engine/text/office';
 import { jobTitle } from '@engine/text/work';
@@ -64,7 +64,7 @@ function Alerts({ c, act }: { c: Career; act: Act }) {
           <div key={g.m.id} className={'alert ' + (g.bad ? 'bad' : 'warn')}>
             <span className="flag" /><MachineIcon type={g.m.type} />
             <div className="grow"><b>{machineName(g.m)}, {g.m.year}</b><ul>{g.t.map((x) => <li key={x}>{x}</li>)}</ul></div>
-            <button type="button" className="btn" disabled={c.bank + odLimit(c) < cost} onClick={() => act((x) => game.service(x, g.m.id))}>Service · {fk(cost)}</button>
+            <button type="button" className="btn" disabled={c.bank + odLimit(c) < cost} onClick={() => act((x) => play.service(x, g.m.id))}>Service · {fk(cost)}</button>
           </div>
         );
       })}
@@ -95,7 +95,7 @@ function YardCard({ c, act }: { c: Career; act: Act }) {
               <div className="row"><b className="grow">{X.name}</b><span className="num small">{X.slots} machines</span></div>
               <div className="small muted">{X.blurb}</div>
               <div className="small">{X.setup ? f(X.setup) + ' to set up, then ' : 'Free to move back, '}{X.rent ? f(X.rent) + ' a week rent.' : 'no rent.'}</div>
-              <button type="button" className="btn dark" disabled={!can} onClick={() => act((x) => game.moveYard(x, k))}>Move here</button>
+              <button type="button" className="btn dark" disabled={!can} onClick={() => act((x) => play.moveYard(x, k))}>Move here</button>
               {!fits ? <div className="why">Your {used} machines won't fit.</div> : !can && <div className="why">You have {f(c.bank)}.</div>}
             </div>
           );
@@ -120,7 +120,7 @@ function BranchCard({ c, act }: { c: Career; act: Act }) {
           <b>Open a branch depot in {other}</b>
           <div className="small muted">A shed, a yard and a manager in {other}, working its own rain and its own shires. Send machines there and the manager keeps them busy. Set-up {f(BR_SETUP)}, rent {f(BR_RENT)} a week, floating a machine there {f(BR_FLOAT)}.</div>
           {why || !canBranch(c as never) ? <div className="why">{why || 'Not yet.'}</div> : (Object.keys(BR_MGR) as (keyof typeof BR_MGR)[]).map((k) => (
-            <button key={k} type="button" className="choice" onClick={() => act((x) => game.openBranchDepot(x, k))}>
+            <button key={k} type="button" className="choice" onClick={() => act((x) => play.openBranchDepot(x, k))}>
               <b>Open it with {BR_MGR[k].t.toLowerCase()} · {f(BR_MGR[k].wage)}/wk</b><span>{BR_MGR[k].d}</span>
             </button>
           ))}
@@ -139,7 +139,7 @@ function BranchCard({ c, act }: { c: Career; act: Act }) {
         ) : (
           <>
             <div className="why">No manager. The crews are only getting scraps of work.</div>
-            {(Object.keys(BR_MGR) as (keyof typeof BR_MGR)[]).map((k) => <button key={k} type="button" className="btn full" onClick={() => act((x) => game.hireBranchManager(x, k))}>Hire {BR_MGR[k].t.toLowerCase()} · {f(BR_MGR[k].wage)}/wk</button>)}
+            {(Object.keys(BR_MGR) as (keyof typeof BR_MGR)[]).map((k) => <button key={k} type="button" className="btn full" onClick={() => act((x) => play.hireBranchManager(x, k))}>Hire {BR_MGR[k].t.toLowerCase()} · {f(BR_MGR[k].wage)}/wk</button>)}
           </>
         )}
         <div className="kv"><span>Full crews there</span><span className="num">{C.n}{C.n && C.pace < 1 ? ' · short a water cart each' : ''}</span></div>
@@ -153,7 +153,7 @@ function BranchCard({ c, act }: { c: Career; act: Act }) {
           <>
             <div className="why">Close the branch? The gear floats home and the set-up is gone.</div>
             <div className="btns">
-              <button type="button" className="btn dark" onClick={() => { act((x) => game.closeBranchDepot(x)); setClosing(false); }}>Close it</button>
+              <button type="button" className="btn dark" onClick={() => { act((x) => play.closeBranchDepot(x)); setClosing(false); }}>Close it</button>
               <button type="button" className="btn" onClick={() => setClosing(false)}>Keep it</button>
             </div>
           </>
@@ -173,7 +173,7 @@ function statusChip(m: Machine) {
 }
 
 function SellSheet({ c, m, act, onClose }: { c: Career; m: Machine; act: Act; onClose: () => void }) {
-  const v = value(m, c.week), sell = (mode: 'trade' | 'auction' | 'list') => { act((x) => game.sellMachine(x, m.id, mode)); onClose(); };
+  const v = value(m, c.week), sell = (mode: 'trade' | 'auction' | 'list') => { act((x) => play.sellMachine(x, m.id, mode)); onClose(); };
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label="Sell">
       <div className="sheet">
@@ -213,13 +213,13 @@ function MachineCard({ c, m, act, onSell, onClose }: { c: Career; m: Machine; ac
       </div>
       {m.band && <div className="why">Patched-up {m.band.part} (week {m.band.w}). Breakdown odds are up until it's fixed properly{m.status === 'job' ? ', and fixing it stands the machine down 2 days' : ''}.</div>}
       <div className="btns" style={{ flexWrap: 'wrap' }}>
-        <button type="button" className="btn" disabled={!(c.bank + odLimit(c) >= cost && m.status !== 'auction' && m.status !== 'listed')} onClick={() => act((x) => game.service(x, m.id))}>Service · {f(cost)}</button>
-        {m.band && <button type="button" className="btn" disabled={c.bank < m.band.fix} onClick={() => act((x) => game.fixProperly(x, m.id))}>Fix properly · {fk(m.band.fix)}</button>}
-        {c.won && m.type === 'grader' && !m.gps && m.status !== 'auction' && m.status !== 'listed' && <button type="button" className="btn" disabled={c.bank < GPS_COST} onClick={() => act((x) => game.fitGps(x, m.id))}>Fit GPS · {fk(GPS_COST)}</button>}
+        <button type="button" className="btn" disabled={!(c.bank + odLimit(c) >= cost && m.status !== 'auction' && m.status !== 'listed')} onClick={() => act((x) => play.service(x, m.id))}>Service · {f(cost)}</button>
+        {m.band && <button type="button" className="btn" disabled={c.bank < m.band.fix} onClick={() => act((x) => play.fixProperly(x, m.id))}>Fix properly · {fk(m.band.fix)}</button>}
+        {c.won && m.type === 'grader' && !m.gps && m.status !== 'auction' && m.status !== 'listed' && <button type="button" className="btn" disabled={c.bank < GPS_COST} onClick={() => act((x) => play.fitGps(x, m.id))}>Fit GPS · {fk(GPS_COST)}</button>}
         {m.status === 'idle' && <button type="button" className="btn" onClick={onSell}>Sell</button>}
-        {B && m.status === 'idle' && m.down === 0 && brMachines(c.fleet).length < BR_SLOTS && <button type="button" className="btn" disabled={c.bank < BR_FLOAT} onClick={() => act((x) => game.sendToBranch(x, m.id))}>Send to {TOWNS[B.town].name} · {fk(BR_FLOAT)}</button>}
-        {m.status === 'branch' && <button type="button" className="btn" disabled={c.bank < BR_FLOAT || game.room(c) <= 0} onClick={() => act((x) => game.bringHome(x, m.id))}>Bring home · {fk(BR_FLOAT)}</button>}
-        {m.status === 'listed' && <button type="button" className="btn" onClick={() => act((x) => game.unlistMachine(x, m.id))}>Take off sale</button>}
+        {B && m.status === 'idle' && m.down === 0 && brMachines(c.fleet).length < BR_SLOTS && <button type="button" className="btn" disabled={c.bank < BR_FLOAT} onClick={() => act((x) => play.sendToBranch(x, m.id))}>Send to {TOWNS[B.town].name} · {fk(BR_FLOAT)}</button>}
+        {m.status === 'branch' && <button type="button" className="btn" disabled={c.bank < BR_FLOAT || game.room(c) <= 0} onClick={() => act((x) => play.bringHome(x, m.id))}>Bring home · {fk(BR_FLOAT)}</button>}
+        {m.status === 'listed' && <button type="button" className="btn" onClick={() => act((x) => play.unlistMachine(x, m.id))}>Take off sale</button>}
       </div>
     </div>
   );
@@ -313,7 +313,7 @@ function People({ c, act }: { c: Career; act: Act }) {
               <div className="small muted">{oj ? jobTitle(oj) + '. ' : ''}{SKILLS[p.skill].name}. {ROLES[p.role].note} {f(p.wage)} a week, working or not.</div>
             )}
             <div className="btns">
-              <button type="button" className="btn" disabled={!!p.jobId} onClick={() => { if (going === p.id) { act((x) => game.letGo(x, p.id)); setGoing(null); } else setGoing(p.id); }}>
+              <button type="button" className="btn" disabled={!!p.jobId} onClick={() => { if (going === p.id) { act((x) => play.letGo(x, p.id)); setGoing(null); } else setGoing(p.id); }}>
                 {going === p.id ? 'Tap again: let ' + p.name + ' go with a week\'s pay' : 'Let ' + p.name + ' go'}
               </button>
             </div>
@@ -383,7 +383,7 @@ function MgrSheet({ c, role, act, onClose }: { c: Career; role: 'ops' | 'wsm'; a
               <div className="small"><span style={{ color: 'var(--teal)', fontWeight: 700 }}>+</span> {T.good}</div>
               <div className="small"><span style={{ color: 'var(--rust)', fontWeight: 700 }}>−</span> {T.bad}</div>
               <div className="tiny muted">About {fk(x.ask * 52)} a year. It goes into your overheads, so it adds about {fk(x.ask * 10)} to a 10-week council price at full overheads.</div>
-              <button type="button" className="btn dark" onClick={() => { act((y) => game.hireManager(y, role, x.id)); onClose(); }}>Hire {x.name}</button>
+              <button type="button" className="btn dark" onClick={() => { act((y) => play.hireManager(y, role, x.id)); onClose(); }}>Hire {x.name}</button>
             </div>
           );
         })}
@@ -432,7 +432,7 @@ function Safety({ c, act }: { c: Career; act: Act }) {
             {c.won || W.talks ? (
               <div className="row" style={{ paddingTop: 6 }}>
                 <span className="grow"><b className="small">Toolbox talks every Monday</b><br /><span className="tiny muted">{f(150)} a crew a week in lost time. Risk −15%, and culture builds.</span></span>
-                <button type="button" className={'btn' + (W.talks ? ' dark' : '')} aria-pressed={!!W.talks} onClick={() => act((x) => game.toggleTalks(x))}>{W.talks ? 'On' : 'Off'}</button>
+                <button type="button" className={'btn' + (W.talks ? ' dark' : '')} aria-pressed={!!W.talks} onClick={() => act((x) => play.toggleTalks(x))}>{W.talks ? 'On' : 'Off'}</button>
               </div>
             ) : <div className="tiny muted" style={{ paddingTop: 6 }}>Toolbox talks unlock at Ready to subcontract.</div>}
           </>
@@ -442,7 +442,7 @@ function Safety({ c, act }: { c: Career; act: Act }) {
             <div className="row"><b className="grow">Next: {nx.n}</b><span className="num small">{f(nx.cost)}</span></div>
             <div className="small muted">{nx.d}</div>
             <div className="small">{nx.wk ? f(nx.wk) + ' a week to keep up. ' : ''}Incident risk {Math.round(nx.risk * 100)}% of nothing written down{nx.np ? ', council non-price +' + nx.np : ''}.</div>
-            <button type="button" className="btn dark" disabled={st !== 'ok'} onClick={() => act((x) => game.upgradeSafety(x))}>Set it up</button>
+            <button type="button" className="btn dark" disabled={st !== 'ok'} onClick={() => act((x) => play.upgradeSafety(x))}>Set it up</button>
             {st === 'locked' && <div className="why">{nx.need === 'won' ? 'Unlocks at Ready to subcontract.' : 'Unlocks once you tender for council work.'}</div>}
           </div>
         )}
@@ -459,7 +459,7 @@ function HireSheet({ c, act, onClose }: { c: Career; act: Act; onClose: () => vo
   const go = (id: string, haggle: boolean) => {
     const cd = c.cands.find((x) => x.id === id)!;
     act((x) => {
-      const r = game.hireCand(x, id, haggle);
+      const r = play.hireCand(x, id, haggle);
       if (r?.k === 'hired') setMsg(cd.name + ' starts Monday as your ' + ROLES[cd.role].name.toLowerCase() + ' at ' + f(r.wage) + ' a week.');
       if (r?.k === 'walked') setMsg(cd.name + ' wanted ' + f(r.ask) + ' and took a job with ' + r.rival + ' instead.');
     });

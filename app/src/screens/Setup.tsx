@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { SlotsCard, type Saves } from '../Slots';
+import { SeasonPicker } from '../Seasons';
 import { slotMetaAll } from '../store';
 import { TOWNS, weeklyRepay, type game, type TownId } from '@engine';
 import { MachineIcon } from '../Icon';
@@ -60,6 +61,7 @@ export function SetupScreen({ onStart, saves }: { onStart: (s: game.Setup) => vo
         <div className="small note">{hc ? 'Hardcore: no second chances. You\'ll get a warning the first week you\'re under water.' : 'Miss three repayments and the bank takes your best machine. You keep going with what\'s left.'}</div>
         <button type="button" className="big" onClick={() => setStep(1)}>Next: pick your base</button>
         {Object.keys(slotMetaAll()).length > 0 && <SlotsCard saves={saves} />}
+        <SeasonPicker saves={saves} />
       </div>
     );
   }

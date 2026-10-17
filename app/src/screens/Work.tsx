@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   BID_ODDS, LD_OWN, LD_WEEK, MOB, RETAIN, ROLES, TREAT, TYPES, bookable, carryCash, crewDayCost, freeDriver, freeMachine, leftDays, monthIdx,
   npOf, ownFlow, rainChance, rvForm, stars, subTerms, tCost, whyNot, canTakeBack, game, subPrice, otherContracts, canTender,
-  type Job, type Offer, type SubTender,
+  type Job, type Offer, type SubTender, play,
 } from '@engine';
 import { KIND_CHIP, KIND_LABEL, councilTitle, jobTitle, offerCatch, offerDetail, offerPay, offerTitle, pmOf, subTenderTitle } from '@engine/text/work';
 import { Mentor } from '../Mentor';
@@ -27,7 +27,7 @@ function OfferCard({ c, o, act, onMsg }: { c: Career; o: Offer; act: Act; onMsg:
   const why = whyNot(c as never, o), bk = why ? bookable(c as never, o) : null;
   const WHY: Record<string, string> = { busy: 'Your ' + TYPES[o.type].short + ' is busy', noMachine: 'You don\'t own a ' + TYPES[o.type].short, noDriver: 'Nobody free who can drive a ' + TYPES[o.type].short + '. Hire staff in the Yard.' };
   const ring = () => act((x) => {
-    const a = game.askWait(x, o.id);
+    const a = play.askWait(x, o.id);
     if (!a) return;
     const whoAsk = o.kind === 'council' ? 'The council' : o.client;
     if (a.yes) onMsg(`${whoAsk} is happy to wait ${a.wait} day${a.wait > 1 ? 's' : ''}. ${offerTitle(o)} is booked in.`);
@@ -47,7 +47,7 @@ function OfferCard({ c, o, act, onMsg }: { c: Career; o: Offer; act: Act; onMsg:
         </>
       ) : (
         <>
-          <button type="button" className="btn ink full" disabled={!!why} onClick={() => act((x) => game.accept(x, o.id))}>Take it</button>
+          <button type="button" className="btn ink full" disabled={!!why} onClick={() => act((x) => play.accept(x, o.id))}>Take it</button>
           {why && <div className="why">{WHY[why]}</div>}
         </>
       )}
@@ -91,7 +91,7 @@ function SubOffers({ c, j, act }: { c: Career; j: Job; act: Act }) {
             <div className="row"><b className="grow">{q.name}</b><span className="num small">{q.crews} crew{q.crews > 1 ? 's' : ''} · {Math.round(q.pace * 100)}% pace</span></div>
             <div className="small">{j.kind === 'own' ? `For ${f(q.cost!)} of the ${f(left2)} left to claim` : `At ${f(q.rate!)} a crew-day of your ${f(Math.round(j.rate))}`}. You keep about {f(mine)}. Paid 4 weeks after each claim.</div>
             <div className={'small ' + (late ? '' : 'muted')} style={late ? { color: 'var(--rust)', fontWeight: 600 } : undefined}>Done in about {q.wks} weeks{late ? `: ${late} week${late > 1 ? 's' : ''} late, about ${f(late * ldw)} in damages, and those are yours.` : ', inside the deadline.'}</div>
-            <button type="button" className="btn ink" onClick={() => act((x) => game.subOut(x, j.id, i))}>Sub it to {q.name}</button>
+            <button type="button" className="btn ink" onClick={() => act((x) => play.subOut(x, j.id, i))}>Sub it to {q.name}</button>
           </div>
         );
       })}
@@ -111,7 +111,7 @@ function JobCard({ c, j, act }: { c: Career; j: Job; act: Act }) {
         <b>{jobTitle(j)}</b>
         <div className="row tiny"><span className="grow">{prog}% done by {q.name}</span><span className="num">Claimed {f(j.earned)}</span></div>
         <div className="bar"><i style={{ width: prog + '%', background: 'var(--teal)' }} /></div>
-        <div className="btns"><button type="button" className="btn" disabled={!can} onClick={() => act((x) => game.takeBack(x, j.id))}>Take it back in-house</button></div>
+        <div className="btns"><button type="button" className="btn" disabled={!can} onClick={() => act((x) => play.takeBack(x, j.id))}>Take it back in-house</button></div>
       </div>
     );
   }
@@ -223,16 +223,16 @@ function PriceSheet({ c, t, act, onClose }: { c: Career; t: SubTender; act: Act;
           <div className="kv"><span>Direct cost of the job</span><span className="num">{f(cost)}</span></div>
           <div className="row" style={{ padding: '6px 0', flexWrap: 'nowrap' }}>
             <span className="grow"><span className="small">Company overheads</span><span className="tiny muted" style={{ display: 'block' }}>{f(SP.wk)} a week × {SP.wks} week{SP.wks !== 1 ? 's' : ''} × {Math.round(SP.sh * 100)}%{t.oh == null ? ' (suggested)' : ''}</span></span>
-            <button type="button" className="btn" disabled={!(SP.sh > 0)} onClick={() => act((x) => game.setOverheadShare(x, t.id, -0.25))}>−</button>
+            <button type="button" className="btn" disabled={!(SP.sh > 0)} onClick={() => act((x) => play.setOverheadShare(x, t.id, -0.25))}>−</button>
             <b className="num" style={{ minWidth: 64, textAlign: 'right' }}>{f(SP.oh)}</b>
-            <button type="button" className="btn" disabled={!(SP.sh < 1)} onClick={() => act((x) => game.setOverheadShare(x, t.id, 0.25))}>+</button>
+            <button type="button" className="btn" disabled={!(SP.sh < 1)} onClick={() => act((x) => play.setOverheadShare(x, t.id, 0.25))}>+</button>
           </div>
           <div className="kv"><span>Cost all up</span><span className="num">{f(cost + SP.oh)}</span></div>
           <div className="row" style={{ padding: '6px 0' }}>
             <span className="grow small">Profit margin</span>
-            <button type="button" className="btn" onClick={() => act((x) => game.setMargin(x, t.id, -0.05))}>−5%</button>
+            <button type="button" className="btn" onClick={() => act((x) => play.setMargin(x, t.id, -0.05))}>−5%</button>
             <b className="num" style={{ minWidth: 56, textAlign: 'center' }}>{Math.round(t.mk * 1000) / 10}%</b>
-            <button type="button" className="btn" onClick={() => act((x) => game.setMargin(x, t.id, 0.05))}>+5%</button>
+            <button type="button" className="btn" onClick={() => act((x) => play.setMargin(x, t.id, 0.05))}>+5%</button>
           </div>
           <div className="kv"><b>Your price</b><b className="num" style={{ fontSize: 18 }}>{f(price)}</b></div>
           <div className="tiny muted">Profit if it all goes to plan, after overheads: {f(price - cost - SP.oh)}. Expect about {wetDays} wet days in {t.weeks} weeks, and your crew sits idle on each one.</div>
@@ -255,8 +255,8 @@ function PriceSheet({ c, t, act, onClose }: { c: Career; t: SubTender; act: Act;
           <div className="kv"><b>Non-price</b><b className="num">{Math.max(0, np.tot)} of 40</b></div>
         </div>
         {capped && <div className="why">You're running two contracts, as many as you can keep on top of yourself. Hire an operations manager to take on more.</div>}
-        <button type="button" className="big" disabled={capped} onClick={() => act((x) => game.submitBid(x, t.id))}>{t.bid ? 'Resubmit at ' : 'Submit at '}{f(price)}</button>
-        {t.bid && <button type="button" className="btn full" onClick={() => act((x) => game.withdrawBid(x, t.id))}>Withdraw your bid</button>}
+        <button type="button" className="big" disabled={capped} onClick={() => act((x) => play.submitBid(x, t.id))}>{t.bid ? 'Resubmit at ' : 'Submit at '}{f(price)}</button>
+        {t.bid && <button type="button" className="btn full" onClick={() => act((x) => play.withdrawBid(x, t.id))}>Withdraw your bid</button>}
         <button type="button" className="btn full" onClick={onClose}>Close</button>
       </div>
     </div>
@@ -279,7 +279,7 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
         <>
           <div className="sub">Council tenders</div>
           {c.ctenders.length ? c.ctenders.map((t) => (
-            <CouncilCard key={t.id} t={t} onPlan={() => act((x) => { game.openProgram(x, t.id); setPlanning(t.id); })} />
+            <CouncilCard key={t.id} t={t} onPlan={() => act((x) => { play.openProgram(x, t.id); setPlanning(t.id); })} />
           )) : <div className="card"><div className="small muted">No council packages out right now. They come out most months.</div></div>}
         </>
       )}

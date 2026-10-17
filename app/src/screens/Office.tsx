@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react';
 import {
   CLIENTS, CLIENT_PM, ROLES, TOWNS, WHS_SYS, alertMachines, brCrews, brProfit, claimFinance, debtors, fleetValue, gstInBank, hsum, lastInc,
   lendCap, meStretched, plOf, recentInc, relOf, relTier, talksCost, trackAllow, utilOf, wages, whsNp, workInHand, YARDS, game,
-  rainCrews, type ForecastWeek, type WeekRow,
+  rainCrews, type ForecastWeek, type WeekRow, play,
 } from '@engine';
 import { ownerFlags } from '@engine/text/office';
 import { Mentor } from '../Mentor';
@@ -378,7 +378,7 @@ function Bank({ c, act, go }: { c: Career; act: Act; go: Go }) {
   const cap = lendCap(fv, c.won, c.won2, c.won3), Wk = WHS_SYS[c.whs.sys]!, tk = talksCost(!!c.whs.talks, rainCrews(c.jobs)), rent = YARDS[c.yard].rent, wg = wages(c.staff);
   const owed = c.recv.slice().sort((a, b) => a.due - b.due), pays = (c.payables || []).slice().sort((a, b) => a.due - b.due);
   const ring = () => act((x) => {
-    const r = game.ringAround(x);
+    const r = play.ringAround(x);
     setMsg(r === 'tooSoon' ? 'Nobody\'s calling back yet. Try again in a few weeks.' : r === 'nobody' ? 'Nobody in the district can afford to buy right now.' : null);
   });
   return (
@@ -412,8 +412,8 @@ function Bank({ c, act, go }: { c: Career; act: Act; go: Go }) {
             <div className="small muted">Cash now for a deposit, a yard or a big job's start-up. 1% establishment fee, repaid with the loan.</div>
             {L.missed ? <div className="why">Not while you've got missed repayments.</div> : room < 5000 ? <div className="why">Nothing left to borrow right now. Pay the loan down, add machines, or move up a stage.</div> : (
               <div className="btns">
-                {[25000, 50000, 100000].filter((x) => x <= room).map((x) => <button key={x} type="button" className="btn" onClick={() => act((y) => game.borrowAgainstFleet(y, x))}>{fk(x)}</button>)}
-                <button type="button" className="btn" onClick={() => act((y) => game.borrowAgainstFleet(y, room))}>All {fk(room)}</button>
+                {[25000, 50000, 100000].filter((x) => x <= room).map((x) => <button key={x} type="button" className="btn" onClick={() => act((y) => play.borrowAgainstFleet(y, x))}>{fk(x)}</button>)}
+                <button type="button" className="btn" onClick={() => act((y) => play.borrowAgainstFleet(y, room))}>All {fk(room)}</button>
               </div>
             )}
           </div>
@@ -424,8 +424,8 @@ function Bank({ c, act, go }: { c: Career; act: Act; go: Go }) {
           <b>Pay the loan down</b>
           <div className="small muted">Spare cash off the loan cuts the weekly repayments and the interest.</div>
           <div className="btns">
-            {[10000, 50000].filter((x) => x < L.bal).map((x) => <button key={x} type="button" className="btn" disabled={c.bank < x} onClick={() => act((y) => game.payLoanDown(y, x))}>{fk(x)}</button>)}
-            <button type="button" className="btn" disabled={c.bank < L.bal} onClick={() => act((y) => game.payLoanDown(y, L.bal))}>Clear it · {fk(L.bal)}</button>
+            {[10000, 50000].filter((x) => x < L.bal).map((x) => <button key={x} type="button" className="btn" disabled={c.bank < x} onClick={() => act((y) => play.payLoanDown(y, x))}>{fk(x)}</button>)}
+            <button type="button" className="btn" disabled={c.bank < L.bal} onClick={() => act((y) => play.payLoanDown(y, L.bal))}>Clear it · {fk(L.bal)}</button>
           </div>
         </div>
       )}

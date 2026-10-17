@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { cardView, resultText, type CardView } from '@engine/text/cardView';
-import { MOODS, TOWNS, alertMachines, canRunOn, coachOff, coachOk, coachOn, coachStep, runOn, tabIsNew, tabSeen, tabShown, whyNot, type RunSummary, choose, dayOffset, drawCard, forecast, gstInBank, monthIdx, recordDate, yearOf, game } from '@engine';
+import { MOODS, TOWNS, alertMachines, canRunOn, coachOff, coachOk, coachOn, coachStep, runOn, tabIsNew, tabSeen, tabShown, whyNot, type RunSummary, choose, dayOffset, drawCard, forecast, gstInBank, monthIdx, recordDate, yearOf, game, play } from '@engine';
 import { docketLines, docketStamps } from '@engine/text/docket';
 import { TICKET_TEXT } from '@engine/text/career';
 import { COACH_TEXT, nextGoal } from '@engine/text/coach';
@@ -93,14 +93,14 @@ function CardSheet({ c, act, onDone }: { c: Career; act: Act; onDone: (o: Outcom
   const d = drawCard(c, q);
   // a card that no longer applies just goes, once the screen has drawn
   useEffect(() => {
-    if (!d) act((x) => choose(x, 0));
+    if (!d) act((x) => play.choose(x, 0));
   });
   if (!d) return null;
   const v = cardView(c, q, d);
   const pick = (i: number) => act((x) => {
     // winning a tender gets the two bright notes
     if ((q.k === 'tresult' || q.k === 'cresult') && /^You won|^The council picked you/.test(v.title)) sfx('win', x.sound);
-    const a = choose(x, i);
+    const a = play.choose(x, i);
     if (a) onDone({ tag: v.tag, title: v.title, chosen: v.opts[i]!.label, res: resultText(x, a) });
   });
   return (
@@ -202,12 +202,12 @@ function CoachCard({ c, tab, act, go }: { c: Career; tab: Tab; act: Act; go: (t:
   const T = COACH_TEXT[step.id];
   return (
     <div className="card coach">
-      <div className="row"><span className="sub grow">Getting started · {c.coach!.i + 1} of {COACH.length}</span><button type="button" className="linkbtn" onClick={() => act((x) => coachOff(x))}>Skip the tips</button></div>
+      <div className="row"><span className="sub grow">Getting started · {c.coach!.i + 1} of {COACH.length}</span><button type="button" className="linkbtn" onClick={() => act((x) => play.coachOff(x))}>Skip the tips</button></div>
       <b style={{ fontSize: 17 }}>{T.t}</b>
       <div className="small">{T.d}</div>
       <div className="btns">
         {step.tab && tab !== step.tab && <button type="button" className="btn dark" onClick={() => go(step.tab as Tab)}>Show me</button>}
-        {step.ok && <button type="button" className="btn" onClick={() => act((x) => coachOk(x))}>Got it</button>}
+        {step.ok && <button type="button" className="btn" onClick={() => act((x) => play.coachOk(x))}>Got it</button>}
       </div>
     </div>
   );
@@ -219,8 +219,8 @@ export function GameScreen({ c, act, onNew, saves, saveFailed, demo }: { c: Care
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   // a stamp for a week with a ticket or something finished, otherwise the diesel turning over
   const weekSound = (x: Career, r: game.Report) => sfx(r.tix.length || docketStamps(x, r).length ? 'stamp' : 'start', x.sound);
-  const endWeek = () => act((x) => { const r = game.endWeek(x); if (r) { weekSound(x, r); setReport(r); } });
-  const runWeeks = () => act((x) => { const r = runOn(x); if (r) { weekSound(x, r); setReport(r); } });
+  const endWeek = () => act((x) => { const r = play.endWeek(x); if (r) { weekSound(x, r); setReport(r); } });
+  const runWeeks = () => act((x) => { const r = play.runOn(x); if (r) { weekSound(x, r); setReport(r); } });
   // a tab that hasn't appeared yet can't be open; looking at a new one clears its NEW badge
   const tab: Tab = tabShown(c, tab0) ? tab0 : 'yard';
   const setTab = (t: Tab) => setTab0(t);

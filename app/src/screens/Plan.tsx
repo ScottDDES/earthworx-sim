@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import {
   COUNCIL_TERMS, FLOAT_KM, FLOAT_MOVE, LD_OWN, TRUCK_DAY, TYPES, awayCounts, cartEff, hm, npOf, odLimit, planCounts, roadUnits, stars, subRate, truckM3, weeksFor, game,
-  type CouncilTender, type PlanEval, type ProgOp,
+  type CouncilTender, type PlanEval, type ProgOp, play,
 } from '@engine';
 import { CREW_COL, bottText, issueText } from '@engine/text/plan';
 import { councilTitle } from '@engine/text/work';
@@ -41,15 +41,15 @@ function Plant({ c, t, e, act }: { c: Career; t: CouncilTender; e: PlanEval; act
             <div className="row" style={{ flexWrap: 'nowrap' }}>
               <span className="grow"><b className="small">{need} {TYPES[k].short}{need !== 1 ? 's' : ''}</b><span className="tiny muted" style={{ display: 'block' }}>Yours: {use} of {a} free{rest ? ' · ' + rest + ' from outside' : ''}</span></span>
               <span className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
-                <button type="button" className="btn" style={{ minHeight: 40, padding: '0 12px' }} disabled={!(use > 0)} onClick={() => act((x) => game.setPlan(x, t.id, 'own:' + k, -1))}>−</button>
+                <button type="button" className="btn" style={{ minHeight: 40, padding: '0 12px' }} disabled={!(use > 0)} onClick={() => act((x) => play.setPlan(x, t.id, 'own:' + k, -1))}>−</button>
                 <b className="num" style={{ minWidth: 22, textAlign: 'center' }}>{use}</b>
-                <button type="button" className="btn" style={{ minHeight: 40, padding: '0 12px' }} disabled={!(use < Math.min(a, need))} onClick={() => act((x) => game.setPlan(x, t.id, 'own:' + k, 1))}>+</button>
+                <button type="button" className="btn" style={{ minHeight: 40, padding: '0 12px' }} disabled={!(use < Math.min(a, need))} onClick={() => act((x) => play.setPlan(x, t.id, 'own:' + k, 1))}>+</button>
               </span>
             </div>
             {rest > 0 && (k === 'truck' ? <div className="tiny muted">{rest} hired with drivers at {f(TRUCK_DAY)} a day, only on resheeting days.</div> : (
               <div className="seg">
-                <button type="button" className={wet ? '' : 'on'} onClick={() => act((x) => game.setHireMode(x, t.id, k, 'dry'))}>Dry hire · {f(TYPES[k].dry)}/wk</button>
-                <button type="button" className={wet ? 'on' : ''} onClick={() => act((x) => game.setHireMode(x, t.id, k, 'wet'))}>Subbie + operator · {f(subRate(k))}/day</button>
+                <button type="button" className={wet ? '' : 'on'} onClick={() => act((x) => play.setHireMode(x, t.id, k, 'dry'))}>Dry hire · {f(TYPES[k].dry)}/wk</button>
+                <button type="button" className={wet ? 'on' : ''} onClick={() => act((x) => play.setHireMode(x, t.id, k, 'wet'))}>Subbie + operator · {f(subRate(k))}/day</button>
               </div>
             ))}
           </div>
@@ -57,7 +57,7 @@ function Plant({ c, t, e, act }: { c: Career; t: CouncilTender; e: PlanEval; act
       })}
       <div className="tiny muted">Dry hire is paid every week, rain or shine, and you put an operator on it. Subbie plant comes with its own operator and fuel and is only paid on days it works. Keep your own machines off the job if they're earning more on hire elsewhere.</div>
       {t.subAvail && !e.prog ? (
-        <Stepper label="Full subcontractor crews" val={pl.subs || 0} onDown={() => act((x) => game.setPlan(x, t.id, 'subs', -1))} onUp={() => act((x) => game.setPlan(x, t.id, 'subs', 1))}
+        <Stepper label="Full subcontractor crews" val={pl.subs || 0} onDown={() => act((x) => play.setPlan(x, t.id, 'subs', -1))} onUp={() => act((x) => play.setPlan(x, t.id, 'subs', 1))}
           sub={`Local outfits that bring the lot. ${f(t.subRate!)} a working day each, at ${Math.round(t.subPace! * 100)}% of a full crew's pace. ${t.subAvail} can put a crew on.${e.SC ? ' They\'d do ' + Math.round((1 - e.ownShare) * 100) + '% of the work.' : ''}`} />
       ) : null}
     </>
@@ -77,16 +77,16 @@ function Price({ c, t, act }: { c: Career; t: CouncilTender; act: Act }) {
         <div className="kv"><span>Direct cost of the job</span><span className="num">{f(e.cost)}</span></div>
         <div className="row" style={{ padding: '6px 0', flexWrap: 'nowrap' }}>
           <span className="grow"><span className="small">Company overheads</span><span className="tiny muted" style={{ display: 'block' }}>{f(CP.wk)} a week × {CP.wks} week{CP.wks !== 1 ? 's' : ''} × {Math.round(CP.sh * 100)}%{t.oh == null ? ' (suggested)' : ''}</span></span>
-          <button type="button" className="btn" disabled={!(CP.sh > 0)} onClick={() => act((x) => game.setOverheadShare(x, t.id, -0.25))}>−</button>
+          <button type="button" className="btn" disabled={!(CP.sh > 0)} onClick={() => act((x) => play.setOverheadShare(x, t.id, -0.25))}>−</button>
           <b className="num" style={{ minWidth: 64, textAlign: 'right' }}>{f(CP.oh)}</b>
-          <button type="button" className="btn" disabled={!(CP.sh < 1)} onClick={() => act((x) => game.setOverheadShare(x, t.id, 0.25))}>+</button>
+          <button type="button" className="btn" disabled={!(CP.sh < 1)} onClick={() => act((x) => play.setOverheadShare(x, t.id, 0.25))}>+</button>
         </div>
         <div className="kv"><span>Cost all up</span><span className="num">{f(e.cost + CP.oh)}</span></div>
         <div className="row" style={{ padding: '6px 0' }}>
           <span className="grow small">Profit margin</span>
-          <button type="button" className="btn" onClick={() => act((x) => game.setMargin(x, t.id, -0.05))}>−5%</button>
+          <button type="button" className="btn" onClick={() => act((x) => play.setMargin(x, t.id, -0.05))}>−5%</button>
           <b className="num" style={{ minWidth: 56, textAlign: 'center' }}>{Math.round(t.mk * 1000) / 10}%</b>
-          <button type="button" className="btn" onClick={() => act((x) => game.setMargin(x, t.id, 0.05))}>+5%</button>
+          <button type="button" className="btn" onClick={() => act((x) => play.setMargin(x, t.id, 0.05))}>+5%</button>
         </div>
         <div className="kv"><b>Your tender price</b><b className="num" style={{ fontSize: 18 }}>{f(price)}</b></div>
         <div className="tiny muted">Profit if the plan holds, after overheads: {f(price - e.cost - CP.oh)}. Cash to carry it until the first claim is paid: about {f(Math.round((e.cost / Math.max(1, e.wks)) * Math.min(e.wks, COUNCIL_TERMS + 1) / 1000) * 1000)}. You have {f(c.bank)} plus a {f(odLimit(c))} overdraft.</div>
@@ -103,7 +103,7 @@ function Price({ c, t, act }: { c: Career; t: CouncilTender; act: Act }) {
         <div className="kv"><b>Non-price</b><b className="num">{Math.max(0, np.tot) + e.method} of 40</b></div>
       </div>
       {capped && <div className="why">You're running two contracts, as many as you can keep on top of yourself. Hire an operations manager to take on more.</div>}
-      <button type="button" className="big" disabled={!!loose || capped} onClick={() => act((x) => game.submitCouncil(x, t.id))}>{loose ? 'Give every road to a crew first' : (t.bid ? 'Resubmit at ' : 'Submit at ') + f(price)}</button>
+      <button type="button" className="big" disabled={!!loose || capped} onClick={() => act((x) => play.submitCouncil(x, t.id))}>{loose ? 'Give every road to a crew first' : (t.bid ? 'Resubmit at ' : 'Submit at ') + f(price)}</button>
     </>
   );
 }
@@ -113,7 +113,7 @@ function PackageSheet({ c, t, act, onClose }: { c: Career; t: CouncilTender; act
   const pl = t.pl, e = game.evaluate(c, t.id)!.e, own = planCounts(game.planCtx(c), t.close + 1), away = awayCounts(game.planCtx(c), t.close + 1);
   const span = Math.max(t.weeks, e.wetWks) + 1, pc = (w: number) => Math.min(100, (w / span) * 100);
   const bk = e.bott.k, bInk = bk === 'ok' ? 'var(--teal)' : bk === 'idle' ? 'var(--warn)' : 'var(--rust)', pit = t.pits[pl.pit]!;
-  const set = (k: string, d: number) => () => act((x) => game.setPlan(x, t.id, k, d));
+  const set = (k: string, d: number) => () => act((x) => play.setPlan(x, t.id, k, d));
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label={'Plan ' + councilTitle(t)}>
       <div className="sheet">
@@ -138,7 +138,7 @@ function PackageSheet({ c, t, act, onClose }: { c: Career; t: CouncilTender; act
           <Stepper label="Water carts per crew" sub={'2 keep one grader at full pace, 3 for two graders. One short drops productivity 33%.' + (cartEff(t.waterKm) < 1 ? ` The water point is ${t.waterKm} km out, so each cart does ${Math.round(cartEff(t.waterKm) * 100)}% of a normal day.` : '')} val={pl.carts} onDown={set('carts', -1)} onUp={set('carts', 1)} />
           <Stepper label="Gravel trucks per crew" sub={`Your own side tippers first, then hired with a driver at ${f(TRUCK_DAY)} a day, only on resheeting days.`} val={pl.trucks} onDown={set('trucks', -1)} onUp={set('trucks', 1)} />
           <div className="sub" style={{ marginTop: 6 }}>Gravel pit</div>
-          <div className="seg">{t.pits.map((x, i) => <button key={i} type="button" className={pl.pit === i ? 'on' : ''} onClick={() => act((y) => game.setPlan(y, t.id, 'pit', i))}>{x.name} · {x.haul} km</button>)}</div>
+          <div className="seg">{t.pits.map((x, i) => <button key={i} type="button" className={pl.pit === i ? 'on' : ''} onClick={() => act((y) => play.setPlan(y, t.id, 'pit', i))}>{x.name} · {x.haul} km</button>)}</div>
           <div className="tiny muted">{pit.note} Royalty ${pit.royalty}/m³. A truck brings in about {Math.round(truckM3(pit.haul))} m³ a day on this haul.</div>
           <div className="small">Crew: you{e.crew.used.length > 1 ? ', ' + (e.crew.used.length - 1) + ' of your staff' : ''}{e.casuals ? ' and ' + e.casuals + ' casual' + (e.casuals > 1 ? 's' : '') + ' from labour hire' : ''}.{e.hiredTrucks ? ` ${e.hiredTrucks} hired truck${e.hiredTrucks > 1 ? 's' : ''} with drivers.` : ''}</div>
           <Plant c={c} t={t} e={e} act={act} />
@@ -200,7 +200,7 @@ function ProgramSheet({ c, t, act, onClose }: { c: Career; t: CouncilTender; act
   const [selRaw, setSel] = useState(0);
   const P = t.pl.prog!, ev = game.evaluate(c, t.id)!, e = ev.e, price = ev.price.price, sel = Math.min(selRaw, P.crews.length - 1);
   const subsUsed = P.crews.filter((x) => x.sub).length, nIss = (e.issues ?? []).length, loose = (e.unassigned ?? []).length;
-  const op = (o: ProgOp) => () => act((x) => game.programAct(x, t.id, o));
+  const op = (o: ProgOp) => () => act((x) => play.programAct(x, t.id, o));
   const Btn = ({ onClick, children, disabled, label }: { onClick: () => void; children: React.ReactNode; disabled?: boolean; label?: string }) => (
     <button type="button" className="btn" style={{ minHeight: 40, padding: '0 11px' }} disabled={disabled} aria-label={label} onClick={onClick}>{children}</button>
   );

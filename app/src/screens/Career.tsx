@@ -2,12 +2,13 @@
 // the district (the market and the other outfits), and selling up to retire.
 
 import { useState } from 'react';
-import { MOODS, TICKETS, inherit, TIER, canBuyOut, checks, checks2, checks3, checks4, checks5, ownedCounts, rung, rvForm, rvPhase, stars, game } from '@engine';
+import { MOODS, TICKETS, inherit, TIER, canBuyOut, checks, checks2, checks3, checks4, checks5, ownedCounts, rung, rvForm, rvPhase, stars, game, play } from '@engine';
 import { STEPS, TICKET_CATS, TICKET_TEXT, checkWords, districtForm, starTxt } from '@engine/text/career';
 import { diaryLines } from '@engine/text/diary';
 import { sfx } from '../sound';
 import { f, fk } from '../format';
 import { SlotsBar, SlotsCard, type Saves } from '../Slots';
+import { SeasonCard, SeasonPicker } from '../Seasons';
 
 type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
@@ -106,7 +107,7 @@ function District({ c, act }: { c: Career; act: Act }) {
             <span style={{ color: 'var(--gold)', letterSpacing: 1 }}>{starTxt(x.stars)}</span>
           </div>
           {canBuyOut(c as never) && rvPhase(x) === 'stretched' && (
-            <button type="button" className="btn full" onClick={() => act((y) => game.approachRival(y, x.name))}>Approach {x.name} about buying them out</button>
+            <button type="button" className="btn full" onClick={() => act((y) => play.approachRival(y, x.name))}>Approach {x.name} about buying them out</button>
           )}
         </div>
       ))}
@@ -139,12 +140,12 @@ function RetireSheet({ c, act, onClose }: { c: Career; act: Act; onClose: () => 
           <div className="tiny muted">After the loan, overdraft and anything owed to subbies are paid out, plus what clients still owe you. The market is {MOODS[game.mood(c)].t.toLowerCase()}: offers are better in a boom.</div>
         </div>
         <div className="small">This ends the career. What you walk away with goes on the board as your final result.</div>
-        <button type="button" className="big" onClick={() => { act((x) => { game.retireNow(x); sfx('win', x.sound); }); onClose(); }}>Sign and retire · {f(o.walk)}</button>
+        <button type="button" className="big" onClick={() => { act((x) => { play.retireNow(x); sfx('win', x.sound); }); onClose(); }}>Sign and retire · {f(o.walk)}</button>
         {c.won3 && (
           <div className="card">
             <b>Or hand it to the next generation</b>
             <div className="small muted">Your kids take over {c.co} and start again from one machine, with the family name, a star of track record, and {f(inherit(o.walk))} of the family money. Your tickets and the family history carry on.</div>
-            <button type="button" className="btn dark full" onClick={() => { act((x) => { game.handOnNow(x); sfx('win', x.sound); }); onClose(); }}>Hand it on</button>
+            <button type="button" className="btn dark full" onClick={() => { act((x) => { play.handOnNow(x); sfx('win', x.sound); }); onClose(); }}>Hand it on</button>
           </div>
         )}
         <button type="button" className="btn full" onClick={onClose}>Not yet</button>
@@ -172,6 +173,19 @@ export function CareerTab({ c, act, onNew, saves }: { c: Career; act: Act; onNew
   const [wipe, setWipe] = useState(false);
   const [slots, setSlots] = useState(false);
   const n = stars(c.rep);
+  // a season: just the season, the district and the diary
+  if (c.season) {
+    return (
+      <>
+        <SeasonCard c={c} saves={saves} hasCareer={saves.hasCareer} />
+        <District c={c} act={act} />
+        <div className="card">
+          <div className="sub">Site diary</div>
+          <Log lines={diaryLines(c, (c.log || []).slice(0, 14))} />
+        </div>
+      </>
+    );
+  }
   return (
     <>
       {slots ? <SlotsCard saves={saves} onClose={() => setSlots(false)} /> : <SlotsBar saves={saves} onOpen={() => setSlots(true)} />}
@@ -207,6 +221,7 @@ export function CareerTab({ c, act, onNew, saves }: { c: Career; act: Act; onNew
       </div>
       <Ladder c={c} />
       <District c={c} act={act} />
+      {(c.week >= 13 || rung(c as never) >= 2) && <SeasonPicker saves={saves} />}
       <div className="card">
         <div className="sub">Site diary</div>
         <Log lines={diaryLines(c, (c.log || []).slice(0, 14))} />

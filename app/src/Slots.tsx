@@ -8,6 +8,12 @@ import { fk } from './format';
 export interface Saves {
   slot: number;
   switchSlot: (n: number) => void;
+  /** Seasons, kept apart from the careers. */
+  startSeason: (id: import('@engine').SeasonId) => void;
+  continueSeason: () => void;
+  leaveSeason: () => void;
+  /** Playing a season with a career waiting to go back to. */
+  hasCareer: boolean;
 }
 
 const fks = (n: number) => (n < 0 ? '−' : '') + fk(Math.abs(n));

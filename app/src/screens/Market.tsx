@@ -1,7 +1,7 @@
 // The Market tab: this week's auction lot, and machines for sale. Selling is done from the Yard.
 
 import { useState } from 'react';
-import { TYPES, YARDS, game } from '@engine';
+import { TYPES, YARDS, game, play } from '@engine';
 import { hammerText, lotFrom, lotGuide } from '@engine/text/market';
 import { MachineIcon } from '../Icon';
 import { f } from '../format';
@@ -33,10 +33,10 @@ function Auction({ c, act }: { c: Career; act: Act }) {
       ) : (
         <>
           <div className="btns">
-            <button type="button" className="btn grow" onClick={() => act((x) => game.bid(x, 1000))}>+$1,000</button>
-            <button type="button" className="btn dark grow" onClick={() => act((x) => game.bid(x, 5000))}>+$5,000</button>
+            <button type="button" className="btn grow" onClick={() => act((x) => play.bid(x, 1000))}>+$1,000</button>
+            <button type="button" className="btn dark grow" onClick={() => act((x) => play.bid(x, 5000))}>+$5,000</button>
           </div>
-          <button type="button" className="btn full" disabled={!mine} onClick={() => act((x) => game.hammer(x))}>{mine ? 'Let the hammer fall' : 'Outbid: bid again or let it go'}</button>
+          <button type="button" className="btn full" disabled={!mine} onClick={() => act((x) => play.hammer(x))}>{mine ? 'Let the hammer fall' : 'Outbid: bid again or let it go'}</button>
           {mine && total > c.bank && <div className="why">You're winning, but you can't pay {f(total)}.</div>}
         </>
       )}

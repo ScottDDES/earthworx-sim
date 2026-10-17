@@ -3,7 +3,7 @@
 // own career, and a short summary of each is kept so the saved-games list can show them without loading them.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { game } from '@engine';
+import { game, startSeason, type SeasonId } from '@engine';
 import { demoCareer } from './demo';
 
 type Setup = game.Setup;
@@ -61,6 +61,18 @@ function writeMeta(n: number, c: Career | null): void {
   localStorage.setItem(KEY + '-slots', JSON.stringify(M));
 }
 
+const SEASON_KEY = KEY + '-season';
+
+/** The season in progress, if there is one (a finished season isn't kept going). */
+export function seasonSaved(): Career | null {
+  try {
+    const s = localStorage.getItem(SEASON_KEY), c = s ? (JSON.parse(s) as Career) : null;
+    return c && c.season && c.phase !== 'seasonEnd' ? c : null;
+  } catch {
+    return null;
+  }
+}
+
 function load(n: number): Career | null {
   try {
     const s = localStorage.getItem(slotKey(n));
@@ -99,6 +111,16 @@ export interface Store {
   switchSlot: (n: number) => void;
   /** A business handed on: the next generation takes it over, in the same save. */
   nextGen: () => void;
+  /** Playing a season (kept apart from the three careers). */
+  inSeason: boolean;
+  /** Start a season from scratch, saving your career first. */
+  startSeason: (id: SeasonId) => void;
+  /** Pick up the season in progress. */
+  continueSeason: () => void;
+  /** Leave the season (it's kept) and go back to your career. */
+  leaveSeason: () => void;
+  /** During a season: there's a career to go back to. */
+  hasCareer: boolean;
 }
 
 export function useGame(): Store {
@@ -107,13 +129,23 @@ export function useGame(): Store {
   const demoRef = useRef(demoKind ? demoCareer(demoKind) : null);
   const slotRef = useRef(readSlot());
   const ref = useRef<Career | null>(demoRef.current ?? load(slotRef.current));
+  // while a season's on, the career waits here
+  const careerRef = useRef<Career | null>(null);
+  const [inSeason, setInSeason] = useState(false);
   const [failed, setFailed] = useState(false);
   const [, setVersion] = useState(0);
   const bump = useCallback(() => setVersion((v) => v + 1), []);
 
   useEffect(() => {
     if (demoRef.current) return;
-    const ok = save(slotRef.current, ref.current);
+    let ok = true;
+    if (inSeason) {
+      try {
+        localStorage.setItem(SEASON_KEY, JSON.stringify(ref.current));
+      } catch {
+        ok = false;
+      }
+    } else ok = save(slotRef.current, ref.current);
     if (ok === failed) setFailed(!ok);
   });
 
@@ -156,5 +188,38 @@ export function useGame(): Store {
     bump();
   }, [bump]);
 
-  return { career: ref.current, slot: slotRef.current, saveFailed: failed, demo: !!demoRef.current, act, start, quit, switchSlot, nextGen };
+  const enterSeason = (c: Career) => {
+    if (!inSeason) {
+      if (!demoRef.current) save(slotRef.current, ref.current);
+      careerRef.current = ref.current;
+    }
+    ref.current = c;
+    setInSeason(true);
+    bump();
+  };
+  const startSeasonNow = (id: SeasonId) => {
+    const co = (inSeason ? careerRef.current?.co : ref.current?.co) || 'Black Soil Earthmoving';
+    enterSeason(startSeason(id, co));
+  };
+  const continueSeason = () => {
+    const c = seasonSaved();
+    if (c) enterSeason(c);
+  };
+  const leaveSeason = () => {
+    if (!inSeason) return;
+    try {
+      localStorage.setItem(SEASON_KEY, JSON.stringify(ref.current));
+    } catch {
+      // the season just won't be kept
+    }
+    ref.current = careerRef.current;
+    careerRef.current = null;
+    setInSeason(false);
+    bump();
+  };
+
+  return {
+    career: ref.current, slot: slotRef.current, saveFailed: failed, demo: !!demoRef.current, act, start, quit, switchSlot, nextGen,
+    inSeason, startSeason: startSeasonNow, continueSeason, leaveSeason, hasCareer: inSeason ? !!careerRef.current : !!ref.current,
+  };
 }

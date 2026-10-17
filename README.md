@@ -143,7 +143,8 @@ Still open:
 - [x] Phone app shell (Capacitor 8.5.2): `app/android` and `app/ios`, the font shipped inside the app (works offline, nothing fetched from Google), Android's back button. The app is called Earthworx Sim (name chosen 2026-10-18; store title "Earthworx Sim: Earthmoving Business"). App id `biz.ddes.earthmoving` is permanent once uploaded. Before the first upload, check "earthworx" on IP Australia (classes 9, 41): several real earthmoving firms trade as Earthworx.
 - [x] Android test build works on this PC (Android Studio, SDK 36, Java 21)
 - [ ] The iPhone app needs Xcode on a Mac (or a cloud build); the app icon and splash (EWX over hazard tape) are drawn by `node app/scripts/make-icons.mjs`, which renders every size in Chrome in the game's font
-- [ ] Still to come: seasons (fixed-length challenge runs; they need the leaderboard, which stays private)
+- [x] Seasons on screen: the picker (setup screen, and the Career tab once a career's found its feet), the season card, the end screen. A season has its own save; careers aren't touched. Every move on every screen goes through the recorded commands (`play.*`).
+- [ ] Still to come: the public leaderboard (needs a server; the engine's `replaySeason` is its check) (fixed-length challenge runs; they need the leaderboard, which stays private)
 - [x] Office: the dashboard (what's worth a look, cash, runway, work in hand, the 12-week cash forecast, trend charts, profit and loss, how the jobs went, the branch, head contractors, past years, the gear, safety, people, tenders, who owes what) and the bank page (borrowing against the fleet, paying the loan down, ringing around about selling)
 - [x] Map: the district roads by state, tap a road for its story, your roads
 

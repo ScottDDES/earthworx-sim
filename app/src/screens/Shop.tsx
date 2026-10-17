@@ -1,6 +1,6 @@
 // Before opening: buy your first machine (a grader, at least), then open for business.
 
-import { TOWNS, YARDS, canFinance, finDeposit, fleetValue, lendCap, machineName, value, weeklyRepay, game, type Listing } from '@engine';
+import { TOWNS, YARDS, canFinance, finDeposit, fleetValue, lendCap, machineName, value, weeklyRepay, game, type Listing, play } from '@engine';
 import { MachineIcon } from '../Icon';
 import { f } from '../format';
 import { TopBar } from './Game';
@@ -32,9 +32,9 @@ export function ListingCard({ c, m, act, shop = false }: { c: Career; m: Listing
       {m.multi && <div className="tiny muted">Rubber tyres knead and seal the gravel: a better finish than a smooth drum on its own.</div>}
       <div className="small muted">{m.hours.toLocaleString('en-AU')} hrs · {condTxt} · {note}</div>
       <div className="btns">
-        <button type="button" className="btn dark" disabled={!can} onClick={() => act((x) => game.buy(x, m.id))}>Buy</button>
-        {fin && <button type="button" className="btn" disabled={!canF} onClick={() => act((x) => game.buy(x, m.id, true))}>Finance · {f(finDeposit(m))} down</button>}
-        {!shop && !m.revealed && m.seller !== 'dealer' && <button type="button" className="btn" disabled={c.bank < 600} onClick={() => act((x) => game.inspectListing(x, m.id))}>Get it checked · $600</button>}
+        <button type="button" className="btn dark" disabled={!can} onClick={() => act((x) => play.buy(x, m.id))}>Buy</button>
+        {fin && <button type="button" className="btn" disabled={!canF} onClick={() => act((x) => play.buy(x, m.id, true))}>Finance · {f(finDeposit(m))} down</button>}
+        {!shop && !m.revealed && m.seller !== 'dealer' && <button type="button" className="btn" disabled={c.bank < 600} onClick={() => act((x) => play.inspectListing(x, m.id))}>Get it checked · $600</button>}
       </div>
       {fin && <div className="tiny muted">{finNote()}</div>}
       {full ? <div className="why">Your yard is full ({YARDS[c.yard].slots} machines). Move to a bigger yard or sell one first.</div> : !(can || canF) && <div className="why">You have {f(c.bank)}.</div>}
@@ -64,7 +64,7 @@ export function ShopScreen({ c, act }: { c: Career; act: (fn: (c: Career) => unk
       </div>
       <div className="dock">
         <div className="wrap">
-          <button type="button" className="big" disabled={!hasGrader} onClick={() => act((x) => game.open(x))}>{hasGrader ? 'Open for business' : 'Buy a grader to start'}</button>
+          <button type="button" className="big" disabled={!hasGrader} onClick={() => act((x) => play.open(x))}>{hasGrader ? 'Open for business' : 'Buy a grader to start'}</button>
         </div>
       </div>
     </>
