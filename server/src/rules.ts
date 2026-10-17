@@ -2,7 +2,12 @@
 // what a nickname may be, and which places may call the board.
 
 /** Where the app runs: the Android and iPhone apps, and the dev server. */
-export const ORIGINS = ['https://localhost', 'capacitor://localhost', 'http://localhost', 'http://localhost:5173'];
+export const ORIGINS = ['https://localhost', 'capacitor://localhost', 'http://localhost', 'http://localhost:5173', 'https://earthworx-sim.scott-6da.workers.dev'];
+
+/** May this page call the board? The apps, the dev server, and the web version (on Workers, or on Pages and its previews). */
+export function allowedOrigin(o: string): boolean {
+  return ORIGINS.includes(o) || /^https:\/\/([a-z0-9-]+\.)?earthworx-sim\.pages\.dev$/.test(o);
+}
 
 /** A season's recording can't be bigger than this (a long season is a few hundred moves, well under 100 KB). */
 export const MAX_BODY = 300_000;

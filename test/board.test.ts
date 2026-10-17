@@ -1,7 +1,7 @@
 // The public board's rules: nicknames, company names, and what a score post must look like.
 
 import { describe, expect, it } from 'vitest';
-import { cleanCo, cleanName, readPost } from '../server/src/rules';
+import { allowedOrigin, cleanCo, cleanName, readPost } from '../server/src/rules';
 
 describe('the board', () => {
   it('takes ordinary nicknames, tidied', () => {
@@ -32,5 +32,10 @@ describe('the board', () => {
     expect(readPost({ ...good, v: '1' }).ok).toBe(false);
     expect(readPost({ ...good, name: 'x' }).ok).toBe(false);
     expect(readPost('score: 1000000').ok).toBe(false);
+  });
+
+  it('lets the apps and the web version call the board, and nobody else', () => {
+    for (const ok of ['https://localhost', 'capacitor://localhost', 'https://earthworx-sim.pages.dev', 'https://abc123.earthworx-sim.pages.dev', 'https://earthworx-sim.scott-6da.workers.dev']) expect(allowedOrigin(ok), ok).toBe(true);
+    for (const no of ['https://evil.example', 'https://earthworx-sim.pages.dev.evil.example', 'http://earthworx-sim.pages.dev', 'https://xearthworx-sim.pages.dev']) expect(allowedOrigin(no), no).toBe(false);
   });
 });

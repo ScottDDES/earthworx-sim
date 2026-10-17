@@ -100,5 +100,10 @@ for (const f of readdirSync(join(ios, 'Splash.imageset')).filter((x) => x.endsWi
   await render(splash(w, h), w, h, p);
   n++;
 }
+// the web app's home-screen icons (iPhone's Add to Home Screen, and the web manifest)
+for (const [name, size] of [['apple-touch-icon.png', 180], ['icon-192.png', 192], ['icon-512.png', 512]]) {
+  await render(svg('full', size, size, false), size, size, join(app, 'public', name));
+  n++;
+}
 await browser.close();
 console.log(`Drew ${n} images.`);

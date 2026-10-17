@@ -7,7 +7,7 @@
 // Nobody can post a score, only moves: whatever the moves earn is the score. Each player keeps their best.
 
 import { SIM_VER, replaySeason, seasonDef } from '../../src/seasons';
-import { BOARD_ROWS, MAX_BODY, ORIGINS, POSTS_PER_HOUR, hash, readPost } from './rules';
+import { BOARD_ROWS, MAX_BODY, POSTS_PER_HOUR, allowedOrigin, hash, readPost } from './rules';
 
 interface Env {
   DB: D1Database;
@@ -15,7 +15,7 @@ interface Env {
 
 function cors(req: Request): Record<string, string> {
   const o = req.headers.get('Origin') || '';
-  return ORIGINS.includes(o) ? { 'Access-Control-Allow-Origin': o, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', Vary: 'Origin' } : {};
+  return allowedOrigin(o) ? { 'Access-Control-Allow-Origin': o, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', Vary: 'Origin' } : {};
 }
 
 const json = (req: Request, body: unknown, status = 200) =>

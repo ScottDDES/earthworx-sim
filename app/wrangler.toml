@@ -1,0 +1,8 @@
+# The web version of the game: a Cloudflare Worker that only serves the built game (dist/). Deploy with
+#   npm run build && npx --prefix ../server wrangler deploy
+name = "earthworx-sim"
+compatibility_date = "2026-09-30"
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"

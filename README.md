@@ -186,6 +186,15 @@ Android builds need Java 21 (Capacitor 8 with Gradle 8.14 won't run on Android S
 that's Microsoft OpenJDK 21, set for Gradle in `%USERPROFILE%\.gradle\gradle.properties` (`org.gradle.java.home`).
 A test build from the command line: `cd app/android && gradlew assembleDebug` gives `app/build/outputs/apk/debug/app-debug.apk`.
 
+## The web version
+
+The built game is also served as a website, for playing on an iPhone before the App Store app (Safari, Share, Add
+to Home Screen): https://earthworx-sim.scott-6da.workers.dev
+
+```bash
+cd app && npm run build && npx --prefix ../server wrangler deploy
+```
+
 ## The board server
 
 `server/` is a Cloudflare Worker. It imports the engine's `replaySeason`, so the server and the app must run the
