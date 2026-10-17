@@ -1,7 +1,9 @@
 // Seasons on screen: the list to pick one from, the card at the top of the Career tab while you play one, and the
 // screen when it's over. A season is about a year of real weather, the same for everyone, scored on net worth gained.
 
+import { useEffect, useState } from 'react';
 import { SEASONS, TOWNS, seasonDef, seasonScore, game, type SeasonId, type SeasonState } from '@engine';
+import { BOARD_URL, getBoard, postScore, savedName, type Board } from './board';
 import { SEASON_TEXT } from '@engine/text/seasons';
 import { MachineIcon } from './Icon';
 import { seasonSaved } from './store';
@@ -60,9 +62,65 @@ export function SeasonEndScreen({ c, saves, hasCareer }: { c: game.Career; saves
         <div className="kv"><span>Paid in over the season</span><span className="num">{f(c.stats.earned)}</span></div>
         <div className="kv"><span>Tickets earned</span><span className="num">{Object.keys(c.tix || {}).length}</span></div>
       </div>
-      <div className="small note">Scores will go on the public board once it's running: every one is played again from its moves before it counts.</div>
+      <PostScore c={c} />
       <button type="button" className="big" onClick={() => saves.startSeason(S.id as SeasonId)}>Play it again</button>
       <button type="button" className="btn full" onClick={saves.leaveSeason}>{hasCareer ? 'Back to my career' : 'Start a career'}</button>
     </div>
+  );
+}
+
+/** Post the season to the public board under a nickname, then show the board and where you came. */
+function PostScore({ c }: { c: game.Career }) {
+  const S = c.season as SeasonState;
+  const [name, setName] = useState(savedName());
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [posted, setPosted] = useState(false);
+  const [board, setBoard] = useState<Board | null>(null);
+  useEffect(() => {
+    if (BOARD_URL) getBoard(S.id).then(setBoard).catch(() => {});
+  }, [S.id]);
+  if (!BOARD_URL) return <div className="small note">The public board isn't up yet. When it is, you'll be able to post seasons like this one.</div>;
+  const send = async () => {
+    setBusy(true);
+    setMsg('');
+    try {
+      const r = await postScore(c, name);
+      setPosted(true);
+      setMsg(r.me ? `On the board at #${r.me.rank}. The board played your season again and got ${signed(r.score)}.` : 'Posted.');
+      setBoard(await getBoard(S.id));
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      {!posted && (
+        <div className="card">
+          <b>Put it on the board</b>
+          <div className="small muted">Every score is played again from its moves before it counts, so the board is the same game for everyone.</div>
+          <label className="small" htmlFor="nick">Your name on the board</label>
+          <input id="nick" className="field" maxLength={20} autoComplete="nickname" value={name} onChange={(e) => setName(e.target.value)} placeholder="2 to 20 letters" />
+          <button type="button" className="btn dark full" disabled={busy || name.trim().length < 2} onClick={send}>{busy ? 'Checking your season…' : 'Post my score'}</button>
+        </div>
+      )}
+      {msg && <div className="card" style={{ border: '2px solid var(--ink)' }}><div className="small">{msg}</div></div>}
+      {board && (
+        <div className="card">
+          <div className="sub">The board · {SEASON_TEXT[S.id].n}</div>
+          {!board.rows.length && <div className="small muted">Nobody's on the board for this season yet.</div>}
+          {board.rows.map((r, i) => (
+            <div key={i} className={'lb' + (i === 0 ? ' first' : '')} style={board.me && board.me.at === r.at && board.me.name === r.name ? { fontWeight: 700 } : undefined}>
+              <span className="rank">{i + 1}</span>
+              <div className="who"><b>{r.name}</b><span className="tiny muted">{r.co} · {r.week} weeks</span></div>
+              <b className="num">{signed(r.score)}</b>
+            </div>
+          ))}
+          {board.me && board.me.rank > board.rows.length && <div className="small">You: #{board.me.rank}, {signed(board.me.score)}</div>}
+        </div>
+      )}
+    </>
   );
 }
