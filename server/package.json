@@ -1,0 +1,17 @@
+{
+  "name": "earthworx-board",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The public leaderboard for Earthworx Sim's seasons: a Cloudflare Worker that replays every score before it counts.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "db:local": "wrangler d1 execute earthworx-board --local --file=schema.sql",
+    "db:remote": "wrangler d1 execute earthworx-board --remote --file=schema.sql",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261001.1",
+    "wrangler": "4.146.0"
+  }
+}

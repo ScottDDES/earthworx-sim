@@ -144,7 +144,8 @@ Still open:
 - [x] Android test build works on this PC (Android Studio, SDK 36, Java 21)
 - [ ] The iPhone app needs Xcode on a Mac (or a cloud build); the app icon and splash (EWX over hazard tape) are drawn by `node app/scripts/make-icons.mjs`, which renders every size in Chrome in the game's font
 - [x] Seasons on screen: the picker (setup screen, and the Career tab once a career's found its feet), the season card, the end screen. A season has its own save; careers aren't touched. Every move on every screen goes through the recorded commands (`play.*`).
-- [ ] Still to come: the public leaderboard (needs a server; the engine's `replaySeason` is its check) (fixed-length challenge runs; they need the leaderboard, which stays private)
+- [x] The board server (`server/`): a Cloudflare Worker with a D1 database. It takes a season's moves, plays them again with the engine, and keeps the score the moves earn; best per player, nicknames checked, 20 posts an hour per address. Tested end to end on this PC (`npm run dev` in `server/`).
+- [ ] Still to come: the app posting scores and showing the board; deploying the server to Cloudflare (needs the account) (fixed-length challenge runs; they need the leaderboard, which stays private)
 - [x] Office: the dashboard (what's worth a look, cash, runway, work in hand, the 12-week cash forecast, trend charts, profit and loss, how the jobs went, the branch, head contractors, past years, the gear, safety, people, tenders, who owes what) and the bank page (borrowing against the fleet, paying the loan down, ringing around about selling)
 - [x] Map: the district roads by state, tap a road for its story, your roads
 
@@ -183,3 +184,20 @@ npx cap open ios       # Xcode, on a Mac: run on an iPhone, or archive for the A
 Android builds need Java 21 (Capacitor 8 with Gradle 8.14 won't run on Android Studio's own Java 25). On this PC
 that's Microsoft OpenJDK 21, set for Gradle in `%USERPROFILE%\.gradle\gradle.properties` (`org.gradle.java.home`).
 A test build from the command line: `cd app/android && gradlew assembleDebug` gives `app/build/outputs/apk/debug/app-debug.apk`.
+
+## The board server
+
+`server/` is a Cloudflare Worker. It imports the engine's `replaySeason`, so the server and the app must run the
+same engine: bump `SIM_VER` in `src/seasons.ts` whenever the rules change, and redeploy the server with the app.
+
+```bash
+cd server
+npm run db:local       # make the local database
+npm run dev            # the board on http://localhost:8787
+npx wrangler login     # once, in your browser
+npx wrangler d1 create earthworx-board   # once; put the id it prints into wrangler.toml
+npm run db:remote      # make the tables on Cloudflare
+npm run deploy
+```
+
+To take a name off the board: `npx wrangler d1 execute earthworx-board --remote --command "UPDATE scores SET hidden = 1 WHERE name = 'Name'"`.

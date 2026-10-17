@@ -1,0 +1,13 @@
+# The public board for Earthworx Sim's seasons.
+# database_id is filled in once the database is made on Cloudflare: npx wrangler d1 create earthworx-board
+name = "earthworx-board"
+main = "src/index.ts"
+compatibility_date = "2026-09-30"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "earthworx-board"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[observability]
+enabled = true
