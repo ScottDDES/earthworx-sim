@@ -60,6 +60,8 @@ export interface Job {
   type: MachineType;
   client: string;
   place: string;
+  /** What a screen needs to name a contract: the road's length, or the package's roads, km, area and lot. */
+  nm?: { L?: number; roads?: number; km?: number; area?: string; lot?: number; lots?: number };
   days: number;
   done: number;
   rate: number;

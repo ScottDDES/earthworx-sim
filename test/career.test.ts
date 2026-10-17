@@ -3,15 +3,15 @@
 // end the week. After every step the two careers are compared (words aside), and the first difference is reported.
 
 import { describe, expect, it } from 'vitest';
-import { cardOptions, choose, game, int, pick, seedRand } from '../src';
-import { CARD_TEXT } from '../src/text/cards';
+import { choose, drawCard, game, int, pick, seedRand } from '../src';
+import { cardView, resultText } from '../src/text/cardView';
 import { LTI_STORIES } from '../src/text/safety';
 import { loadPrototype } from './prototype';
 
 const P = loadPrototype();
 const QNAME: Record<number, string> = { 6: 'April to June', 9: 'July to September', 0: 'October to December', 3: 'January to March' };
 const ACC: Record<string, string> = { b0: 'openingBank', jc: 'jobCosts', jco: 'jobCostsOwed', ws: 'workshop', cap: 'capital', loan: 'loan', coll: 'collections', md: 'machineDays', brk: 'breakdowns', bd: 'badDebts', br: 'branch', gst: 'gst' };
-const WORDS = new Set(['title', 'detail', 'catch', 'pay', 'sd']);
+const WORDS = new Set(['title', 'detail', 'catch', 'pay', 'sd', 'nm']);
 
 /** Deep copy without the words (titles and the like) and the card seeds. */
 function strip(x: any): any {
@@ -82,15 +82,35 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
     };
     check('start');
     const both = (where: string, proto: () => void, engine: () => void) => { proto(); engine(); check(where); };
-    // every option a card offers has words for the screens
-    const worded = () => { const q = c.queue[0]; if (!q) return; for (const op of cardOptions(c, q) ?? []) if (!CARD_TEXT[q.k]?.options[op.id]) throw new Error(`no words for ${q.k}.${op.id}`); };
+    // a card reads the same as the prototype's, and so does what happened after choosing
+    const same = (what: string, a: string, b: string) => { if (a !== b) throw new Error(`${what}
+  engine: ${a}
+  proto:  ${b}`); };
+    // the bot takes each option in turn, so every result line gets read
+    let n = seed;
+    const answer = (W: number) => {
+      const pc = P.curve(S.queue[0]), k = S.queue[0].k, i = pc ? n++ % pc.opts.length : 0;
+      both(`week ${W} card ${k} option ${i}`, () => P.choose(i), () => {
+        const q = c.queue[0]!, d = drawCard(c, q);
+        if (!!d !== !!pc) throw new Error(`card ${k}: engine ${d ? 'drew it' : 'skipped it'}`);
+        if (d) {
+          const v = cardView(c, q, d);
+          same(`${k} tag`, v.tag, pc.tag);
+          same(`${k} title`, v.title, pc.title);
+          same(`${k} body`, v.body, pc.body);
+          same(`${k} options`, v.opts.map((o) => o.label + ' | ' + o.sub).join(' // '), pc.opts.map((o: any) => o.label + ' | ' + o.sub).join(' // '));
+        }
+        const a = choose(c, i);
+        if (a && d) { same(`${k} result`, resultText(c, a), P.UI.result.res); SEEN.add(k); }
+      });
+    };
     // the first grader, then open for business
     const g = (S.market.listings || []).filter((m: any) => m.type === 'grader').sort((a: any, b: any) => a.price - b.price)[0];
     both('buy first grader', () => P.buy(g.id), () => game.buy(c, g.id));
     both('open', () => P.__open(), () => game.open(c));
     for (let w = 0; w < weeks && S.phase === 'play'; w++) {
       const W = S.week;
-      for (let k = 0; S.queue.length && k < 20; k++) both(`week ${W} card ${S.queue[0].k}`, () => P.choose(0), () => { worded(); choose(c, 0); });
+      for (let k = 0; S.queue.length && k < 20; k++) answer(W);
       for (const of of (S.offers || []).slice()) if (!P.whyNot(of)) both(`week ${W} accept ${of.kind}`, () => P.accept(of.id), () => game.accept(c, of.id));
       for (const t of (S.tenders || []).slice()) if (!t.bid) both(`week ${W} price subbie tender`, () => P.submitBid(t.id), () => game.submitBid(c, t.id));
       for (const t of (S.ctenders || []).slice()) if (!t.bid) both(`week ${W} price council tender`, () => P.submitCouncil(t.id), () => game.submitCouncil(c, t.id));
@@ -111,7 +131,7 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
       const worn = S.fleet.find((m: any) => m.status === 'idle' && m.cond < 30);
       if (worn && S.fleet.length > 3) { const mode = (['trade', 'auction', 'list'] as const)[W % 3]!; both(`week ${W} sell ${mode}`, () => P.sell(worn.id, mode === 'list' ? undefined : mode), () => game.sellMachine(c, worn.id, mode)); }
       if (S.bank > 80000 && (S.cands || []).length && (S.staff || []).length < 4) { const id = S.cands[0].id; both(`week ${W} hire`, () => P.hireCand(id), () => game.hireCand(c, id)); }
-      for (let k = 0; S.queue.length && k < 20; k++) both(`week ${W} card ${S.queue[0].k}`, () => P.choose(0), () => { worded(); choose(c, 0); });
+      for (let k = 0; S.queue.length && k < 20; k++) answer(W);
       both(`week ${W} end`, () => P.endWeek(), () => game.endWeek(c));
       S = P.getS();
     }
@@ -122,6 +142,9 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
     Math.random = keep;
   }
 }
+
+/** The kinds of card whose words were checked. */
+const SEEN = new Set<string>();
 
 describe('whole careers', () => {
   it('play the same, week after week, start to finish', () => {
@@ -135,6 +158,7 @@ describe('whole careers', () => {
       if (r.diff) { console.log(runs.join('\n')); expect(r.diff).toBeNull(); }
     }
     console.log(runs.join('\n'));
+    console.log('cards worded: ' + [...SEEN].sort().join(', '));
     expect(LTI_STORIES.length).toBe(4);
   });
 });

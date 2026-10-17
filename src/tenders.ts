@@ -339,7 +339,7 @@ export function signSub(st: Tenderer & { jobs: Job[] }, t: SubTender): Job {
     id: uid(st), kind: 'sub', type: 'grader', client: t.hc, place: t.place, days: t.crewDays, base: t.crewDays, paid: 0, done: 0,
     rate: t.bid! / t.crewDays, terms: subTerms(st.rel, t.hc), fuelPaid: false, mId: null, rollerId: null, cartId: null, who: null,
     hireIn: 0, extra: 0, earned: 0, idleWeeks: 0, state: 'waiting', due: st.week + t.weeks, retained: 0, gravel: t.q.resheet, cart: t.cart, bid: t.bid,
-    dayCost: dayCostOf(t),
+    dayCost: dayCostOf(t), nm: { L: t.L },
   };
   st.jobs.push(j);
   st.subsWon++;

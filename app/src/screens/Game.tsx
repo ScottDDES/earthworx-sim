@@ -2,10 +2,10 @@
 // and the sheets that come up over it: a card waiting for you, selling a machine, the week's docket.
 
 import { useEffect, useState } from 'react';
-import { CARD_TEXT } from '@engine/text/cards';
-import { TOWNS, cardOptions, choose, forecast, monthIdx, yearOf, game } from '@engine';
+import { cardView, resultText, type CardView } from '@engine/text/cardView';
+import { TOWNS, choose, drawCard, forecast, monthIdx, yearOf, game } from '@engine';
 import { Icon, WeatherIcon } from '../Icon';
-import { MONTHS, f } from '../format';
+import { MONTHS, f, fk } from '../format';
 import { YardTab } from './Yard';
 import { WorkTab } from './Work';
 
@@ -44,28 +44,80 @@ export function TopBar({ c }: { c: Career }) {
   );
 }
 
-/** The card at the front of the queue, with its options. */
-function CardSheet({ c, act }: { c: Career; act: Act }) {
+/** What you chose and what came of it, before the next card. */
+export interface Outcome { tag: string; title: string; chosen: string; res: string }
+
+/** A tender result: who priced what and how they scored, then why the top two scored what they did. */
+function ResultTable({ t }: { t: NonNullable<CardView['table']> }) {
+  return (
+    <div className="card">
+      <div className="row tiny muted">
+        <span className="grow">Firm</span>
+        <span style={{ width: t.council ? 70 : 84, textAlign: 'right' }}>Price</span>
+        {t.council && <span style={{ width: 52, textAlign: 'right' }}>Method</span>}
+        <span style={{ width: t.council ? 48 : 52, textAlign: 'right' }}>Score</span>
+      </div>
+      {t.rows.map((e) => (
+        <div key={e.name} className="row small" style={e.you ? { fontWeight: 700 } : undefined}>
+          <span className="grow">{e.name}</span>
+          <span className="num" style={{ width: t.council ? 70 : 84, textAlign: 'right' }}>{fk(e.price)}</span>
+          {t.council && <span className="num" style={{ width: 52, textAlign: 'right' }}>{e.method}/6</span>}
+          <span className="num" style={{ width: t.council ? 48 : 52, textAlign: 'right' }}>{e.score.toFixed(1)}</span>
+        </div>
+      ))}
+      {t.why.map((w, i) => <div key={i} className={'tiny' + (w.you ? '' : ' muted')}>{w.text}</div>)}
+    </div>
+  );
+}
+
+// These tags are plain news; the rest are curve balls.
+const PLAIN = new Set(['Tender result', 'Your branch', 'Tax office', 'Year in review', 'The industry', 'The bank']);
+
+/** The card at the front of the queue: what's happened, and your options. */
+function CardSheet({ c, act, onDone }: { c: Career; act: Act; onDone: (o: Outcome) => void }) {
   const q = c.queue[0]!;
-  // drawing the card is part of the game (it can set its seed), so it goes through act
-  const opts = cardOptions(c, q);
-  const T = CARD_TEXT[q.k];
+  // drawing a card sets its seed the first time, so the same card always reads the same
+  const d = drawCard(c, q);
   // a card that no longer applies just goes, once the screen has drawn
   useEffect(() => {
-    if (!opts) act((x) => choose(x, 0));
+    if (!d) act((x) => choose(x, 0));
   });
-  if (!opts) return null;
+  if (!d) return null;
+  const v = cardView(c, q, d);
+  const pick = (i: number) => act((x) => {
+    const a = choose(x, i);
+    if (a) onDone({ tag: v.tag, title: v.title, chosen: v.opts[i]!.label, res: resultText(x, a) });
+  });
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label={T?.title ?? q.k}>
+    <div className="overlay" role="dialog" aria-modal="true" aria-label={v.title}>
       <div className="sheet curve">
-        <div className="sub">{T?.tag ?? 'Decision'}</div>
-        <h2>{T?.title ?? q.k}</h2>
-        {opts.map((o, i) => (
-          <button key={o.id} type="button" className="choice" onClick={() => act((x) => choose(x, i))}>
-            <b>{T?.options[o.id]?.label ?? o.id}</b>
-            {T?.options[o.id]?.sub && <span>{T.options[o.id]!.sub}</span>}
+        <div className="sub" style={{ color: 'var(--rust)' }}>{PLAIN.has(v.tag) ? '' : 'Curve ball · '}{v.tag}</div>
+        <h2 style={{ fontSize: 22 }}>{v.title}</h2>
+        <div style={{ fontSize: 15, color: 'var(--ink)' }}>{v.body}</div>
+        {v.table && <ResultTable t={v.table} />}
+        {v.opts.map((o, i) => (
+          <button key={o.id} type="button" className="choice" onClick={() => pick(i)}>
+            <b>{o.label}</b>
+            <span>{o.sub}</span>
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function ResultSheet({ r, onClose }: { r: Outcome; onClose: () => void }) {
+  return (
+    <div className="overlay" role="dialog" aria-modal="true" aria-label={r.title}>
+      <div className="sheet curve">
+        <div className="sub">{r.tag}</div>
+        <h2>{r.title}</h2>
+        <div className="card" style={{ border: '2px solid var(--ink)' }}>
+          <div className="sub">You chose</div>
+          <b>{r.chosen}</b>
+          <div className="small">{r.res}</div>
+        </div>
+        <button type="button" className="big" onClick={onClose}>Carry on</button>
       </div>
     </div>
   );
@@ -105,6 +157,7 @@ function ComingNext({ name }: { name: string }) {
 export function GameScreen({ c, act, onNew }: { c: Career; act: Act; onNew: () => void }) {
   const [tab, setTab] = useState<Tab>('yard');
   const [report, setReport] = useState<game.Report | null>(null);
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
   const endWeek = () => act((x) => { const r = game.endWeek(x); if (r) setReport(r); });
   return (
     <>
@@ -139,7 +192,7 @@ export function GameScreen({ c, act, onNew }: { c: Career; act: Act; onNew: () =
           </nav>
         </div>
       </div>
-      {report ? <Docket r={report} co={c.co} onClose={() => setReport(null)} /> : c.queue.length > 0 && <CardSheet c={c} act={act} />}
+      {outcome ? <ResultSheet r={outcome} onClose={() => setOutcome(null)} /> : report ? <Docket r={report} co={c.co} onClose={() => setReport(null)} /> : c.queue.length > 0 && <CardSheet c={c} act={act} onDone={setOutcome} />}
     </>
   );
 }

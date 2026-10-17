@@ -9,6 +9,8 @@ import {
   value, mgrIs, hasWorkshop, stars, ownedCounts,
   type RainCallEvent,
 } from '../src';
+import { TOWNS, drawCard } from '../src';
+import { cardView, resultText } from '../src/text/cardView';
 import { BAD_BACK_STORY, LTI_MACHINES, LTI_STORIES } from '../src/text/safety';
 import { accFromProto, snapshots } from './bot';
 import { loadPrototype } from './prototype';
@@ -296,5 +298,42 @@ describe('the career ladder', () => {
     expect(hasWorkshop('depot')).toBe(true);
     expect(LTI_STORIES.length).toBe(4);
     expect(LTI_MACHINES.length).toBe(3);
+  });
+});
+
+describe('card words', () => {
+  it('the turnover call and the branch manager\'s cards read the same, and so does what happened', () => {
+    const R = seedRand(317), seen: Record<string, number> = {};
+    for (let i = 0; i < 600; i++) {
+      const { S, b } = pair(pick(R, SNAPS));
+      const kind = pick(R, ['turnover', 'brtender', 'brraise'] as const);
+      let q: any;
+      if (kind === 'turnover') {
+        const idle = b.fleet.filter((m: any) => m.status === 'idle');
+        if (!idle.length) continue;
+        q = { k: kind, id: (pick(R, idle) as any).id, by: pick(R, ['Leanne', 'Dave']) };
+      } else {
+        S.branch = { town: pick(R, Object.keys(TOWNS)), mgr: { name: 'Mick', wage: 2400, skill: pick(R, ['green', 'solid', 'gun']) }, rep: 20 };
+        b.branch = clone(S.branch);
+        q = { k: kind };
+      }
+      q.sd = int(R, 1, 1e9);
+      S.queue = [clone(q)];
+      b.queue = [clone(q)];
+      P.setS(S);
+      const pc = P.curve(S.queue[0]), d = drawCard(b, b.queue[0]);
+      expect(!!d).toBe(!!pc);
+      if (!pc || !d) continue;
+      const v = cardView(b, b.queue[0], d);
+      expect([v.tag, v.title, v.body]).toEqual([pc.tag, pc.title, pc.body]);
+      expect(v.opts.map((o) => [o.label, o.sub])).toEqual(pc.opts.map((o: any) => [o.label, o.sub]));
+      const opt = int(R, 0, pc.opts.length - 1), seed = int(R, 1, 1e9);
+      const res = P.withRNG(P.seedRand(seed), () => pc.opts[opt].go());
+      b.rngA = seed | 0;
+      const result = d.opts[opt]!.go();
+      expect(resultText(b, { q: b.queue[0], id: d.opts[opt]!.id, data: d.data, result, tix: [] })).toBe(res);
+      seen[kind] = (seen[kind] || 0) + 1;
+    }
+    expect(Object.values(seen).every((x) => x > 80)).toBe(true);
   });
 });

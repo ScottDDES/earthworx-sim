@@ -14,7 +14,7 @@ import { bottText, issueText } from '../src/text/plan';
 const P = loadPrototype();
 const LOAN_FOR: Record<Difficulty, number> = { easy: 350000, normal: 180000, hard: 80000, hc: 80000 };
 const MOOD_IDS: Mood[] = ['boom', 'steady', 'tight', 'bust'];
-const strip = (o: any) => { const c = { ...o }; delete c.title; return c; };
+const strip = (o: any) => { const c = { ...o }; delete c.title; delete c.nm; return c; };
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 
 function protoCareer(o: Record<string, unknown>): any {

@@ -12,7 +12,7 @@ import { loadPrototype } from './prototype';
 const P = loadPrototype();
 const LOAN_FOR: Record<Difficulty, number> = { easy: 350000, normal: 180000, hard: 80000, hc: 80000 };
 const MOOD_IDS: Mood[] = ['boom', 'steady', 'tight', 'bust'];
-const strip = (o: any) => { const c = { ...o }; delete c.title; return c; };
+const strip = (o: any) => { const c = { ...o }; delete c.title; delete c.nm; return c; };
 
 function protoCareer(o: Record<string, unknown>): any {
   return { week: 1, town: 'gdi', fleet: [], staff: [], yard: 'home', jobs: [], queue: [], log: [], news: [], bank: 100000, recv: [], seq: 0,

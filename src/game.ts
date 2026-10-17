@@ -524,3 +524,8 @@ export function evaluate(c: Career, id: string) {
   const e = planEval(planCtx(c), t, t.pl);
   return { e, price: councilPrice(t, e, overheads(c), otherContracts(c.jobs)) };
 }
+
+/** This week's insurance premium. */
+export function premiumNow(c: Career): number {
+  return premiumOf(premParts(fleetValue(c.fleet, c.week), wages(c.staff)), c, c.whs.sys, c.week);
+}

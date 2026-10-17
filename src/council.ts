@@ -245,7 +245,7 @@ export function signOwn(st: CouncilWorld & { jobs: Job[] }, p: PlanCtx, t: Counc
     done: 0, days: Math.ceil(e.cd), subCrews: e.SC || 0, subRate: t.subRate || 0, subPace: t.subPace || 0.85, prog: e.prog ? progRun(t, pl, e) : null,
     prestige: !!t.prestige, planOwned: e.prog ? planCounts(p, t.close + 1) : null, need: e.need || null, rate: t.bid! / Math.max(1, e.cd),
     due: t.major ? t.dlWeek : st.week + 1 + t.weeks, major: !!t.major, retain: t.major ? 0 : RETAIN, ld: t.major ? 0 : LD_OWN,
-    half: st.week + 1 + Math.round(t.weeks / 2), dlYear: t.dlYear, ownedIds: [], hireWeek: 0, casuals: 0, mId: null, who: null, idleWeeks: 0,
+    half: st.week + 1 + Math.round(t.weeks / 2), dlYear: t.dlYear, nm: { roads: t.roads.length, km: t.km, area: t.area, lot: t.lot, lots: t.lots }, ownedIds: [], hireWeek: 0, casuals: 0, mId: null, who: null, idleWeeks: 0,
   } as unknown as Job;
   j.gLeft = j.g0;
   j.sLeft = j.s0;

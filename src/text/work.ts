@@ -57,8 +57,14 @@ export function councilTitle(t: CouncilTender): string {
 
 /** What a job's called on screen. */
 export function jobTitle(j: Job): string {
-  if (j.kind === 'sub') return j.place + ' Road for ' + j.client;
-  if (j.kind === 'own') return (j.major ? 'Flood recovery program' : 'Flood works package') + ' from ' + j.place;
+  const n = j.nm;
+  if (j.kind === 'sub') return j.place + ' Road' + (n?.L != null ? ', ' + n.L + ' km' : '') + ' for ' + j.client;
+  if (j.kind === 'own') {
+    if (!n) return (j.major ? 'Flood recovery program' : 'Flood works package') + ' from ' + j.place;
+    const tail = ' · ' + n.roads + ' roads, ' + n.km + ' km';
+    if (!j.major) return 'Flood works package: ' + n.roads + ' roads, ' + n.km + ' km';
+    return (j.prestige ? 'State road program: ' + n.area + ' area, the whole lot' : 'Flood recovery program: ' + n.area + ' area' + ((n.lots ?? 1) > 1 ? ', lot ' + n.lot + ' of ' + n.lots : '')) + tail;
+  }
   return offerTitle(j as never);
 }
 
