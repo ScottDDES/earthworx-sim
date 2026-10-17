@@ -7,6 +7,7 @@ import { TOWNS, cardOptions, choose, forecast, monthIdx, yearOf, game } from '@e
 import { Icon, WeatherIcon } from '../Icon';
 import { MONTHS, f } from '../format';
 import { YardTab } from './Yard';
+import { WorkTab } from './Work';
 
 type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
@@ -117,7 +118,7 @@ export function GameScreen({ c, act, onNew }: { c: Career; act: Act; onNew: () =
             </div>
           ) : null}
           {tab === 'yard' && <YardTab c={c} act={act} />}
-          {tab === 'work' && <ComingNext name="Work: hire jobs and tenders" />}
+          {tab === 'work' && <WorkTab c={c} act={act} />}
           {tab === 'market' && <ComingNext name="Market: buying and the auction" />}
           {tab === 'career' && <ComingNext name="Career: the ladder and your tickets" />}
           {tab === 'bank' && <ComingNext name="Office: money, the bank and the books" />}

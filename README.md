@@ -101,6 +101,7 @@ still check every rule against the prototype exactly. `test/fixes.test.ts` tests
 - **Fair shuffles.** The prototype shuffles with `sort(() => rand() - 0.5)`, which is biased (some orders come up far more
   often) and depends on the browser. The engine does a fair Fisher–Yates shuffle: which idle machines head contractors ring
   about, council package road names, flood program roads and lots, Charters Towers road names, and subbie quotes.
+- **Subbie quotes have their own seed.** The prototype rolls them with `Math.random()` while it draws the screen. The engine gives each job's quotes a seed for the week, so they're the same every time you look.
 - **A career replays from its seed alone.** The prototype picks which real year's rain a career replays with `Math.random()`,
   outside the career's seed. The engine takes it from the seed (or as a parameter, which the side-by-side tests use).
 
@@ -116,7 +117,8 @@ Still open:
 - [x] Yard: forecast, your yard and moving, machines (service, sell), people
 - [ ] Card details (names and amounts on each card) and what happened after you chose
 - [ ] The docket's events in words
-- [ ] Work: hire jobs, booking in, tenders and planning
+- [x] Work: hire offers (take it, or ring to book it in), jobs on the go (progress, what a waiting job needs, subbing out and taking back), subbie tenders with the full pricing sheet
+- [ ] Work: council tender and program planning (council tenders can be priced on the standard plan for now)
 - [ ] Market, Career, Office, Map
 
 ## Ported so far

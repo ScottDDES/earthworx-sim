@@ -19,13 +19,13 @@ import { genCandidates, hire, wages, type Candidate, type Person } from './staff
 import { genMgrApplicants, hireMgr as hireMgrPerson, mgrIs, mgrOf, mgrTraitsWeek, mgrUnlocked, workshopCtx, type MgrRole, type MgrApplicant } from './managers';
 import { afterService, fitterWeek, wsmWeek, type WorkshopEvent } from './workshop';
 import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium as premiumOf } from './overheads';
-import { accept as acceptOffer, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type HireEvent } from './hire';
+import { accept as acceptOffer, askWait as askWaitHire, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type HireEvent } from './hire';
 import { relWeek } from './relations';
 import { dmap, mapWeek, type DistrictMap, type MapEvent } from './map';
-import { canTender, closeTender, crewDayCost, genTenders, otherContracts, subPrice, submitBid as submitBidT, tbs, type CloseEvent, type Standing, type SubTender } from './tenders';
-import { closeCouncil, genMajor, genCouncil, canPrestige, submitCouncil as submitCouncilT, type CouncilEvent } from './council';
+import { canTender, closeTender, crewDayCost, genTenders, otherContracts, setMk, subPrice, submitBid as submitBidT, withdrawBid as withdrawBidT, tbs, type CloseEvent, type Standing, type SubTender } from './tenders';
+import { closeCouncil, genMajor, genCouncil, canPrestige, setCmk, setOh, submitCouncil as submitCouncilT, type CouncilEvent } from './council';
 import type { CouncilTender, PlanCtx } from './planning';
-import { endOfDay, jobDay, settleJob, staffOwn, staffSubs, seatStaff, terminateWeek, type ContractEvent } from './contracts';
+import { endOfDay, jobDay, settleJob, staffOwn, staffSubs, seatStaff, subOut as subOutC, subQuotes, takeBack as takeBackC, terminateWeek, type ContractEvent, type SubQuote } from './contracts';
 import { bankCalls, closeBooks, gstInBank, hardcoreWeek, netWorth, newGst, odLimit, payablesWeek, taxMode, taxWeek, yearEnd, type BankCallEvent, type GstState, type HardcoreEvent, type TaxEvent, type TaxMode, type WeekRow, type YearReview } from './office';
 import { sellUpWeek, shockWeek, type ShockEvent } from './shocks';
 import { branchWeek, type Branch, type BranchEvent } from './branch';
@@ -445,4 +445,47 @@ export function service(c: Career, id: string): boolean {
 /** Sell an idle machine: trade it in, put it in the auction, or list it privately. */
 export function sellMachine(c: Career, id: string, mode: SellMode): boolean {
   return sell(stream(c), c as never, id, mode, mgrIs(c.staff, 'dealer')) != null;
+}
+
+/** Ring a client to ask them to wait for your machine, booking the job in behind the current one. */
+export function askWait(c: Career, id: string) {
+  return askWaitHire(stream(c), c as never, { town: c.town, wxStart: c.wxStart }, id);
+}
+
+/** Change your margin on a subbie or council tender (your price has to go in again). */
+export function setMargin(c: Career, id: string, d: number): void {
+  const t = c.tenders.find((x) => x.id === id);
+  if (t) setMk(c as never, id, d);
+  else {
+    const ct = c.ctenders.find((x) => x.id === id);
+    if (ct) setCmk(ct, d);
+  }
+}
+
+/** Carry more or less of your overheads on a tender, in quarters. */
+export function setOverheadShare(c: Career, id: string, d: number): void {
+  const t = c.tenders.find((x) => x.id === id) ?? c.ctenders.find((x) => x.id === id);
+  if (t) setOh(t, d, otherContracts(c.jobs));
+}
+
+export function withdrawBid(c: Career, id: string): void {
+  withdrawBidT(c as never, id);
+}
+
+/**
+ * This week's quotes from local outfits to take a waiting contract off your hands. The prototype rolls these
+ * with Math.random while it draws the screen; here each job's quotes have their own seed for the week.
+ */
+export function quotes(c: Career, jobId: string): SubQuote[] {
+  const j = c.jobs.find((x) => x.id === jobId);
+  return j ? subQuotes(worldRand(c, 'quotes|' + jobId), c as never, j) : [];
+}
+
+export function subOut(c: Career, jobId: string, i: number): boolean {
+  quotes(c, jobId);
+  return subOutC(worldRand(c, 'quotes|' + jobId), c as never, jobId, i);
+}
+
+export function takeBack(c: Career, jobId: string): boolean {
+  return takeBackC(c as never, jobId);
 }

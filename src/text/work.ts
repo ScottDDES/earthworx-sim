@@ -1,0 +1,67 @@
+// Words for work: offers, jobs and tenders, built from the engine's data the way the prototype wrote them.
+
+import { CLIENTS, type Job, type Offer } from '../hire';
+import { TYPES } from '../machines';
+import { CLIENT_PM } from '../relations';
+import type { SubTender } from '../tenders';
+import type { CouncilTender } from '../planning';
+
+const money = (n: number) => (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-AU');
+
+export const KIND_LABEL: Record<string, string> = { wet: 'WET HIRE', dry: 'DRY HIRE', council: 'COUNCIL', private: 'PRIVATE', sub: 'SUBCONTRACT', own: 'COUNCIL CONTRACT' };
+export const KIND_CHIP: Record<string, string> = { wet: 'c-dark', council: 'c-rain', dry: 'c-idle', private: 'c-job', sub: 'c-dark', own: 'c-rain' };
+
+/** A private client is "Shed pad, Talwood": the job, then the place. */
+function privateParts(client: string): [string, string] {
+  const i = client.lastIndexOf(', ');
+  return i < 0 ? [client, ''] : [client.slice(0, i), client.slice(i + 2)];
+}
+
+export function offerTitle(o: Pick<Offer, 'kind' | 'type' | 'client'>): string {
+  const T = TYPES[o.type];
+  if (o.kind === 'wet') return T.name + ' + operator, for ' + o.client;
+  if (o.kind === 'dry') return T.name + ' only, to ' + o.client;
+  if (o.kind === 'council') return 'Maintenance grading, day labour';
+  const [what, place] = privateParts(o.client);
+  return what + ' near ' + place;
+}
+
+export function offerDetail(o: Offer): string {
+  if (o.kind === 'wet') return o.days + ' working days on a flood recovery job near ' + o.place + '. They supply fuel.';
+  if (o.kind === 'dry') return o.enq ? o.days + ' weeks near ' + o.place + '. They rang about your ' + TYPES[o.type].short + '. Their operator, your machine.' : o.days + ' weeks near ' + o.place + '. Their operator, your machine. You stay free.';
+  if (o.kind === 'council') return 'Rural roads around ' + o.place + ', ' + o.days + ' working days.';
+  return o.days + ' working days, fixed price. Cash a week after you finish.';
+}
+
+export function offerCatch(o: Offer): string {
+  if (o.kind === 'wet') return o.client + ' pays at ' + o.terms * 7 + ' days.' + ((CLIENTS[o.client]?.late ?? 0) > 0.3 ? ' Known for paying late.' : '');
+  if (o.kind === 'dry') return 'Their operator, your wear: about twice the usual. Paid at ' + o.terms * 7 + ' days.';
+  if (o.kind === 'council') return 'Pays in 14 days. You supply fuel. Counts double toward your track record.';
+  return 'Fixed price: rain days are on you.' + (o.needsRoller ? ' Needs a roller too: ' + money(TYPES.roller.dry) + ' a week to hire one if you don\'t own one.' : '');
+}
+
+export function offerPay(o: Offer): string {
+  if (o.kind === 'dry') return money(o.rate!) + '/wk';
+  if (o.kind === 'private') return money(o.fixed!);
+  return money(o.rate!) + '/day';
+}
+
+export function subTenderTitle(t: Pick<SubTender, 'place' | 'L'>): string {
+  return t.place + ' Road, ' + t.L + ' km';
+}
+
+export function councilTitle(t: CouncilTender): string {
+  if (!t.major) return 'Flood works package: ' + t.roads.length + ' roads, ' + t.km + ' km';
+  return (t.prestige ? 'State road program: ' + t.area + ' area, the whole lot' : 'Flood recovery program: ' + t.area + ' area' + ((t.lots ?? 1) > 1 ? ', lot ' + t.lot + ' of ' + t.lots : '')) + ' · ' + t.roads.length + ' roads, ' + t.km + ' km';
+}
+
+/** What a job's called on screen. */
+export function jobTitle(j: Job): string {
+  if (j.kind === 'sub') return j.place + ' Road for ' + j.client;
+  if (j.kind === 'own') return (j.major ? 'Flood recovery program' : 'Flood works package') + ' from ' + j.place;
+  return offerTitle(j as never);
+}
+
+export function pmOf(hc: string): string {
+  return CLIENT_PM[hc] || hc;
+}
