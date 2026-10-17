@@ -3,10 +3,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   HEAD_CONTRACTORS, MOODS, bid, buyListing, canFinance, finDeposit, fleetValue, fmul, fundIdx, genMarket, hammer,
-  inspect, int, lendCap, marketWeek, newAccounts, newLoan, newMarketMood, pick, salesWeek, seedRand, sell,
+  inspect, int, lendCap, marketWeek, newAccounts, newLoan, newMarketMood, pick, salesWeek, seedRand, sell, unlist,
   type AuctionLot, type Buyer, type Clearance, type Machine, type MachineType, type Market, type Mood,
   type RivalSale, type SaleEvent, type TownId,
 } from '../src';
+import { diaryMark, diarySame } from './diaryCheck';
 import { loadPrototype, prototypeSalesStep } from './prototype';
 import { hammerText } from '../src/text/market';
 
@@ -122,6 +123,7 @@ describe('buying', () => {
   it('buying for cash or on finance does the same to the bank, the loan and the yard', () => {
     const R = seedRand(43);
     let bought = 0, financed = 0;
+    const said = new Set<string>();
     for (let i = 0; i < 2000; i++) {
       const week = int(R, 1, 400), won = R() < 0.7, yard = pick(R, ['home', 'fenced', 'depot']), seq = int(R, 0, 500);
       const fleet = Array.from({ length: int(R, 0, 4) }, (_, k) => ({ ...randomMachine(R, k), status: 'idle' }));
@@ -134,9 +136,10 @@ describe('buying', () => {
       const l = pick(R, S.market.listings) as any, fin = R() < 0.5, seed = int(R, 1, 1e9);
       const room = { home: 2, fenced: 4, depot: 8 }[yard]! - fleet.length;
       const cap = P.lendCap();
+      const b: Buyer = { week, bank, fleet, loan, acc: newAccounts(bank), market }, mk = diaryMark(P, b);
       P.withRNG(P.seedRand(seed), () => P.buy(l.id, fin));
-      const b: Buyer = { week, bank, fleet, loan, acc: newAccounts(bank), market };
       const res = buyListing(seedRand(seed), b, l.id, fin, room, cap, won, 'i' + (S.seq));
+      for (const k of diarySame(P, b, mk)) said.add(k);
       expect(b.bank).toBe(S.bank);
       expect(b.loan).toEqual(S.loan);
       expect(b.fleet).toEqual(S.fleet);
@@ -146,13 +149,14 @@ describe('buying', () => {
     }
     expect(bought).toBeGreaterThan(400);
     expect(financed).toBeGreaterThan(100);
+    expect([...said].sort()).toEqual(['bought', 'boughtOffRival', 'financed']);
   });
 
   it('an inspection costs $600 and shows the real condition', () => {
     const S = protoCareer({ mkt: { f: 1, mood: 'steady' }, bank: 5000 });
     P.setS(S);
     P.withRNG(P.seedRand(5), () => P.genMarket());
-    const market = JSON.parse(JSON.stringify(S.market)), b = { bank: 5000, market };
+    const market = JSON.parse(JSON.stringify(S.market)), b = { week: S.week, bank: 5000, market };
     const l = S.market.listings.find((x: any) => !x.revealed) ?? S.market.listings[0];
     P.inspect(l.id);
     inspect(b, l.id);
@@ -195,7 +199,8 @@ describe('selling', () => {
   it('trade-in, auction and private listings, and the week they sell', () => {
     const R = seedRand(45), salesStep = prototypeSalesStep();
     let auctions = 0, privates = 0;
-    for (let i = 0; i < 2000; i++) {
+    const said = new Set<string>();
+    for (let i = 0; i < 2500; i++) {
       const week = int(R, 1, 400), mood = pick(R, MOOD_IDS), dealer = R() < 0.3;
       const fleet = Array.from({ length: int(R, 1, 6) }, (_, k) => randomMachine(R, k));
       for (const m of fleet) if (m.status === 'listed') m.sale = { weeks: int(R, 1, 4), price: int(R, 40, 300) * 500 };
@@ -206,15 +211,22 @@ describe('selling', () => {
 
       // the player sells one
       const m = pick(R, fleet), mode = pick(R, ['trade', 'auction', 'list'] as const), seed = int(R, 1, 1e9);
+      let mk = diaryMark(P, b);
       P.withRNG(P.seedRand(seed), () => P.sell(m.id, mode === 'list' ? undefined : mode));
       sell(seedRand(seed), b, m.id, mode, dealer);
       expect(b.fleet).toEqual(S.fleet);
       expect(b.bank).toBe(S.bank);
+      // and sometimes thinks better of a private listing
+      const ls = fleet.find((x) => x.status === 'listed');
+      if (ls && R() < 0.2) { P.unlist(ls.id); unlist(b, ls); expect(b.fleet).toEqual(S.fleet); }
+      for (const k of diarySame(P, b, mk)) said.add(k);
+      mk = diaryMark(P, b);
 
       // the week ends
       const s2 = int(R, 1, 1e9), ev: SaleEvent[] = [];
       const { rep } = salesStep(S, P.seedRand(s2));
       salesWeek(seedRand(s2), b, mood, ev);
+      for (const k of diarySame(P, b, mk)) said.add(k);
       expect(b.fleet).toEqual(S.fleet);
       expect(b.bank).toBe(S.bank);
       expect(b.acc.capital).toBe(S.acc.cap);
@@ -224,5 +236,6 @@ describe('selling', () => {
     }
     expect(auctions).toBeGreaterThan(300);
     expect(privates).toBeGreaterThan(300);
+    expect([...said].sort()).toEqual(['listed', 'soldAtAuction', 'soldPrivately', 'toAuction', 'tradedIn', 'unlisted']);
   });
 });

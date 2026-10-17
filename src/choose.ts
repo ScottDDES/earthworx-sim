@@ -4,6 +4,7 @@
 // Drawing a card gives its options (each with a short id) and its numbers (data); answering it gives what
 // happened (result). Screens turn all three into words with text/cardView.ts.
 
+import { mRef, news, note } from './diary';
 import { stream, room, hasCrew, tax, tickets, mood, premiumNow, type Career } from './game';
 import { hashN, pick, seedRand, type Rand } from './rng';
 import { lateChase, lateFriendly, latePark, lateWait, release, stars, type Job } from './hire';
@@ -45,6 +46,8 @@ function cardSeed(c: Career, q: Career['queue'][number]): number {
 
 const jobOf = (c: Career, id?: string | null) => c.jobs.find((j) => j.id === id);
 const machOf = (c: Career, id?: string | null) => c.fleet.find((m) => m.id === id);
+/** Who someone is, by name: you, one of your staff, or a casual. */
+const whoName = (c: Career, who?: string | null): string => (who === 'you' ? 'You' : c.staff.find((p) => p.id === who)?.name ?? 'A casual');
 
 function draw(c: Career, q: Career['queue'][number], data: Record<string, any>): CardOpt[] | null {
   const cr: Rand = seedRand(cardSeed(c, q)), r = () => stream(c);
@@ -58,8 +61,19 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       const fsz = Math.min(1, 0.25 + c.fleet.length / 10);
       Object.assign(data, { card, job: sj0, who: q.who ?? null, sys: c.whs.sys, fineLo: Math.round(20000 * fsz / 1000) * 1000, fineHi: Math.round(60000 * fsz / 1000) * 1000 });
       return [
-        o('notify', () => { seriousNotify(st, card); if (sj0) sj0.stood = 1; return card.fine; }),
-        o('hide', () => seriousHide(r(), st, card, TOWNS[c.town].council)),
+        o('notify', () => {
+          const nm = whoName(c, q.who);
+          seriousNotify(st, card);
+          if (sj0) sj0.stood = 1;
+          note(c, { k: 'seriousNotified', name: nm, story: card.story, fine: card.fine });
+          news(c, { k: 'regulator', co: c.co });
+          return card.fine;
+        }),
+        o('hide', () => {
+          const res = seriousHide(r(), st, card, TOWNS[c.town].council);
+          if (res.found) news(c, { k: 'unreportedFine', co: c.co, fine: res.fine });
+          return res;
+        }),
       ];
     }
     case 'nearmiss': {
@@ -82,7 +96,7 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       if (!m || m.status !== 'idle') return null;
       const vv = value(m, c.week), dl = mgrIs(c.staff, 'dealer');
       Object.assign(data, { m, value: vv, listPrice: Math.round((vv * 0.95 * (dl ? 1.05 : 1)) / 500) * 500, by: q.by });
-      return [o('auction', () => turnoverSell(r(), m, 'auction', vv, dl)), o('list', () => turnoverSell(r(), m, 'list', vv, dl)), o('keep', () => turnoverKeep(st, m))];
+      return [o('auction', () => { turnoverSell(r(), m, 'auction', vv, dl); note(c, { k: 'toAuctionAdvice', m: mRef(m), by: q.by }); }), o('list', () => turnoverSell(r(), m, 'list', vv, dl)), o('keep', () => turnoverKeep(st, m))];
     }
     case 'svcfind': {
       const m = machOf(c, q.id);
@@ -121,9 +135,10 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       if (q.k === 'brtender') {
         const card = brTenderCard(cr);
         data.card = card;
-        return [o('sharp', () => brTender(r(), st, card, true)), o('proper', () => brTender(r(), st, card, false)), o('letGo', () => {})];
+        const go = (sharp: boolean) => () => { const won = brTender(r(), st, card, sharp); if (won) note(c, { k: 'brWon', town: B.town, val: card.val }); return won; };
+        return [o('sharp', go(true)), o('proper', go(false)), o('letGo', () => {})];
       }
-      return [o('pay', () => brRaise(r(), st, true)), o('no', () => brRaise(r(), st, false))];
+      return [o('pay', () => brRaise(r(), st, true)), o('no', () => { const nm = B.mgr!.name, res = brRaise(r(), st, false); if (res === 'quit') note(c, { k: 'brQuit', name: nm, town: B.town }); return res; })];
     }
     case 'collapse': {
       const card = collapseCard(cr, q.debt);
@@ -139,7 +154,7 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
     case 'bankcall': {
       const again = c.bankGrace != null && c.week - c.bankGrace < 26, out: CardOpt[] = [];
       Object.assign(data, { od: !!q.od, again, hc: !!c.hardcore });
-      if (!again && !c.hardcore) out.push(o('moreTime', () => bankMoreTime(st, !!q.od)));
+      if (!again && !c.hardcore) out.push(o('moreTime', () => { bankMoreTime(st, !!q.od); note(c, { k: 'moreTime', fee: 750 }); }));
       if (sellBuyer(c.rivals)) out.push(o('ringAround', () => askSellUp(st, true)));
       out.push(o('leave', () => {}));
       return out;
@@ -149,9 +164,10 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       if (!B) return null;
       const mode = tax(c), canPay = c.bank + odLimit(c) >= B.amt, planOk = basPlanOk(G, mode, c.week), out: CardOpt[] = [];
       Object.assign(data, { B, canPay, planOk, hc: mode === 'hardcore', interest: basInterest(B.amt, mode), plans: G.plans, short: c.bank < B.amt });
-      if (canPay) out.push(o('pay', () => basPay(st, B, false)));
-      if (!canPay && !planOk) out.push(o('payAnyway', () => basPay(st, B, true)));
-      if (planOk) out.push(o('plan', () => basPlan(st, B, mode)));
+      const qd = { qm: B.qm, qy: B.qy, amt: B.amt };
+      if (canPay) out.push(o('pay', () => { basPay(st, B, false); note(c, { k: 'basPaid', ...qd }); }));
+      if (!canPay && !planOk) out.push(o('payAnyway', () => { basPay(st, B, true); note(c, { k: 'basTaken', ...qd }); }));
+      if (planOk) out.push(o('plan', () => { const each = basPlan(st, B, mode); note(c, { k: 'basPlan', ...qd, each }); return each; }));
       return out;
     }
     case 'yearend': {
@@ -169,12 +185,16 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
     }
     case 'clearing':
       Object.assign(data, { place: pick(cr, TOWNS[c.town].places), bank: c.bank });
-      return [o('borrow', () => { clearingBorrow(r(), st); return c.loan.weekly; }), o('cash', () => clearingCash(r(), st)), o('skip', () => {})];
+      return [
+        o('borrow', () => { clearingBorrow(r(), st); note(c, { k: 'clearing', price: 49500 }); return c.loan.weekly; }),
+        o('cash', () => { const got = clearingCash(r(), st); if (got) note(c, { k: 'clearing', price: 46000 }); return got; }),
+        o('skip', () => {}),
+      ];
     case 'hurt': {
       const p = c.staff.find((x) => x.id === q.id);
       if (!p) return null;
       data.person = p;
-      return [o('home', () => hurtHome(p)), o('cover', () => hurtCover(st, p)), o('keepGoing', () => hurtKeepGoing(r(), st, p))];
+      return [o('home', () => hurtHome(p)), o('cover', () => hurtCover(st, p)), o('keepGoing', () => { const hurt = hurtKeepGoing(r(), st, p); if (hurt) note(c, { k: 'badBack', name: p.name }); return hurt; })];
     }
     case 'breakin':
       data.home = c.yard === 'home';

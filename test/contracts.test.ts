@@ -12,6 +12,8 @@ import {
   type TownId, type WeekReport,
 } from '../src';
 import { sameLines, jobPairs } from './docketWords';
+import { nmFromTitle } from './bot';
+import { diaryMark, diarySame } from './diaryCheck';
 import { loadPrototype } from './prototype';
 
 const P = loadPrototype();
@@ -72,6 +74,8 @@ function contractBusiness(R: () => number, opts: { empty?: boolean } = {}) {
     }
   });
   if (R() < 0.2) S.youBlocked = 1;
+  // the engine names jobs from data; the prototype ignores it
+  S.jobs.forEach(nmFromTitle);
   S.acc = { b0: 0, jc: 0, jco: 0, ws: 0, cap: 0, loan: 0, coll: 0, md: 0, brk: 0, bd: 0 };
   const b = clone(S) as ContractBiz;
   b.acc = newAccounts(0);
@@ -98,10 +102,14 @@ function expectSame(b: ContractBiz, S: any) {
   for (const k of ['subsDone', 'lds', 'ownDone', 'ownLate', 'majorDone', 'prestigeDone']) expect((b as any)[k] ?? 0, k).toBe(S[k] ?? 0);
 }
 
+/** The kinds of diary line the contract tests checked. */
+const SAID = new Set<string>();
+
 /** One week of contracts on both sides. */
 function runWeek(b: ContractBiz, S: any, d: Difficulty, wx: { town: TownId; wxStart: number }, seed: number, seen: Record<string, number>) {
   const prep: any = { worked: 0, lost: 0, invoiced: 0, paid: 0, costs: 0, events: [] }, pdd: Record<string, number> = {}, pairs = jobPairs(S, b);
   P.setS(S);
+  const mk = diaryMark(P, b);
   P.withRNG(P.seedRand(seed), () => {
     P.__weekStart(prep);
     P.__startWeek();
@@ -132,6 +140,7 @@ function runWeek(b: ContractBiz, S: any, d: Difficulty, wx: { town: TownId; wxSt
   expect(ev.length).toBe(prep.events.length);
   sameLines(b, ev, prep.events, pairs);
   for (const e of ev) seen[e.k] = (seen[e.k] || 0) + 1;
+  for (const k of diarySame(P, b, mk)) SAID.add(k);
 }
 
 /** Between weeks: breakdowns fixed, swap-in cards answered the same way on both sides, the clock moves on. */
@@ -141,6 +150,7 @@ function betweenWeeks(R: () => number, b: ContractBiz, S: any, seen: Record<stri
     P.setS(S);
     const c = P.curve({ ...q, sd: 1 });
     const mq = b.queue.find((x) => x.k === 'swapin' && x.id === q.id && x.type === q.type)!;
+    const mk = diaryMark(P, b);
     if (c) {
       const i = int(R, 0, 1), j = b.jobs.find((x) => x.id === q.id)!;
       const m = b.fleet.find((x) => x.type === q.type && x.status === 'idle' && x.down === 0)!;
@@ -148,6 +158,7 @@ function betweenWeeks(R: () => number, b: ContractBiz, S: any, seen: Record<stri
       if (i === 0) swapIn(b, j, m, q.type); else swapCardKeep(b, j, q.type);
       seen['swap' + i] = (seen['swap' + i] || 0) + 1;
     }
+    for (const k of diarySame(P, b, mk)) SAID.add(k);
     S.queue.splice(S.queue.indexOf(q), 1);
     b.queue.splice(b.queue.indexOf(mq), 1);
   }
@@ -203,8 +214,10 @@ describe('subbing out', () => {
       const k = int(R, 0, theirs.length - 1);
       // sometimes most of it's already claimed, so the subbie's share hits its 97% cap
       if (j.kind === 'own' && R() < 0.4) { const pj = S.jobs.find((x: any) => x.id === j.id); pj.claimed = (j as any).claimed = Math.round(pj.price * (0.6 + R() * 0.35)); }
+      let mk = diaryMark(P, b);
       P.subOut(j.id, k);
       subOut(seedRand(seed), b, j.id, k);
+      for (const x of diarySame(P, b, mk)) SAID.add(x);
       expectSame(b, S);
       subbed++;
       for (let wk = 0; wk < 12; wk++) {
@@ -221,8 +234,10 @@ describe('subbing out', () => {
           const can = P.canTakeBack(S.jobs.find((x: any) => x.id === j.id) ?? {});
           const mj = b.jobs.find((x) => x.id === j.id);
           if (mj) expect(canTakeBack(b, mj)).toBe(can);
+          mk = diaryMark(P, b);
           P.takeBack(j.id);
           if (takeBack(b, j.id)) back++;
+          for (const x of diarySame(P, b, mk)) SAID.add(x);
           expectSame(b, S);
         }
       }
@@ -247,9 +262,10 @@ describe('the council checks a program', () => {
       pj.gLeft = (j as any).gLeft = pj.g0 * left; pj.sLeft = (j as any).sLeft = pj.s0 * left;
       S.week = b.week = R() < 0.7 ? pj.half : pj.due + 1;
       P.setS(S);
-      const prep = { events: [] as string[] }, ev: ContractEvent[] = [];
+      const prep = { events: [] as string[] }, ev: ContractEvent[] = [], mk = diaryMark(P, b);
       P.programCheck(pj, prep);
       programCheck(b, j, ev);
+      for (const x of diarySame(P, b, mk)) SAID.add(x);
       expect(j).toEqual(pj);
       expect(b.rep).toBe(S.rep);
       expect(ev.length).toBe(prep.events.length);
@@ -299,5 +315,12 @@ describe('the contract cards', () => {
     addDays(j, 3);
     P.addDays(j, 0);
     expect(j.gLeft).toBe(3);
+  });
+});
+
+describe('the site diary on contracts', () => {
+  it('crews on site, casuals, swaps, subbing out and taking back, roads moved, finishing', () => {
+    console.log('contract diary: ' + [...SAID].sort().join(', '));
+    for (const k of ['floated', 'onSite', 'tookOverThe', 'swappedIn', 'subbedOut', 'tookBack', 'roadsMoved', 'ownDone', 'finished']) expect(SAID.has(k), k).toBe(true);
   });
 });

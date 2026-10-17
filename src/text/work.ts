@@ -68,6 +68,9 @@ export function jobTitle(j: Job): string {
   return offerTitle(j as never);
 }
 
+/** A head contractor's opinion of you, in a word. */
+export const TIER_NAME: Record<string, string> = { pref: 'Preferred', good: 'Good', ok: 'Neutral', wary: 'Wary', out: 'On the outer' };
+
 export function pmOf(hc: string): string {
   return CLIENT_PM[hc] || hc;
 }

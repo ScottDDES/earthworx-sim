@@ -5,11 +5,12 @@ import {
   BR_SLOTS, DIFFICULTY, YARDS, askSellUp, brCrews, brRaise, brTender, brTenderCard, branchWeek, buyOutAll, buyOutBest, buyOutOffer,
   buyOutPay, canBranch, canBuyOut, closeBranch, collapseCard, collapseClaim, collapseSell, costIdx, insureBroker, int, meStretched,
   odLimit, openBranch, pick, seedRand, sellAll, sellBest, sellBuyer, sellPrice, sellTwo, sellUpWeek, shockWeek, stars, toBranch,
-  toHome, walkAway, workshopCtx, lendCap, fleetValue, taxMode, gstInBank, retire, retireOffer,
+  toHome, hireBrMgr, walkAway, workshopCtx, lendCap, fleetValue, taxMode, gstInBank, retire, retireOffer,
   type BranchEvent, type Difficulty, type HireEvent, type ShockEvent,
 } from '../src';
 import { accFromProto, playProto } from './bot';
 import { sameLines, jobPairs } from './docketWords';
+import { diaryMark, diarySame } from './diaryCheck';
 import { loadPrototype } from './prototype';
 
 const P = loadPrototype();
@@ -169,9 +170,10 @@ describe('retiring', () => {
       const po = P.retireOffer(), o = retireOffer(b, mood, stars(b.rep), held);
       expect({ ...o, who: o.who ?? 'A contractor from the coast' }).toEqual(po);
       if (!o.who) coast++;
-      const rung = P.rung();
+      const rung = P.rung(), mk = diaryMark(P, b);
       P.retireNow();
       retire(b, mood, stars(b.rep), held, { stage: rung, peak: rung });
+      expect(diarySame(P, b, mk)).toEqual(['retired']);
       const { to, price, walk, week, fleet, earned, retired } = S.soldUp;
       expect(b.soldUp).toEqual({ to, price, walk, week, stage: rung, peak: rung, fleet, earned, retired });
       expect(b.rivals).toEqual(S.rivals);
@@ -224,6 +226,7 @@ describe('the branch depot', () => {
   it('opening it, floating gear there, a year of its weeks, and its cards', () => {
     const R = seedRand(217);
     let weeks = 0, cards = 0, lines = 0;
+    const said = new Set<string>();
     for (let i = 0; i < 120; i++) {
       const { S, b } = pair(pick(R, SNAPS));
       Object.assign(S, { won3: true, yard: 'hub', bank: 900000 }); Object.assign(b, { won3: true, yard: 'hub', bank: 900000 });
@@ -233,9 +236,11 @@ describe('the branch depot', () => {
       P.setS(S);
       expect(canBranch(b)).toBe(P.canBranch());
       const kind = pick(R, ['gun', 'green'] as const), s0 = int(R, 1, 1e9);
+      let mk = diaryMark(P, b);
       P.withRNG(P.seedRand(s0), () => P.openBranch(kind));
       openBranch(seedRand(s0), b, kind);
       for (const m of S.fleet.filter((m: any) => m.status === 'idle' && R() < 0.8).slice(0, BR_SLOTS)) { P.toBranch(m.id); toBranch(b, m.id); }
+      for (const k of diarySame(P, b, mk)) said.add(k);
       expect(b.branch).toEqual(S.branch);
       expect(brCrews(b.fleet)).toEqual(P.brCrews());
       const d = diffOf(S);
@@ -269,13 +274,26 @@ describe('the branch depot', () => {
           S.queue = S.queue.filter((x: any) => x !== q);
           b.queue = b.queue.filter((x: any) => x.k !== q.k);
         }
+        // a manager who quit gets replaced
+        if (S.branch && !S.branch.mgr) {
+          const s3 = int(R, 1, 1e9), k3 = pick(R, ['gun', 'green'] as const);
+          P.setS(S);
+          mk = diaryMark(P, b);
+          P.withRNG(P.seedRand(s3), () => P.hireBrMgr(k3));
+          hireBrMgr(seedRand(s3), b, k3);
+          expect(b.branch).toEqual(S.branch);
+          for (const k of diarySame(P, b, mk)) said.add(k);
+        }
         for (const m of b.fleet) if (m.down > 0 && m.down < 99) m.down--;
         for (const m of S.fleet) if (m.down > 0 && m.down < 99) m.down--;
         S.week++; b.week++;
       }
       const home = S.fleet.find((m: any) => m.status === 'branch');
-      if (home) { P.setS(S); P.toHome(home.id); toHome(b, home.id, roomOf(b)()); }
-      if (R() < 0.5) { P.setS(S); P.closeBranch(); closeBranch(b); }
+      P.setS(S);
+      mk = diaryMark(P, b);
+      if (home) { P.toHome(home.id); toHome(b, home.id, roomOf(b)()); }
+      if (R() < 0.5) { P.closeBranch(); closeBranch(b); }
+      for (const k of diarySame(P, b, mk)) said.add(k);
       expect(b.fleet).toEqual(S.fleet);
       expect(b.bank).toBeCloseTo(S.bank, 4);
       expect(b.branch ?? null).toEqual(S.branch ?? null);
@@ -283,5 +301,6 @@ describe('the branch depot', () => {
     expect(weeks).toBeGreaterThan(5000);
     expect(lines).toBeGreaterThan(1000);
     expect(cards).toBeGreaterThan(50);
+    expect([...said].sort()).toEqual(['brClosed', 'brMgr', 'brOpened', 'toBranch', 'toHome']);
   });
 });

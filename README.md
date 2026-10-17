@@ -66,6 +66,8 @@ npm run check      # type-check, then test: run this before every commit
 | `src/choose.ts` | Drawing the card at the front of the queue (its options in order and its numbers, on its own seed) and answering it (what happened). |
 | `src/books.ts` | The office's numbers: the cash forecast, runway, borrowing and paying down, machine alerts. |
 | `src/text/office.ts` | The workshop alerts and the dashboard's flags, checked every week of the whole-career test. |
+| `src/diary.ts` | The site diary (last 40) and the district news (last 12): codes and the data to word them, kept even after the job or machine is gone. |
+| `src/text/diary.ts` | The diary and news in words, checked after every move of the whole-career test and in each part's own tests. |
 | `src/text/map.ts` | What each road state is called and what a tapped road says, checked for every state in the whole-career test. |
 | `src/text/market.ts` | Where an auction lot came from, its guide, and how the hammer fell. |
 | `src/text/docket.ts` | The week's docket lines and stamps from the engine's events. Checked against the prototype every week of the whole-career test, and in the workshop, rivals, contracts and branch tests. |
@@ -129,7 +131,9 @@ Still open:
 - [x] Work: council tender planning (crews, graders, rollers, carts, trucks, pit, who supplies the plant, program, price) and flood recovery programs (map, crews road by road, timeline, holdups, plant, price)
 - [x] Market: this week's auction (bid, let the hammer fall) and machines for sale (buy, finance, a mechanic's check)
 - [x] Career: tickets wallet, contract tallies, track record, the ladder with each step's checklist, the district (market mood, rivals, approaching one to buy them out), selling up to retire, starting over
-- [ ] Career still to come: the site diary and "Lately" news (the engine doesn't keep a diary of events yet), sound, seasons, save slots
+- [x] Career: the site diary and "Lately" news
+- [ ] Yard still to come: fix a patched part properly, fit GPS, send gear to the branch and bring it home (the engine has no fixing properly or GPS yet)
+- [ ] Still to come: letting staff go, sound, seasons, save slots, tabs unlocking as you go
 - [x] Office: the dashboard (what's worth a look, cash, runway, work in hand, the 12-week cash forecast, trend charts, profit and loss, how the jobs went, the branch, head contractors, past years, the gear, safety, people, tenders, who owes what) and the bank page (borrowing against the fleet, paying the loan down, ringing around about selling)
 - [ ] The prototype's mentor tips (office, BAS, scoring, standing) aren't ported yet
 - [x] Map: the district roads by state, tap a road for its story, your roads

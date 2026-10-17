@@ -3,6 +3,7 @@
 // programs: an area's roads split into lots, due by 30 June, planned crew by crew. Price scores 60, non-price
 // 40, plus up to 6 for the program. Winning signs your own contract (contracts.ts runs it).
 
+import { jobRef, note } from './diary';
 import { BASE_YEAR, yearOf } from './calendar';
 import { TOWNS } from './towns';
 import { BOQ, CT_PITS, CT_ROADS, dmap, mapRival, mapWork, pickRoads, placePos } from './map';
@@ -178,8 +179,12 @@ export function genMajor(rand: Rand, st: CouncilWorld, p: PlanCtx, fmul: number,
   t.dlYear = y;
   t.weeks = t.dlWeek - (t.close + 1);
   st.ctenders.push(t);
+  note(st, { k: 'programLet', t: tRef(t), year: y });
   return t;
 }
+
+/** Enough of a council tender to name it. */
+const tRef = (t: CouncilTender) => ({ major: !!t.major, prestige: !!t.prestige, area: t.area, lot: t.lot, lots: t.lots, n: t.roads.length, km: t.km });
 
 /** Put your price in, from your plan. Blocked at your limit of contracts with no operations manager. */
 export function submitCouncil(p: PlanCtx, st: CouncilWorld, id: string, overheadsWeek: number, contracts: number, capFull: boolean): boolean {
@@ -188,6 +193,7 @@ export function submitCouncil(p: PlanCtx, st: CouncilWorld, id: string, overhead
   const e = planEval(p, t, t.pl), P = councilPrice(t, e, overheadsWeek, contracts);
   t.bid = P.price;
   t.mine = { method: e.method, oh: P.oh, cost: e.cost, pl: JSON.parse(JSON.stringify(t.pl)) };
+  note(st, { k: 'tendered', t: tRef(t), bid: t.bid });
   return true;
 }
 
@@ -231,7 +237,10 @@ export function closeCouncil(rand: Rand, st: CouncilWorld, p: PlanCtx, t: Counci
   t.result = E.map((e) => ({ name: e.name, price: e.price, pp: Math.round(e.pp! * 10) / 10, np: e.np!, parts: e.parts, method: e.method, tot: Math.round(e.tot! * 10) / 10, you: !!e.you, oh: Math.round(e.oh || 0), dc: Math.round(e.dc || 0) }));
   if (!w.you) mapRival(st.dmap!, t.roads.map((x) => x.mapId).filter(Boolean) as string[], w.name, t.weeks, st.week);
   if (t.bid) st.queue.push({ k: 'cresult', t });
-  else events.push({ k: 'councilWentTo', name: w.name, price: w.price });
+  else {
+    events.push({ k: 'councilWentTo', name: w.name, price: w.price });
+    note(st, { k: 'councilWentTo', t: tRef(t), name: w.name, price: w.price });
+  }
 }
 
 /** The council picked you: sign it. Your own contract starts once you (or a supervisor) and the gear are free. */
@@ -253,6 +262,7 @@ export function signOwn(st: CouncilWorld & { jobs: Job[] }, p: PlanCtx, t: Counc
   st.jobs.push(j);
   st.ownWon = (st.ownWon || 0) + 1;
   mapWork(st.dmap!, t.roads.map((x) => x.mapId).filter(Boolean) as string[], j);
+  note(st, { k: 'signedOwn', job: jobRef(j), bid: t.bid, due: j.due });
   return j;
 }
 

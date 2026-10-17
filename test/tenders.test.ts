@@ -7,6 +7,7 @@ import {
   placePos, pullOut, seedRand, signSub, subPrice, subTerms, tCost,
   type CloseEvent, type Difficulty, type Machine, type MachineType, type MapEvent, type Mood, type Standing, type SubTender, type Tenderer, type TownId,
 } from '../src';
+import { diaryMark, diarySame } from './diaryCheck';
 import { loadPrototype } from './prototype';
 
 const P = loadPrototype();
@@ -166,6 +167,7 @@ describe('subbie tenders', () => {
   it('closing: the same prices, scores, winner, and what it does to the rivals and the map', () => {
     const R = seedRand(86);
     let won = 0, lost = 0, notPriced = 0;
+    const said = new Set<string>();
     for (let i = 0; i < 3000; i++) {
       const { st, S, d } = randomTenderer(R);
       const mood = pick(R, MOOD_IDS);
@@ -181,8 +183,10 @@ describe('subbie tenders', () => {
       if (R() < 0.75) { t.bid = pt.bid = Math.round(tCost(t, 4250) * (0.9 + R() * 0.7) / 100) * 100; }
       const seed = int(R, 1, 1e9), me = standing(S, JSON.parse(JSON.stringify(S.whs)), d), ev: CloseEvent[] = [];
       P.setS(S);
+      const mk = diaryMark(P, st);
       P.withRNG(P.seedRand(seed), () => P.closeTender(pt));
       closeTender(seedRand(seed), st, t, me, S.co, mood, ev);
+      for (const k of diarySame(P, st, mk)) said.add(k);
       expect(t.result).toEqual(pt.result);
       expect(t.winner).toEqual(pt.winner);
       expect(st.rivals).toEqual(S.rivals);
@@ -193,6 +197,7 @@ describe('subbie tenders', () => {
       if (!t.bid) notPriced++; else if (t.result?.[0]?.you) won++; else lost++;
     }
     expect(won).toBeGreaterThan(200);
+    for (const k of ['subWentTo', 'directLapsed']) expect(said.has(k), k).toBe(true);
     expect(lost).toBeGreaterThan(200);
     expect(notPriced).toBeGreaterThan(200);
   });

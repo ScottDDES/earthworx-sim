@@ -2,6 +2,7 @@
 // with every call they make, and a hidden build-up of near-trouble (hazard). All three set the odds of an incident.
 // Words for what happened live in text/safety.ts; the engine only records which story it was.
 
+import { note } from './diary';
 import { DIFFICULTY, type Difficulty } from './difficulty';
 import { WHS_SYS } from './overheads';
 import { int, pick, type Rand } from './rng';
@@ -163,6 +164,7 @@ export function safetyWeek(rand: Rand, st: SafetyState, worked: number, d: Diffi
     const machine = int(rand, 0, 2), story: Story = { k: 'lti', i: int(rand, 0, 3), machine };
     record(W, { w: st.week, sev: 'lti', who: who ?? '', story });
     events.push({ k: 'lti', who, wks, story });
+    note(st, { k: 'lti', name: who === 'you' ? 'You' : st.staff.find((p) => p.id === who)?.name ?? 'A casual', wks });
     return LTI_EXCESS;
   }
   if (x < 0.6) {

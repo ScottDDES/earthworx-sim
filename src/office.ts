@@ -1,6 +1,7 @@
 // The office: paying what's owed, the bank's patience, GST and the BAS, closing the books each week,
 // the year in review, and (on Hardcore) trading insolvent.
 
+import { mRef, news, note } from './diary';
 import { monthIdx, yearOf } from './calendar';
 import { book, newAccounts, type Accounts } from './ledger';
 import type { Loan } from './bank';
@@ -167,6 +168,7 @@ export function taxWeek(st: { week: number; bank: number; seq: number; acc: Acco
     G.qIn = 0;
     G.qOut = 0;
     events.push({ k: 'quarterClosed', qm: m1, qy: yr, amt, due });
+    note(st, { k: 'quarterClosed', qm: m1, amt, due });
     if (m1 === 6) {
       yearDone = true;
       yearEndNow?.();
@@ -351,9 +353,12 @@ export function hardcoreWeek(st: { hardcore?: boolean; phase: string; under?: nu
     st.bustOut = { week: st.week, nw, ...info() };
     st.phase = 'bust';
     st.queue = []; // the career's over: phase 'bust' is the signal, and bustOut has the numbers
+    note(st, { k: 'administration' });
+    news(st, { k: 'wentBust' });
     return;
   }
   events.unshift({ k: 'insolvent', nw, weeks: st.under });
+  note(st, { k: 'insolventWeek', weeks: st.under });
 }
 
 // ---------- the office's cards ----------
@@ -402,6 +407,7 @@ export function repossess(st: { week: number; bank: number; fleet: Machine[]; jo
       L.bal = 0;
     }
     L.weekly = L.bal > 0 ? weeklyRepay(L.bal) : 0;
+    note(st, { k: 'repossessed', m: mRef(best), got });
   }
   L.missed = 0;
   L.arrears = 0;

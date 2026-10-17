@@ -92,3 +92,18 @@ export function snapshots(P: Proto, n: number, seed: number, rand: (seed: number
   }
   return out;
 }
+
+/**
+ * The engine names a job from data (nm) where the prototype kept a title. Jobs lifted from the prototype get
+ * their nm back from the title, so the engine can name them the same way.
+ */
+export function nmFromTitle(j: any): any {
+  const t: string = j.title || '';
+  let m: RegExpMatchArray | null;
+  if (j.kind === 'sub' && (m = t.match(/, ([\d.]+) km for /))) j.nm = { L: +m[1]! };
+  else if (j.kind === 'own' && (m = t.match(/^Flood works package: (\d+) roads, ([\d.]+) km$/))) j.nm = { roads: +m[1]!, km: +m[2]! };
+  else if (j.kind === 'own' && (m = t.match(/^(?:State road program|Flood recovery program): (.+?) area(?:, the whole lot|, lot (\d+) of (\d+))? · (\d+) roads, ([\d.]+) km$/))) {
+    j.nm = { area: m[1], roads: +m[4]!, km: +m[5]!, ...(m[2] ? { lot: +m[2], lots: +m[3]! } : {}) };
+  }
+  return j;
+}

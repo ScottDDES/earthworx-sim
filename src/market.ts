@@ -3,6 +3,7 @@
 // The market's mood follows the flood money, and flood money follows the rain: a wet year
 // brings recovery work six months to a year and a half later.
 
+import { mRef, note } from './diary';
 import { dayOffset, yearOf } from './calendar';
 import { topUp, type Loan } from './bank';
 import { book, type Accounts } from './ledger';
@@ -271,6 +272,7 @@ export function buyListing(rand: Rand, b: Buyer, id: string, fin: boolean, room:
     b.bank -= dep;
     book(b.acc, 'capital', dep);
     topUp(b.loan, lent);
+    note(b, { k: 'financed', lent, weekly: b.loan.weekly });
   } else {
     if (b.bank < l.price) return { ok: false, why: 'cash' };
     b.bank -= l.price;
@@ -283,15 +285,18 @@ export function buyListing(rand: Rand, b: Buyer, id: string, fin: boolean, room:
   m.paidWk = b.week;
   b.fleet.push(m);
   b.market.listings = b.market.listings.filter((x) => x.id !== id);
+  note(b, { k: 'bought', m: mRef(m), price: l.price, dealer: l.seller === 'dealer' });
+  if (l.seller === 'rival') note(b, { k: 'boughtOffRival', who: l.who });
   return { ok: true, machine: m, lent };
 }
 
 /** Pay a mechanic to check a listing's real condition. */
-export function inspect(b: Pick<Buyer, 'bank' | 'market'>, id: string): boolean {
+export function inspect(b: Pick<Buyer, 'week' | 'bank' | 'market'>, id: string): boolean {
   const l = b.market.listings.find((x) => x.id === id);
   if (!l || b.bank < INSPECT_COST) return false;
   b.bank -= INSPECT_COST;
   l.revealed = true;
+  note(b, { k: 'inspected', type: l.type, cost: INSPECT_COST });
   return true;
 }
 
@@ -321,6 +326,7 @@ export function hammer(rand: Rand, b: Pick<Buyer, 'week' | 'bank' | 'fleet' | 'a
   const total = Math.round(lot.bid * (1 + BUYERS_PREMIUM));
   if (b.bank < total) {
     b.bank -= FAILED_SETTLE_FINE;
+    note(b, { k: 'cantSettle', fine: FAILED_SETTLE_FINE });
     return (lot.result = { k: 'cantSettle', total, fine: FAILED_SETTLE_FINE });
   }
   b.bank -= total;
@@ -361,21 +367,25 @@ export function sell(rand: Rand, b: Pick<Buyer, 'week' | 'bank' | 'fleet' | 'acc
     b.bank += got;
     book(b.acc, 'capital', -got);
     b.fleet.splice(b.fleet.indexOf(m), 1);
+    note(b, { k: 'tradedIn', m: mRef(m), got: v * 0.72 });
     return got;
   }
   if (mode === 'auction') {
     m.status = 'auction';
+    note(b, { k: 'toAuction', m: mRef(m) });
     return 0;
   }
   m.status = 'listed';
   m.sale = { weeks: int(rand, 2, 5), price: round(v * 0.95, 500) } satisfies PrivateSale;
+  note(b, { k: 'listed', m: mRef(m), price: (m.sale as PrivateSale).price });
   return 0;
 }
 
-export function unlist(m: Machine): void {
+export function unlist(b: Pick<Buyer, 'week'>, m: Machine): void {
   if (m.status !== 'listed') return;
   m.status = 'idle';
   m.sale = null;
+  note(b, { k: 'unlisted', m: mRef(m) });
 }
 
 export type SaleEvent = { k: 'soldAtAuction'; id: string; type: MachineType; got: number } | { k: 'soldPrivately'; id: string; type: MachineType; got: number };
@@ -389,6 +399,7 @@ export function salesWeek(rand: Rand, b: Pick<Buyer, 'week' | 'bank' | 'fleet' |
       book(b.acc, 'capital', -got);
       b.fleet.splice(b.fleet.indexOf(m), 1);
       events.push({ k: 'soldAtAuction', id: m.id, type: m.type, got });
+      note(b, { k: 'soldAtAuction', m: mRef(m), got });
     } else if (m.status === 'listed') {
       const s = m.sale as PrivateSale;
       s.weeks--;
@@ -397,6 +408,7 @@ export function salesWeek(rand: Rand, b: Pick<Buyer, 'week' | 'bank' | 'fleet' |
         book(b.acc, 'capital', -s.price);
         b.fleet.splice(b.fleet.indexOf(m), 1);
         events.push({ k: 'soldPrivately', id: m.id, type: m.type, got: s.price });
+        note(b, { k: 'soldPrivately', m: mRef(m), got: s.price });
       }
     }
   }

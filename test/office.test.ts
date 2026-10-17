@@ -1,5 +1,6 @@
 // The office against the prototype, on careers the prototype played itself.
 
+import { diaryMark, diarySame } from './diaryCheck';
 import { describe, expect, it } from 'vitest';
 import {
   bankCalls, bankMoreTime, basPay, basPlan, claimFinance, closeBooks, debtors, gstInBank, hardcoreWeek, int, netWorth, odLimit,
@@ -280,6 +281,7 @@ describe('the owner\'s office', () => {
   it('borrowing against the fleet and paying the loan down', () => {
     const R = seedRand(117);
     let lent = 0, paid = 0, cleared = 0;
+    const said = new Set<string>();
     for (let i = 0; i < 1500; i++) {
       const S = clone(pick(R, SNAPS)), b = clone(S);
       b.acc = accFromProto(S.acc);
@@ -288,6 +290,7 @@ describe('the owner\'s office', () => {
       P.setS(S);
       const room = borrowRoom(P.lendCap(), b.loan);
       expect(room).toBe(P.borrowRoom());
+      const mk = diaryMark(P, b);
       if (R() < 0.5) {
         const amt = pick(R, [25000, 50000, 100000, room]);
         P.borrow(amt);
@@ -298,6 +301,7 @@ describe('the owner\'s office', () => {
         if (payDown(b, amt)) paid++;
         if (b.loan.paidOff) cleared++;
       }
+      for (const k of diarySame(P, b, mk)) said.add(k);
       expect(b.bank).toBe(S.bank);
       expect(b.loan).toEqual(S.loan);
       expect(b.acc.loan).toBe(S.acc.loan);
@@ -305,5 +309,6 @@ describe('the owner\'s office', () => {
     expect(lent).toBeGreaterThan(100);
     expect(paid).toBeGreaterThan(100);
     expect(cleared).toBeGreaterThan(10);
+    expect([...said].sort()).toEqual(['borrowed', 'paidDown']);
   });
 });

@@ -13,7 +13,8 @@ import { TOWNS, drawCard } from '../src';
 import { cardView, resultText } from '../src/text/cardView';
 import { checkWords } from '../src/text/career';
 import { BAD_BACK_STORY, LTI_MACHINES, LTI_STORIES } from '../src/text/safety';
-import { accFromProto, snapshots } from './bot';
+import { diaryMark, diarySame } from './diaryCheck';
+import { accFromProto, nmFromTitle, snapshots } from './bot';
 import { loadPrototype } from './prototype';
 
 const P = loadPrototype();
@@ -303,13 +304,24 @@ describe('the career ladder', () => {
 });
 
 describe('card words', () => {
-  it('the turnover call and the branch manager\'s cards read the same, and so does what happened', () => {
-    const R = seedRand(317), seen: Record<string, number> = {};
-    for (let i = 0; i < 600; i++) {
+  it('the turnover call, the branch manager\'s cards, serious incidents and the BAS read the same, and so does what happened and the diary', () => {
+    const R = seedRand(317), seen: Record<string, number> = {}, said = new Set<string>();
+    for (let i = 0; i < 1000; i++) {
       const { S, b } = pair(pick(R, SNAPS));
-      const kind = pick(R, ['turnover', 'brtender', 'brraise'] as const);
+      b.jobs.forEach(nmFromTitle);
+      const kind = pick(R, ['turnover', 'brtender', 'brraise', 'serious', 'bas'] as const);
       let q: any;
-      if (kind === 'turnover') {
+      if (kind === 'serious') {
+        q = { k: kind, who: b.staff.length && R() < 0.7 ? (pick(R, b.staff) as any).id : R() < 0.5 ? 'you' : null };
+      } else if (kind === 'bas') {
+        // a big BAS with little room to pay it, and a plan only if they haven't had one lately
+        S.hardcore = b.hardcore = true;
+        const amt = int(R, 5, 120) * 1000, plans = R() < 0.5 ? 1 : 0;
+        S.bank = b.bank = int(R, -20, 60) * 1000;
+        S.gst = { held: amt, qIn: 0, qOut: 0, plans, lastPlan: plans ? S.week - 4 : undefined, due: [{ id: 'g1', amt, qIn: amt, qOut: 0, q: 'April to June 2027', due: S.week }] };
+        b.gst = { held: amt, qIn: 0, qOut: 0, plans, lastPlan: plans ? S.week - 4 : undefined, due: [{ id: 'g1', amt, qIn: amt, qOut: 0, qm: 6, qy: 2027, due: S.week }] };
+        q = { k: kind, id: 'g1' };
+      } else if (kind === 'turnover') {
         const idle = b.fleet.filter((m: any) => m.status === 'idle');
         if (!idle.length) continue;
         q = { k: kind, id: (pick(R, idle) as any).id, by: pick(R, ['Leanne', 'Dave']) };
@@ -328,14 +340,16 @@ describe('card words', () => {
       const v = cardView(b, b.queue[0], d);
       expect([v.tag, v.title, v.body]).toEqual([pc.tag, pc.title, pc.body]);
       expect(v.opts.map((o) => [o.label, o.sub])).toEqual(pc.opts.map((o: any) => [o.label, o.sub]));
-      const opt = int(R, 0, pc.opts.length - 1), seed = int(R, 1, 1e9);
+      const opt = int(R, 0, pc.opts.length - 1), seed = int(R, 1, 1e9), mk = diaryMark(P, b);
       const res = P.withRNG(P.seedRand(seed), () => pc.opts[opt].go());
       b.rngA = seed | 0;
       const result = d.opts[opt]!.go();
       expect(resultText(b, { q: b.queue[0], id: d.opts[opt]!.id, data: d.data, result, tix: [] })).toBe(res);
+      for (const k of diarySame(P, b, mk)) said.add(k);
       seen[kind] = (seen[kind] || 0) + 1;
     }
     expect(Object.values(seen).every((x) => x > 80)).toBe(true);
+    expect([...said].sort()).toEqual(['basPaid', 'basPlan', 'basTaken', 'brQuit', 'brWon', 'regulator', 'seriousNotified', 'toAuctionAdvice', 'unreportedFine']);
   });
 });
 

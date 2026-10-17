@@ -7,6 +7,7 @@ import {
   type Machine, type MachineType, type Person, type Role, type Trait, type WorkshopEvent, type YardId,
 } from '../src';
 import { sameLines, jobPairs } from './docketWords';
+import { diaryMark, diarySame } from './diaryCheck';
 import { loadPrototype } from './prototype';
 
 const P = loadPrototype();
@@ -67,6 +68,9 @@ function expectSame(g: Garage, S: any) {
   expect(g.queue).toEqual(S.queue);
 }
 
+/** The kinds of diary line the workshop tests checked. */
+const found = new Set<string>();
+
 describe('the workshop week', () => {
   it('fitters service the same machines, find the same faults, and charge the same', () => {
     const R = seedRand(31);
@@ -75,9 +79,11 @@ describe('the workshop week', () => {
       const { S, g, ctx } = both(R), seed = int(R, 1, 1e9);
       P.setS(S);
       const rep = { events: [] as string[], costs: 0 };
+      const mk = diaryMark(P, g);
       P.withRNG(P.seedRand(seed), () => P.fitterWeek(rep));
       const ev: WorkshopEvent[] = [];
       const cost = fitterWeek(seedRand(seed), g, ctx, ev);
+      for (const k of diarySame(P, g, mk)) found.add(k);
       expectSame(g, S);
       expect(cost).toBe(rep.costs);
       expect(ev.some((e) => e.k === 'fitterWork')).toBe(rep.events.some((e) => / in the workshop: /.test(e)));
@@ -95,9 +101,11 @@ describe('the workshop week', () => {
       P.setS(S);
       const od = P.odLimit();
       const rep = { events: [] as string[], costs: 0 };
+      const mk = diaryMark(P, g);
       P.withRNG(P.seedRand(seed), () => P.wsmWeek(rep));
       const ev: WorkshopEvent[] = [];
       const cost = wsmWeek(seedRand(seed), g, ctx, od, ev);
+      for (const k of diarySame(P, g, mk)) found.add(k);
       expectSame(g, S);
       expect(cost).toBe(rep.costs);
       expect(ev.some((e) => e.k === 'shortFitters')).toBe(rep.events.some((e) => /more fitter/.test(e)));
@@ -109,6 +117,7 @@ describe('the workshop week', () => {
     expect(turn).toBeGreaterThan(100);
     expect(short).toBeGreaterThan(20);
     expect(booked).toBeGreaterThan(300);
+    console.log('workshop diary: ' + [...found].sort().join(', '));
   });
 
   it('turnover is called at the same condition for each kind of workshop manager', () => {

@@ -4,6 +4,7 @@
 //   Selling up: when you're the one stretched, a bigger outfit rings with an offer for your gear or the lot.
 //   Buying out: when a rival's going under, they'd rather sell to you than the auctioneer.
 
+import { mRef, news, note } from './diary';
 import { topUp, type Loan } from './bank';
 import { book } from './ledger';
 import { MOODS, type Mood } from './market';
@@ -79,17 +80,21 @@ export function shockWeek(rand: Rand, b: ShockState, d: Difficulty, events: Shoc
     const debt = collapseHC(b, hc!, hireEvents);
     b.queue.push({ k: 'collapse', name: hc!, debt });
     events.push({ k: 'collapse', name: hc!, debt });
+    note(b, { k: 'collapse', name: hc!, debt });
+    news(b, { k: 'collapseNews', name: hc! });
   }
   if (k === 'freeze') {
     b.freeze = b.week + int(rand, 10, 18);
     b.queue.push({ k: 'freeze', until: b.freeze });
     events.push({ k: 'freeze', until: b.freeze });
+    note(b, { k: 'freeze', until: b.freeze });
   }
   if (k === 'insure') {
     b.insHard = b.week + 52;
     b.insX = 1.35;
     b.queue.push({ k: 'insure' });
     events.push({ k: 'insure' });
+    note(b, { k: 'insure' });
   }
 }
 
@@ -199,6 +204,7 @@ export function retire(b: SellUpState & { ownDone?: number; majorDone?: number }
     x.fleet += sellGear(b.fleet).length;
     x.stars = Math.max(x.stars, starsN);
   }
+  note(b, { k: 'retired', to: o.who, price: o.price });
   b.soldUp = { to: o.who ?? 'A contractor from the coast', price: o.price, walk: o.walk, week: b.week, ...info, fleet: sellGear(b.fleet).length, earned: Math.round(b.stats.earned), retired: true } as never;
   b.phase = 'sold';
   return o;
@@ -219,6 +225,8 @@ export function sellTwo(b: SellUpState, x: Rival, mood: Mood): number {
   book(b.acc, 'capital', -bprice);
   x.fleet += best.length;
   x.cash -= bprice;
+  note(b, { k: 'soldTwo', ms: best.map(mRef), to: x.name, price: bprice });
+  news(b, { k: 'boughtGearOff', who: x.name });
   return bprice;
 }
 
@@ -229,6 +237,7 @@ export function sellAll(b: SellUpState, x: Rival, mood: Mood, starsN: number, gs
   x.cash -= sp.price * 0.5;
   x.stars = Math.max(x.stars, starsN);
   b.soldUp = { to: x.name, price: sp.price, walk, week: b.week, ...info, fleet: sellGear(b.fleet).length, earned: Math.round(b.stats.earned) };
+  note(b, { k: 'soldBusiness', to: x.name, price: sp.price });
   b.phase = 'sold';
 }
 
@@ -278,7 +287,7 @@ export function buyOutPay(b: BuyOutState, price: number, addV: number, lendCap: 
 }
 
 /** Pay for it: the cash, and anything borrowed goes on the loan with a 1% fee. */
-export function payFor(b: BuyOutState, pp: { cash: number; loan: number }): void {
+export function payFor(b: BuyOutState, pp: { cash: number; loan: number }, from: string, two: boolean): void {
   b.bank -= pp.cash;
   book(b.acc, 'capital', pp.cash);
   if (pp.loan > 0) {
@@ -286,6 +295,7 @@ export function payFor(b: BuyOutState, pp: { cash: number; loan: number }): void
     topUp(b.loan, pp.loan);
     b.bank -= fee;
   }
+  note(b, { k: 'youBoughtOut', from, two, cash: pp.cash, loan: pp.loan });
 }
 
 /** Their machines come into your yard; whatever doesn't fit goes straight to auction. Returns how many went. */
@@ -324,7 +334,7 @@ export function buyOutOffer(cardRand: Rand, b: BuyOutState, x: Rival & { yard?: 
 
 /** Buy the whole outfit: their gear, one or two operators, and their track record (+2 a star, +2). */
 export function buyOutAll(rand: Rand, b: BuyOutState, x: Rival, o: BuyOutOffer, pp: { cash: number; loan: number }, room: () => number): number {
-  payFor(b, pp);
+  payFor(b, pp, x.name, false);
   const over = takeMachines(rand, b, o.yard, room);
   const taken = b.staff.map((p) => p.name);
   for (let i = 0; i < o.crew; i++) {
@@ -340,12 +350,13 @@ export function buyOutAll(rand: Rand, b: BuyOutState, x: Rival, o: BuyOutOffer, 
   b.rivals = b.rivals.filter((y) => y !== x);
   (b.gone = b.gone || []).push(x.name);
   b.buyouts = (b.buyouts || 0) + 1;
+  news(b, { k: 'boughtOutNews', name: x.name });
   return over;
 }
 
 /** Just buy their best two machines: the cash keeps them going a bit longer. */
 export function buyOutBest(rand: Rand, b: BuyOutState, x: Rival & { yard?: YardMachine[] }, o: BuyOutOffer, pp: { cash: number; loan: number }, room: () => number): number {
-  payFor(b, pp);
+  payFor(b, pp, x.name, true);
   const over = takeMachines(rand, b, o.best, room);
   x.yard = o.yard.filter((g) => !o.best.includes(g));
   x.fleet -= o.best.length;

@@ -4,6 +4,7 @@
 // A card's own numbers roll on the card's seed (so it reads the same every time it's shown); what happens
 // after the choice rolls on the career's stream. Words for the stories live in text/.
 
+import { note } from './diary';
 import { weeklyRepay } from './bank';
 import { dayOffset } from './calendar';
 import { book } from './ledger';
@@ -154,6 +155,7 @@ export function rainCallDay(b: CardState, wx: WeatherCtx, d: number, wet: boolea
       rep.costs += rw;
       book(b.acc, 'jobCosts', rw);
       events.push({ k: 'pugged', d, mm: mmD, cost: rw });
+      note(b, { k: 'pushedOn', d, mm: mmD, cost: rw });
     } else if (mmD >= RD[0]) {
       wet = false;
       const rl = REWORK_LIGHT * crews;
@@ -254,6 +256,7 @@ export function callWork(b: Biz, g: Machine): void {
   b.rep += 1;
   g.hours += 27;
   g.cond = Math.max(10, g.cond - 0.9);
+  note(b, { k: 'callout', amt: 6300 });
 }
 /** Pull your grader off a hire job for it: that job runs 3 days longer, and a wet-hire client may hold it against you (40%). */
 export function calloutPull(rand: Rand, b: Biz, g: Machine, gj: Job): boolean {

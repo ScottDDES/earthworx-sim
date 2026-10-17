@@ -3,6 +3,7 @@
 // handles faults found at a service themselves, asks for more fitters, and calls for worn-out gear to be turned over.
 // Nothing here writes words: it returns events, and the screens say them.
 
+import { note } from './diary';
 import type { Accounts } from './ledger';
 import { book } from './ledger';
 import { serviced, serviceFind, svcCost, svcLeft, patchCost, type Machine, type MachineType, type WorkshopCtx } from './machines';
@@ -67,12 +68,14 @@ export function afterService(rand: Rand, g: Garage, m: Machine, by: string | nul
       g.bank -= find.fix;
       book(g.acc, 'workshop', find.fix);
       events.push({ k: 'foundAndFixed', name: W.name, id: m.id, part: find.part, cost: find.fix });
+      note(g, { k: 'foundAndFixed', name: W.name, type: m.type, part: find.part, cost: find.fix });
     } else {
       const pt = patchCost(find.fix);
       g.bank -= pt;
       book(g.acc, 'workshop', pt);
       m.band = { part: find.part, fix: find.fix, w: g.week };
       events.push({ k: 'foundAndPatched', name: W.name, id: m.id, part: find.part, cost: pt });
+      note(g, { k: 'foundAndPatched', name: W.name, type: m.type, part: find.part, cost: pt });
     }
     return;
   }

@@ -7,7 +7,7 @@ import { yearOf } from './calendar';
 import { DIFFICULTY, costIdx as costIdxOf, difficultyOf, type Difficulty } from './difficulty';
 import { book, newAccounts, type Accounts } from './ledger';
 import { TYPES, newMachine, serviced, svcCost, value, type Machine } from './machines';
-import { MOODS, fmul as fmulOf, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, inspect as inspectL, bid as bidL, hammer as hammerL, type HammerResult, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
+import { MOODS, fmul as fmulOf, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, unlist, inspect as inspectL, bid as bidL, hammer as hammerL, type HammerResult, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
 import { fromState, hashN, int, seedRand, type Rand } from './rng';
 import { mkRivals, rivalsWeek, type Rival, type RivalEvent } from './rivals';
 import { newWhs, safetyWeek, type SafetyEvent, type Whs } from './safety';
@@ -21,6 +21,7 @@ import { afterService, fitterWeek, wsmWeek, type WorkshopEvent } from './worksho
 import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium as premiumOf } from './overheads';
 import { accept as acceptOffer, askWait as askWaitHire, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
 import { relWeek } from './relations';
+import { mRef, note, noteNews, type DiaryEntry } from './diary';
 import { dmap, mapWeek, type DistrictMap, type MapEvent } from './map';
 import { canTender, closeTender, crewDayCost, genTenders, otherContracts, setMk, subPrice, submitBid as submitBidT, withdrawBid as withdrawBidT, tbs, type CloseEvent, type Standing, type SubTender } from './tenders';
 import { closeCouncil, councilPrice, genMajor, genCouncil, canPrestige, progAct as progActC, setCmk, setHm as setHmC, setOh, setPlan as setPlanC, submitCouncil as submitCouncilT, type CouncilEvent, type ProgOp } from './council';
@@ -83,7 +84,9 @@ export interface Career {
   ownWon: number;
   ownDone: number;
   ownLate: number;
-  news: unknown[];
+  /** The site diary (last 40) and the district news (last 12), newest first. */
+  log: DiaryEntry[];
+  news: DiaryEntry[];
   rivSell: { type: Machine['type']; who: string }[];
   clear: { name: string; n: number }[];
   gone: string[];
@@ -219,6 +222,7 @@ export function newCareer(setup: Setup, seed: number, wxStart?: number): Career 
   c.rngSeed = String(seed);
   c.rngA = seed;
   c.youJob = null;
+  note(c, { k: 'started', co: c.co, town: c.town, loan: setup.loan });
   return c;
 }
 
@@ -229,6 +233,7 @@ export function open(c: Career): void {
   c.offers = genOffers(rand, c as never, fmul(c), c.won, c.won2);
   c.market = genMarket(rand, { week: c.week, won: c.won, mood: mood(c), rivSell: c.rivSell, clear: c.clear }, () => uid(c));
   genTenders(rand, c as never, canTender((t) => owns(c, t), c.rep, c.whs.sys), mood(c), fmul(c));
+  note(c, { k: 'open' });
 }
 
 // ---------- the player's actions ----------
@@ -260,6 +265,7 @@ export function hammer(c: Career): HammerResult | null {
     res.machine.id = uid(c);
     tcAdd(c as never, 'auction');
     tickets(c);
+    note(c, { k: 'wonAuction', m: mRef(res.machine), total: res.total });
   }
   return res;
 }
@@ -333,6 +339,7 @@ export function hireCand(c: Career, id: string): boolean {
   seatStaff(c as never);
   tcAdd(c as never, 'hired');
   tickets(c);
+  note(c, { k: 'hired', name: cd.name, role: cd.role, wage: cd.ask });
   return true;
 }
 
@@ -344,6 +351,7 @@ export function hireManager(c: Career, role: MgrRole, id: string): boolean {
   c.staff.push(hireMgrPerson(cd, uid(c)));
   tcAdd(c as never, 'hired');
   tickets(c);
+  note(c, { k: 'hiredMgr', name: cd.name, trait: cd.trait, role, wage: cd.ask });
   return true;
 }
 
@@ -353,6 +361,7 @@ export function moveYard(c: Career, k: YardId): boolean {
   c.bank -= Y.setup;
   book(c.acc, 'capital', Y.setup);
   c.yard = k;
+  note(c, { k: 'movedYard', yard: k, setup: Y.setup });
   return true;
 }
 
@@ -452,7 +461,10 @@ export function endWeek(c: Career): Report | null {
   BK.lc = bw.paid - bw.odInterest;
   rep.costs += bw.paid;
   if (bw.caughtUp) ev.push({ k: 'caughtUp', amt: bw.caughtUp });
-  if (bw.missedNow) ev.push({ k: 'missedRepay', n: c.loan.missed });
+  if (bw.missedNow) {
+    ev.push({ k: 'missedRepay', n: c.loan.missed });
+    note(c, { k: 'missedRepay', n: c.loan.missed });
+  }
   bankCalls(c, od, ev as BankCallEvent[]);
   shockWeek(rand, c as never, d, ev as ShockEvent[], ev as HireEvent[]);
   relWeek(c);
@@ -488,9 +500,15 @@ export function endWeek(c: Career): Report | null {
     }
   }
   const turned = marketWeek(c.mkt, wx, c.week);
-  if (turned) ev.push({ k: 'mood', mood: turned });
+  if (turned) {
+    ev.push({ k: 'mood', mood: turned });
+    noteNews(c, { k: 'mood', mood: turned });
+  }
+  // what the rivals and the floods did goes in the diary and the news too
+  const said = ev.length;
   rivalsWeek(rand, c as never, { fmul: fmul(c), mood: mood(c), mg: DIFFICULTY[d].mg, spawn: DIFFICULTY[d].spawn, canBuyOut: !!c.won2 && !c.loan.missed, won2: c.won2, won3: c.won3 }, ev as RivalEvent[]);
   mapWeek(rand, c.dmap!, c.week, fmul(c), mood(c), rep.mm, c.rivals.map((x) => x.name), ev as MapEvent[]);
+  for (const e of ev.slice(said)) noteNews(c, e as never);
   const T = tc(c as never);
   if (c.jobs.filter((j) => (j.kind === 'sub' || j.kind === 'own') && (j.state === 'running' || j.state === 'subbed') && !j.finished).length >= 2) T.crews2 = 1;
   if (mood(c) === 'bust') {
@@ -509,7 +527,7 @@ export function endWeek(c: Career): Report | null {
   genCouncil(wr, c as never, planCtx(c), fmul(c));
   genMajor(wr, c as never, planCtx(c), fmul(c), canPrestige(c as never, c.whs.sys, c.yard));
   checkWin(c as never);
-  for (const id of unlockWeek(c as never)) ev.push({ k: 'unlocked', id });
+  for (const id of unlockWeek(c as never)) { ev.push({ k: 'unlocked', id }); note(c, { k: 'unlocked', id }); }
   mgrWeek(c, rand);
   rainCallCheck(c as never, wx);
   rep.tix = tickets(c);
@@ -544,8 +562,15 @@ export function service(c: Career, id: string): boolean {
   book(c.acc, 'workshop', cost);
   tcAdd(c as never, 'svc');
   serviced(m, 'dealer');
+  note(c, { k: 'serviced', type: m.type, cost });
   afterService(stream(c), c as never, m, null, w, []);
   return true;
+}
+
+/** Take a privately listed machine off sale. */
+export function unlistMachine(c: Career, id: string): void {
+  const m = c.fleet.find((x) => x.id === id);
+  if (m) unlist(c, m);
 }
 
 /** Sell an idle machine: trade it in, put it in the auction, or list it privately. */

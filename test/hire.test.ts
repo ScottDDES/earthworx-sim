@@ -9,6 +9,7 @@ import {
   relTier, relWeek, seedRand, settleJob, startWeek, stars, waitOdds, wetDay, whyNot, workshopCtx,
   type Biz, type ContractBiz, type Difficulty, type HireEvent, type Machine, type MachineType, type Person, type Role, type TownId, type WeekReport,
 } from '../src';
+import { diaryMark, diarySame } from './diaryCheck';
 import { loadPrototype } from './prototype';
 
 const P = loadPrototype();
@@ -104,7 +105,7 @@ describe('offers', () => {
 describe('a few weeks of hire work', () => {
   it('whole businesses run the same, week after week', () => {
     const R = seedRand(63);
-    const seen: Record<string, number> = {};
+    const seen: Record<string, number> = {}, said = new Set<string>();
     for (let i = 0; i < 400; i++) {
       const { b, S, d, wx, won, won2, fm } = randomBiz(R);
       const ctx = () => workshopCtx(b.staff, b.fleet.length, YARDS.home.svc, DIFFICULTY[d].brk, costIdx(b.week, d));
@@ -112,6 +113,7 @@ describe('a few weeks of hire work', () => {
         // the offers, and take a few
         const so = int(R, 1, 1e9);
         P.setS(S);
+        const mk = diaryMark(P, b);
         P.withRNG(P.seedRand(so), () => P.genOffers());
         b.offers = genOffers(seedRand(so), b, fm, won, won2);
         for (const o of b.offers.slice()) {
@@ -169,6 +171,7 @@ describe('a few weeks of hire work', () => {
         expect(rep.costs).toBeCloseTo(prep.costs, 6);
         expect(b.stats.earned).toBe(S.stats.earned);
         for (const e of ev) seen[e.k] = (seen[e.k] || 0) + 1;
+        for (const k of diarySame(P, b, mk)) said.add(k);
 
         // a late payer's card waits for the player: settle it the friendly way so the week can go on
         for (const q of b.queue.filter((x) => x.k === 'late')) {
@@ -193,6 +196,8 @@ describe('a few weeks of hire work', () => {
       }
     }
     for (const k of ['taken', 'booked', 'refused', 'finished', 'late', 'breakdown']) expect(seen[k], k).toBeGreaterThan(10);
+    console.log('hire diary: ' + [...said].sort().join(', '));
+    for (const k of ['tookOn', 'bookedIn', 'saidNo', 'finished']) expect(said.has(k), k).toBe(true);
   });
 });
 

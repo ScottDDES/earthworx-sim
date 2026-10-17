@@ -8,6 +8,7 @@ import {
   type CouncilEvent, type CouncilTender, type CouncilWorld, type Difficulty, type Machine, type MachineType, type Mood,
   type Person, type PlanCtx, type PlanEval, type ProgOp, type Role, type Standing, type TownId, type YardId,
 } from '../src';
+import { diaryMark, diarySame } from './diaryCheck';
 import { loadPrototype } from './prototype';
 import { bottText, issueText } from '../src/text/plan';
 
@@ -98,7 +99,7 @@ describe('council packages', () => {
 
   it('flood recovery programs: both towns, lots, deadlines and the prestige version', () => {
     const R = seedRand(94);
-    let made = 0, prest = 0;
+    let made = 0, prest = 0, let_ = 0;
     for (let i = 0; i < 600; i++) {
       const { st, S, p } = randomCouncil(R), seed = int(R, 1, 1e9);
       st.won3 = S.won3 = true;
@@ -107,15 +108,18 @@ describe('council packages', () => {
       P.setS(S);
       const ok = P.canPrestige();
       expect(canPrestige(st, S.whs.sys, S.yard)).toBe(ok);
+      const mk = diaryMark(P, st);
       P.withRNG(P.seedRand(seed), () => P.genMajor());
       const pc = { ...p(), yard: S.yard };
       const t = genMajor(seedRand(seed), st, pc, P.fmul(), ok);
+      if (diarySame(P, st, mk).includes('programLet')) let_++;
       expect(st.ctenders).toEqual(S.ctenders.map(strip));
       expect(st.seq).toBe(S.seq);
       if (t) { made++; if (t.prestige) prest++; }
     }
     expect(made).toBeGreaterThan(50);
     expect(prest).toBeGreaterThan(5);
+    expect(let_).toBe(made);
   });
 });
 

@@ -3,6 +3,8 @@
 
 import { HEAD_CONTRACTORS } from './market';
 
+import { note } from './diary';
+
 export const CLIENT_PM: Record<string, string> = { 'Border Civil': 'Trev Baxter', 'Hartley Bros': 'Lou Hartley', 'Macintyre Plant': 'Jules Moreno', 'Dry Creek Civil': 'Sandy Pike' };
 
 export type Tier = 'pref' | 'good' | 'ok' | 'wary' | 'out';
@@ -17,12 +19,13 @@ export function relTier(rel: Record<string, number> | undefined, c: string): Tie
 }
 
 /** Moves a head contractor's opinion of you. Returns the new tier if it changed, so screens can say so. */
-export function relAdd(st: { rel?: Record<string, number> }, c: string, d: number): Tier | null {
+export function relAdd(st: { rel?: Record<string, number>; week: number }, c: string, d: number): Tier | null {
   if (!(HEAD_CONTRACTORS as readonly string[]).includes(c) || !d) return null;
   st.rel = st.rel || {};
   const was = relTier(st.rel, c);
   st.rel[c] = Math.max(-10, Math.min(10, relOf(st.rel, c) + d));
   const now = relTier(st.rel, c);
+  if (was !== now) note(st, { k: 'standing', hc: c, tier: now });
   return was !== now ? now : null;
 }
 

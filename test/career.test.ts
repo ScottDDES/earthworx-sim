@@ -8,6 +8,7 @@ import { cardView, resultText } from '../src/text/cardView';
 import { hammerText, lotFrom, lotGuide } from '../src/text/market';
 import { ownerFlags } from '../src/text/office';
 import { roadNote } from '../src/text/map';
+import { diaryLines } from '../src/text/diary';
 import { jobTitle } from '../src/text/work';
 import { docketLines, docketStamps, eventText } from '../src/text/docket';
 import { LTI_STORIES } from '../src/text/safety';
@@ -84,6 +85,15 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
       at = where;
       const d = firstDiff(common(c, true), common(P.getS(), false));
       if (d) throw new Error(`${where}: ${d}`);
+      // the site diary and the district news, word for word
+      const PS = P.getS(), un = (L: any[]) => L.map((x) => 'wk ' + x.w + ': ' + x.t);
+      for (const [k, mine, theirs] of [['diary', c.log, PS.log], ['news', c.news, PS.news || []]] as const) {
+        const A = un(diaryLines(c, mine)), B = un(theirs);
+        for (const x of mine) KINDS.add(x.e.k);
+        for (let i = 0; i < Math.max(A.length, B.length); i++) {
+          if (A[i] !== B[i]) throw new Error(`${where}: ${k} differs at line ${i}\n  engine: ${A[i]}\n  proto:  ${B[i]}`);
+        }
+      }
     };
     check('start');
     const both = (where: string, proto: () => void, engine: () => void) => { proto(); engine(); check(where); };
@@ -189,6 +199,8 @@ const SEEN = new Set<string>();
 /** The kinds of docket line that were checked. */
 const EVENTS = new Set<string>();
 let FLAGS = 0;
+/** The kinds of diary and news entry that were checked. */
+const KINDS = new Set<string>();
 /** The road states whose words were checked. */
 const ROADS = new Set<string>();
 
@@ -206,6 +218,7 @@ describe('whole careers', () => {
     console.log(runs.join('\n'));
     console.log('cards worded: ' + [...SEEN].sort().join(', '));
     console.log('docket lines: ' + [...EVENTS].sort().join(', '));
+    console.log('diary kinds: ' + [...KINDS].sort().join(', '));
     console.log('roads worded: ' + [...ROADS].sort().join(', '));
     expect(ROADS.size).toBe(6);
     expect(FLAGS).toBeGreaterThan(1000);

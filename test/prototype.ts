@@ -42,7 +42,7 @@ const EXPORTS = [
   'shockWeek', 'meStretched', 'sellBuyer', 'ownerFlags', 'plOf', 'cashForecast', 'runway', 'fixedWeek', 'borrowRoom', 'borrow', 'payDown', 'alerts', 'lastInc', 'overheads', 'workInHand', 'retireOffer', 'retireNow', 'askBuyOut', 'sellUpWeek', 'askSellUp', 'sellPrice', 'walkAway', 'sellBest', 'rvYard', 'buyOutPay',
   'canBuyOut', 'branchWeek', 'openBranch', 'toBranch', 'toHome', 'closeBranch', 'brCrews', 'canBranch', 'room',
   'callGrader', 'earlyClient', 'rainCallCheck', 'checks', 'checks2', 'checks3', 'checks4', 'checks5', 'TICKETS', 'checkTix',
-  'tc', 'UNLOCKS', 'lastInc', 'hasCrew', 'ownedCounts', 'moveYard', 'mapTab',
+  'tc', 'UNLOCKS', 'lastInc', 'hasCrew', 'ownedCounts', 'moveYard', 'mapTab', 'hireBrMgr', 'unlist', 'unlist',
 ];
 
 export interface Proto {
@@ -93,7 +93,7 @@ function weekHooks(): string {
     __bankCalls: function(rep){\n${calls}},
     __curve: function(){\n${curveBit}},
     __rainDay: function(d, rep){\n${rainDay}  return wet; },
-    __open: function(){ S.phase='play'; withRNG(worldRNG('open'), function(){ genOffers(); genMarket(); genTenders(); }); },
+    __open: function(){ S.phase='play'; withRNG(worldRNG('open'), function(){ genOffers(); genMarket(); genTenders(); }); log('Open for business.'); },
     __startWeek: function(){ S.jobs.forEach(function(j){ j.wk = 0; j.wkDays = 0; }); },`;
 }
 
@@ -131,7 +131,10 @@ export function prototypeSalesStep(): (S: any, r: () => number) => { rep: any } 
   const body = js.slice(start, stop);
   const P = loadPrototype();
   const fn = new Function('P', 'S', 'r', `var rep = { costs:0, events:[] }, value = P.value, mood = function(){ return S.mkt ? S.mkt.mood : 'steady'; }, MOODS = P.MOODS,
-    book = function(k, amt){ S.acc[k] = (S.acc[k]||0) + amt; }, f = String, log = function(){}, machineLabel = function(){ return ''; }, TYPES = P.TYPES;
+    book = function(k, amt){ S.acc[k] = (S.acc[k]||0) + amt; }, TYPES = P.TYPES,
+    f = function(n){ return (n<0?'−$':'$')+Math.abs(Math.round(n)).toLocaleString('en-AU'); },
+    log = function(t){ (S.log = S.log||[]).unshift({ w:S.week, t:t }); if(S.log.length>40) S.log.length = 40; },
+    machineLabel = function(m){ return (m.multi ? 'Multi-tyre roller' : TYPES[m.type].name)+', '+m.year; };
     ${body}
     return { rep: rep };`);
   return (S, r) => {

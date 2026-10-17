@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { MOODS, TICKETS, TIER, canBuyOut, checks, checks2, checks3, checks4, checks5, ownedCounts, rung, rvForm, rvPhase, stars, game } from '@engine';
 import { STEPS, TICKET_CATS, TICKET_TEXT, checkWords, districtForm, starTxt } from '@engine/text/career';
+import { diaryLines } from '@engine/text/diary';
 import { f } from '../format';
 
 type Career = game.Career;
@@ -107,8 +108,19 @@ function District({ c, act }: { c: Career; act: Act }) {
           )}
         </div>
       ))}
+      {c.news?.length > 0 && (
+        <>
+          <div className="sub" style={{ marginTop: 6 }}>Lately</div>
+          <Log lines={diaryLines(c, c.news.slice(0, 5))} />
+        </>
+      )}
     </div>
   );
+}
+
+/** Diary lines: the week, then what happened. */
+function Log({ lines }: { lines: { w: number; t: string }[] }) {
+  return <div className="log">{lines.map((e, i) => <div key={i}><span className="num">Wk {e.w}</span><span>{e.t}</span></div>)}</div>;
 }
 
 function RetireSheet({ c, act, onClose }: { c: Career; act: Act; onClose: () => void }) {
@@ -161,6 +173,10 @@ export function CareerTab({ c, act, onNew }: { c: Career; act: Act; onNew: () =>
       </div>
       <Ladder c={c} />
       <District c={c} act={act} />
+      <div className="card">
+        <div className="sub">Site diary</div>
+        <Log lines={diaryLines(c, (c.log || []).slice(0, 14))} />
+      </div>
       {c.won && c.phase === 'play' && (
         <div className="card">
           <b>Sell up and retire</b>

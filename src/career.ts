@@ -1,6 +1,7 @@
 // The career ladder: eight rungs from owner-operator to prestige contractor, what each needs, what unlocks
 // on the way, and the tickets (achievements) earned by doing the real thing. Names and wording live in text/career.ts.
 
+import { note } from './diary';
 import type { Loan } from './bank';
 import type { Machine } from './machines';
 import { ownedCounts } from './planning';
@@ -195,6 +196,7 @@ export function checkTix(st: Ladder, x: TicketCtx): string[] {
       st.tixN = (st.tixN || 0) + 1;
       st.tix[t.id] = { w: st.week, no: st.tixN };
       got.push(t.id);
+      note(st, { k: 'ticket', id: t.id });
     }
   }
   if (got.length) st.tixNew = (st.tixNew || []).concat(got);

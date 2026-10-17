@@ -1,6 +1,7 @@
 // A branch depot in the other town, once you're a regional contractor with a regional depot or plant hub.
 // Your crews there work the other town's real rain; a manager runs it, and its local reputation fills its order book.
 
+import { mRef, note } from './diary';
 import { book, type Accounts } from './ledger';
 import { TYPES, breaks, svcLeft, wear, type Machine, type WorkshopCtx } from './machines';
 import { invoice, type Biz, type WeekReport } from './hire';
@@ -70,12 +71,14 @@ export function openBranch(rand: Rand, b: BranchState, k: BranchMgrKind): boolea
   b.bank -= BR_SETUP;
   book(b.acc, 'capital', BR_SETUP);
   b.branch = { town: brTown(b.town), w0: b.week, mgr: { name: pick(rand, NAMES), skill: k, wage: M.wage }, rep: 15, hist: [], boost: null, ask: b.week };
+  note(b, { k: 'brOpened', town: b.branch.town, cost: BR_SETUP, mgr: b.branch.mgr!.name });
   return true;
 }
 export function hireBrMgr(rand: Rand, b: BranchState, k: BranchMgrKind): void {
   const B = b.branch, M = BR_MGR[k];
   if (!B || B.mgr || !M) return;
   B.mgr = { name: pick(rand, NAMES), skill: k, wage: M.wage };
+  note(b, { k: 'brMgr', name: B.mgr.name, town: B.town });
 }
 export function toBranch(b: BranchState, id: string): boolean {
   const m = b.fleet.find((x) => x.id === id);
@@ -83,6 +86,7 @@ export function toBranch(b: BranchState, id: string): boolean {
   m.status = 'branch';
   b.bank -= BR_FLOAT;
   book(b.acc, 'branch', BR_FLOAT);
+  note(b, { k: 'toBranch', m: mRef(m), town: b.branch.town });
   return true;
 }
 export function toHome(b: BranchState, id: string, room: number): boolean {
@@ -91,6 +95,7 @@ export function toHome(b: BranchState, id: string, room: number): boolean {
   m.status = 'idle';
   b.bank -= BR_FLOAT;
   book(b.acc, 'branch', BR_FLOAT);
+  note(b, { k: 'toHome', m: mRef(m) });
   return true;
 }
 /** Close it: the gear comes home (paying at most three floats). */
@@ -98,6 +103,7 @@ export function closeBranch(b: BranchState): void {
   if (!b.branch) return;
   for (const m of brMachines(b.fleet)) m.status = 'idle';
   b.bank -= BR_FLOAT * Math.min(3, brMachines(b.fleet).length);
+  note(b, { k: 'brClosed', town: b.branch.town });
   b.branch = null;
 }
 

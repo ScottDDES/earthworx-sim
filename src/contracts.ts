@@ -5,6 +5,7 @@
 // Any contract waiting to start can be subbed out to a local outfit.
 // Also here: the working day for every kind of job, the end of the day, and settling each job at the end of the week.
 
+import { jobRef, mRef, note } from './diary';
 import { book } from './ledger';
 import {
   driverOff, freeDriver, freeMachine, freeUp, hireDay, invoice, jobCost, jobDone, release, seat,
@@ -89,6 +90,7 @@ export function stealCart(b: ContractBiz): Machine | null {
   x.dayCost = subDayCost(x);
   m.status = 'idle';
   m.jobId = null;
+  note(b, { k: 'cartTaken', job: jobRef(x), hire: TYPES.cart.dry });
   return m;
 }
 
@@ -110,7 +112,10 @@ export function staffSubs(b: ContractBiz, dayNow: number | null): void {
     j.who = d;
     j.state = 'running';
     seat(b, j, d);
-    if (dayNow != null) j.mob = { w: b.week, d: dayNow + 1 };
+    if (dayNow != null) {
+      j.mob = { w: b.week, d: dayNow + 1 };
+      note(b, { k: 'movedOnSub', job: jobRef(j) });
+    }
     // Leave a spare cart in the yard if another subcontract is waiting on one.
     const others = b.jobs.some((o) => o !== j && o.kind === 'sub' && o.state === 'waiting'), c2 = others ? null : freeMachine(b, 'cart');
     if (c2) {
@@ -121,14 +126,18 @@ export function staffSubs(b: ContractBiz, dayNow: number | null): void {
     } else j.hireIn = TYPES.cart.dry;
     // Your own staff take the roller and carts before you call labour hire.
     j.cas = [];
+    const names: string[] = [];
     for (const k of ['roller', 'cart', 'cart'] as const) {
       const p = freeStaff(b, k);
-      if (p) p.jobId = j.id;
-      else (j.cas as string[]).push(k);
+      if (p) {
+        p.jobId = j.id;
+        names.push(p.name);
+      } else (j.cas as string[]).push(k);
     }
     j.dayCost = subDayCost(j);
     b.bank -= MOB;
     jobCost(b, j, MOB);
+    note(b, { k: 'floated', place: j.place, cost: MOB, cart2: !!c2, hire: TYPES.cart.dry, names, casuals: (j.cas as string[]).length > 0 });
   }
   // A spare cart in the yard replaces a hired second cart, as long as nobody's waiting for it.
   if (!b.jobs.some((o) => o.kind === 'sub' && o.state === 'waiting')) {
@@ -141,6 +150,7 @@ export function staffSubs(b: ContractBiz, dayNow: number | null): void {
       j.cart2Id = c3.id;
       j.hireIn = 0;
       j.dayCost = subDayCost(j);
+      note(b, { k: 'spareCart', job: jobRef(j) });
     }
   }
   seatStaff(b);
@@ -164,6 +174,7 @@ export function seatStaff(b: ContractBiz): void {
         const p = freeStaff(b, k);
         if (!p) return true;
         p.jobId = j.id;
+        note(b, { k: 'tookOverThe', name: p.name, type: k, job: jobRef(j) });
         return false;
       });
       if ((j.cas as string[]).length !== before) j.dayCost = subDayCost(j);
@@ -193,6 +204,7 @@ export function seatStaff(b: ContractBiz): void {
             }
           } else if (k === 'truck') j.truckCasualDay = Math.max(0, (j.truckCasualDay as number) - c);
           else j.casualDay = Math.max(0, (j.casualDay as number) - c);
+          note(b, { k: 'tookOverA', name: p.name, type: k, job: jobRef(j) });
         }
       }
     }
@@ -200,7 +212,7 @@ export function seatStaff(b: ContractBiz): void {
 }
 
 /** Your machine goes onto a contract in place of a hire-in (or a subbie, on wet hire). */
-export function swapIn(b: ContractBiz, j: Job, m: Machine, k: MachineType): void {
+export function swapIn(b: ContractBiz, j: Job, m: Machine, k: MachineType, by?: string): void {
   const gap = j.gap as Record<string, number>;
   if (!(gap[k]! > 0) || m.status !== 'idle') return;
   m.status = 'job';
@@ -217,6 +229,7 @@ export function swapIn(b: ContractBiz, j: Job, m: Machine, k: MachineType): void
     }
     if (j.fuelCrew != null) j.fuelCrew = (j.fuelCrew as number) + TYPES[k].fuel / (j.crews as number);
   } else j.hireWeek = Math.max(0, (j.hireWeek as number) - TYPES[k].dry);
+  note(b, { k: 'swappedIn', by: by ?? null, type: k, job: jobRef(j), wet: hm(j as { hm?: Record<string, string> }, k) === 'wet' });
 }
 
 /**
@@ -238,7 +251,7 @@ export function topUpOwn(b: ContractBiz, j: Job): void {
         if (!(noSwap && noSwap[k]! > b.week) && !b.queue.some((q) => q.k === 'swapin' && q.id === j.id && q.type === k)) b.queue.push({ k: 'swapin', id: j.id, type: k });
         break;
       }
-      swapIn(b, j, m, k);
+      swapIn(b, j, m, k, ops.name);
     }
   }
 }
@@ -308,7 +321,11 @@ export function staffOwn(b: ContractBiz, dayNow: number | null): void {
     j.state = 'running';
     b.bank -= crews * MOB;
     jobCost(b, j, crews * MOB);
-    if (dayNow != null) j.mob = { w: b.week, d: dayNow + 1 };
+    if (dayNow != null) {
+      j.mob = { w: b.week, d: dayNow + 1 };
+      note(b, { k: 'movedOnOwn', job: jobRef(j) });
+    }
+    note(b, { k: 'onSite', job: jobRef(j), owned: (j.ownedIds as string[]).length, hireWeek: j.hireWeek, subDay: j.subDay, staff: crew.used.length - 1, casuals: j.casuals });
   }
 }
 
@@ -642,6 +659,7 @@ export function terminateWeek(b: ContractBiz, events: ContractEvent[]): void {
       b.blocked[j.client] = b.week + 26;
       release(b, j, events as HireEvent[]);
       events.push({ k: 'terminated', jobId: j.id, client: j.client });
+      note(b, { k: 'terminated', job: jobRef(j) });
       relAdd(b, j.client, -5);
     }
   }
@@ -684,6 +702,7 @@ export function programCheck(b: ContractBiz, j: Job, events: ContractEvent[]): v
       const lost = cutWork(j, 0.3);
       b.rep = Math.max(0, b.rep - 1);
       events.push({ k: 'halfway', jobId: j.id, done, cut: lost });
+      note(b, { k: 'roadsMoved', job: jobRef(j) });
     } else events.push({ k: 'halfway', jobId: j.id, done, cut: 0 });
   }
   if (b.week > (j.due as number)) {
@@ -742,6 +761,7 @@ export function ownWeek(rand: Rand, b: ContractBiz, j: Job, rep: WeekReport, old
       rep.costs += (j.crews as number) * MOB;
     }
     // a program cut at the deadline has already said so (programCheck)
+    note(b, { k: 'ownDone', job: jobRef(j), earned: j.earned });
     if (!j.cut) events.push({ k: 'ownFinished', jobId: j.id, major: !!j.major, late, ld, gain, subbedTo: subbed ? sub!.name : null, early: !!j.major && b.week <= (j.due as number) - 1 });
     release(b, j, events as HireEvent[]);
   }
@@ -826,6 +846,7 @@ export function settleJob(rand: Rand, b: ContractBiz, j: Job, rep: WeekReport, d
       b.bank -= fl;
       rep.costs += fl;
       events.push({ k: 'finished', jobId: j.id, kind: j.kind, client: j.client, gain, earned: j.earned });
+      note(b, { k: 'finished', job: jobRef(j), earned: j.earned });
       release(b, j, events as HireEvent[]);
     }
   })();
@@ -885,6 +906,7 @@ export function subOut(rand: Rand, b: ContractBiz, id: string, i: number): boole
     const claimLeft = (j.price as number) - (j.claimed as number);
     j.subShare = Math.min(0.97, q.cost! / Math.max(1, claimLeft));
   }
+  note(b, { k: 'subbedOut', job: jobRef(j), name: q.name, crews: q.crews, cost: q.cost, rate: q.rate });
   return true;
 }
 
@@ -897,6 +919,7 @@ export function canTakeBack(b: ContractBiz, j: Job): boolean {
 export function takeBack(b: ContractBiz, id: string): boolean {
   const j = b.jobs.find((x) => x.id === id);
   if (!j || j.state !== 'subbed' || !canTakeBack(b, j)) return false;
+  note(b, { k: 'tookBack', job: jobRef(j), name: (j.sub as { name: string }).name });
   j.state = 'waiting';
   j.sub = null;
   j.subShare = 0;

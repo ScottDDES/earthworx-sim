@@ -2,6 +2,7 @@
 // borrowing against the fleet and paying the loan down, and which machines need the workshop.
 
 import { monthIdx } from './calendar';
+import { note } from './diary';
 import { book, type Accounts } from './ledger';
 import { weeklyRepay, type Loan } from './bank';
 import { svcLeft, type Machine } from './machines';
@@ -79,7 +80,7 @@ export function borrowRoom(lendCap: number, loan: Loan): number {
 }
 
 /** Borrow against the fleet: a 1% establishment fee, repaid with the loan. Only once you're ready to subcontract. */
-export function borrow(st: { bank: number; loan: Loan; acc: Accounts; won?: boolean }, amt: number, room: number): number {
+export function borrow(st: { week: number; bank: number; loan: Loan; acc: Accounts; won?: boolean }, amt: number, room: number): number {
   const L = st.loan;
   amt = Math.min(amt, room);
   if (!st.won || L.missed > 0 || amt < 5000) return 0;
@@ -89,11 +90,12 @@ export function borrow(st: { bank: number; loan: Loan; acc: Accounts; won?: bool
   book(st.acc, 'loan', -amt);
   L.weekly = weeklyRepay(L.bal);
   L.paidOff = false;
+  note(st, { k: 'borrowed', amt, fee, weekly: L.weekly });
   return amt;
 }
 
 /** Pay spare cash off the loan. */
-export function payDown(st: { bank: number; loan: Loan; acc: Accounts }, amt: number): number {
+export function payDown(st: { week: number; bank: number; loan: Loan; acc: Accounts }, amt: number): number {
   const L = st.loan;
   amt = Math.min(amt, L.bal, Math.max(0, st.bank));
   if (amt <= 0) return 0;
@@ -105,6 +107,7 @@ export function payDown(st: { bank: number; loan: Loan; acc: Accounts }, amt: nu
     L.bal = 0;
     L.paidOff = true;
   }
+  note(st, { k: 'paidDown', amt, bal: L.bal, weekly: L.weekly });
   return amt;
 }
 

@@ -6,6 +6,7 @@
 // A machine nearly done on a day job can have the next one booked in behind it, if the client will wait.
 // Nothing here writes sentences; it returns codes and events, and the screens say them.
 
+import { jobRef, note } from './diary';
 import { book, type Accounts } from './ledger';
 import { breakdown, breaks, TYPES, wear, type Machine, type MachineType, type WorkshopCtx } from './machines';
 import { HEAD_CONTRACTORS } from './market';
@@ -286,6 +287,7 @@ export function accept(b: Biz, id: string): Job | null {
   jobCost(b, j, fl);
   b.jobs.push(j);
   b.offers = b.offers.filter((x) => x.id !== id);
+  note(b, { k: 'tookOn', job: jobRef(j), float: fl });
   return j;
 }
 
@@ -323,6 +325,7 @@ export function askWait(rand: Rand, b: Biz, wx: WeatherCtx, id: string): WaitAns
   if (rand() < W.p) return { yes: true, job: bookIn(b, o, cur), wait: W.wait };
   const why = W.wet >= 50 ? 'rain' : o.kind === 'council' ? 'roster' : W.wait >= 4 ? 'tooLong' : 'someoneElse';
   b.offers = b.offers.filter((x) => x !== o);
+  note(b, { k: 'saidNo', job: jobRef(o as never), why, wait: W.wait });
   return { yes: false, why, wait: W.wait };
 }
 
@@ -335,6 +338,7 @@ export function bookIn(b: Biz, o: Offer, cur: Job): Job {
   jobCost(b, j, fl);
   b.jobs.push(j);
   b.offers = b.offers.filter((x) => x.id !== o.id);
+  note(b, { k: 'bookedIn', job: jobRef(j), after: jobRef(cur), float: fl });
   return j;
 }
 
@@ -358,6 +362,7 @@ export function handOver(b: Biz, j: Job, d: number | null, events: HireEvent[]):
     q.after = null;
     if (!m) {
       events.push({ k: 'bookedNoMachine', jobId: q.id, type: q.type });
+      note(b, { k: 'bookedNoMachine', job: jobRef(q), type: q.type });
       b.jobs = b.jobs.filter((x) => x !== q);
       continue;
     }

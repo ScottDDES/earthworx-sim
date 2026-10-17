@@ -3,6 +3,7 @@
 // (cheapest gets 60), non-price up to 40 (track record, safety, finances, work already on, standing with the
 // head contractor). A head contractor you're preferred with sometimes offers a road direct, against their budget.
 
+import { jobRef, note } from './diary';
 import { YARDS, type YardId } from './yards';
 import { TYPES, type Machine } from './machines';
 import { HEAD_CONTRACTORS, type Mood } from './market';
@@ -261,6 +262,7 @@ export function submitBid(st: Tenderer, id: string, price: number, capFull: bool
   const t = st.tenders.find((x) => x.id === id);
   if (!t || (capFull && !t.bid)) return false;
   t.bid = price;
+  note(st, { k: 'priced', place: t.place, L: t.L, hc: t.hc, bid: price });
   return true;
 }
 
@@ -287,6 +289,7 @@ export type CloseEvent = { k: 'directLapsed'; hc: string } | { k: 'wentTo'; name
 export function closeTender(rand: Rand, st: Tenderer, t: SubTender, me: Standing, coName: string, mood: Mood, events: CloseEvent[]): void {
   if (t.direct) {
     if (!t.bid) {
+      note(st, { k: 'directLapsed', place: t.place, L: t.L, hc: t.hc });
       relAdd(st, t.hc, -1);
       events.push({ k: 'directLapsed', hc: t.hc });
       return;
@@ -330,7 +333,10 @@ export function closeTender(rand: Rand, st: Tenderer, t: SubTender, me: Standing
   t.winner = w.name;
   if (!w.you) mapRival(st.dmap!, t.mapIds, w.name, t.weeks, st.week);
   if (t.bid) st.queue.push({ k: 'tresult', t });
-  else events.push({ k: 'wentTo', name: w.name, price: w.price });
+  else {
+    events.push({ k: 'wentTo', name: w.name, price: w.price });
+    note(st, { k: 'subWentTo', place: t.place, L: t.L, hc: t.hc, name: w.name, price: w.price });
+  }
 }
 
 /** You won: sign it. It starts once a grader, roller, water cart and a driver are free (contracts.ts staffs it). */
@@ -344,6 +350,7 @@ export function signSub(st: Tenderer & { jobs: Job[] }, t: SubTender): Job {
   st.jobs.push(j);
   st.subsWon++;
   mapWork(st.dmap!, t.mapIds, j);
+  note(st, { k: 'signedSub', job: jobRef(j), bid: t.bid, due: j.due });
   return j;
 }
 

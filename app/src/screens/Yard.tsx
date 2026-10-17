@@ -112,6 +112,7 @@ function MachineCard({ c, m, act, onSell }: { c: Career; m: Machine; act: Act; o
       <div className="btns">
         <button type="button" className="btn" disabled={!(c.bank + odLimit(c) >= cost && m.status !== 'auction' && m.status !== 'listed')} onClick={() => act((x) => game.service(x, m.id))}>Service · {f(cost)}</button>
         {m.status === 'idle' && <button type="button" className="btn" onClick={onSell}>Sell</button>}
+        {m.status === 'listed' && <button type="button" className="btn" onClick={() => act((x) => game.unlistMachine(x, m.id))}>Take off sale</button>}
       </div>
     </div>
   );
