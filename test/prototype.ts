@@ -26,6 +26,8 @@ const EXPORTS = [
   'curve', 'riskMult', 'whsNp', 'npOf', 'safetyWeek', 'upgradeWhs', 'hurtPick', 'whs', 'unlocked', 'TOWNS',
   'genOffers', 'accept', 'whyNot', 'bookable', 'waitOdds', 'askWait', 'release', 'invoice', 'driverOff', 'rateFactor',
   'relAdd', 'relTier', 'relWeek', 'relPts', 'stars',
+  'rivalsWeek', 'mkRivals', 'newRival', 'rvPhase', 'rvForm', 'rvFree', 'whoPrices', 'rvWin', 'rvOH', 'rvOHFor', 'rvWhs',
+  'RIVALS', 'TIER', 'NEW_NAMES', 'BID_ODDS',
 ];
 
 export interface Proto {

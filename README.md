@@ -35,6 +35,7 @@ npm run check      # type-check, then test: run this before every commit
 | `src/safety.ts` | Incident odds, the register, safety points on tenders, stepping up the system, and the serious-incident, near-miss, quiet-crew and SWMS cards. |
 | `src/hire.ts` | Hire work: wet, dry, council day labour and private jobs. Offers, taking them, booking the next one in behind, the working day, the week's invoices, getting paid, late payers. |
 | `src/relations.ts` | Standing with each head contractor: −10 to +10, tiers, tender points, fading. |
+| `src/rivals.ts` | The other outfits: their books, who prices what, what a win really costs them, growing, selling gear, folding, buy-outs, new outfits. |
 | `src/text/` | Words the player reads, kept out of the rules. The engine records which story happened; screens look up the words here. |
 | `src/index.ts` | The front door. Screens import from here only. |
 | `test/parity.test.ts` | Runs the prototype and this engine side by side and fails if they ever disagree. |
@@ -43,6 +44,7 @@ npm run check      # type-check, then test: run this before every commit
 | `test/workshop.test.ts` | The same for the workshop week and running costs. |
 | `test/market.test.ts` | The same for the market. |
 | `test/hire.test.ts` | Hire work, including 400 businesses run side by side for six weeks each through the prototype's own week-loop code. |
+| `test/rivals.test.ts` | Rivals, including 60 runs of four years each through every market and difficulty. |
 | `test/safety.test.ts` | The same for safety, including the words in `src/text/safety.ts`. |
 | `test/prototype.ts` | Loads the prototype for the tests (from `../game-prototype`, or set `PROTOTYPE`). Also cuts blocks out of its week loop and compiles them inside it, so tests can run them word for word. |
 
@@ -69,6 +71,8 @@ Things the prototype does that should change, kept for now so careers match it e
 - [x] Safety: incidents, crew culture, the register, insurance loading, the safety cards
 - [x] The market: mood, listings, auctions, finance, buying and selling
 - [x] Hire work: offers, booking in, the working day, invoices, getting paid, late payers, head contractor standing
-- [ ] Tenders and rivals
+- [x] Rivals: books, pricing odds, wins, growth, selling up, folding, new outfits
+- [ ] Subbie tenders
+- [ ] Council tenders and job planning
 - [ ] Running contracts
 - [ ] The week loop (`endWeek`), plus a full-career parity test

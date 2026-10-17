@@ -17,3 +17,4 @@ export * from './market';
 export * from './safety';
 export * from './relations';
 export * from './hire';
+export * from './rivals';
