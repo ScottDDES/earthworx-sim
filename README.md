@@ -140,7 +140,8 @@ Still open:
 - [x] Sound, off unless you turn it on (Career tab): a stamp for tickets and finished work, a diesel each week, two notes for a win
 - [x] Handing the business to the next generation (from Regional contractor): the family money, a star of track record, the tickets and the family history carry on; the end screen now matches the prototype's
 - [x] Phone app shell (Capacitor 8.5.2): `app/android` and `app/ios`, the font shipped inside the app (works offline, nothing fetched from Google), Android's back button. App id `biz.ddes.earthmoving` is a placeholder: confirm before the first upload, it can't change after.
-- [ ] Building the Android app needs Android Studio on this PC; the iPhone app needs Xcode on a Mac (or a cloud build)
+- [x] Android test build works on this PC (Android Studio, SDK 36, Java 21)
+- [ ] The iPhone app needs Xcode on a Mac (or a cloud build); app icon and splash are still Capacitor's defaults
 - [ ] Still to come: seasons (fixed-length challenge runs; they need the leaderboard, which stays private)
 - [x] Office: the dashboard (what's worth a look, cash, runway, work in hand, the 12-week cash forecast, trend charts, profit and loss, how the jobs went, the branch, head contractors, past years, the gear, safety, people, tenders, who owes what) and the bank page (borrowing against the fleet, paying the loan down, ringing around about selling)
 - [x] Map: the district roads by state, tap a road for its story, your roads
@@ -176,3 +177,7 @@ npx cap sync           # copy it into android/ and ios/
 npx cap open android   # Android Studio: run on a phone, or build a release bundle for Google Play
 npx cap open ios       # Xcode, on a Mac: run on an iPhone, or archive for the App Store
 ```
+
+Android builds need Java 21 (Capacitor 8 with Gradle 8.14 won't run on Android Studio's own Java 25). On this PC
+that's Microsoft OpenJDK 21, set for Gradle in `%USERPROFILE%\.gradle\gradle.properties` (`org.gradle.java.home`).
+A test build from the command line: `cd app/android && gradlew assembleDebug` gives `app/build/outputs/apk/debug/app-debug.apk`.
