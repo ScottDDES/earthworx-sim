@@ -9,3 +9,5 @@ export * from './ledger';
 export * from './difficulty';
 export * from './yards';
 export * from './machines';
+export * from './staff';
+export * from './managers';

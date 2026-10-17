@@ -27,9 +27,12 @@ npm run check      # type-check, then test: run this before every commit
 | `src/difficulty.ts` | Easy to Hardcore: what each one changes, set by the starting loan. Inflation. |
 | `src/yards.ts` | Behind the house up to the plant hub: room, rent, security, workshop discount. |
 | `src/machines.ts` | The four machine types, value, wear, servicing, breakdowns and faults found at a service. |
+| `src/staff.ts` | Roles, skill levels, the weekly labour board, haggling, wages, and filling a crew's seats (casuals take the rest). |
+| `src/managers.ts` | The six kinds of manager, their applicants, and the workshop's fitter cover. Builds the workshop details machines need. |
 | `src/index.ts` | The front door. Screens import from here only. |
 | `test/parity.test.ts` | Runs the prototype and this engine side by side and fails if they ever disagree. |
 | `test/machines.test.ts` | The same for machines, yards and difficulty. |
+| `test/staff.test.ts` | The same for staff, managers and workshop cover. |
 | `test/prototype.ts` | Loads the prototype for the tests (from `../game-prototype`, or set `PROTOTYPE`). |
 
 ## Rules for the code
@@ -43,9 +46,10 @@ npm run check      # type-check, then test: run this before every commit
 
 - [x] Random numbers, calendar, towns, weather and forecast, bank and loan, ledger
 - [x] Machines: value, wear, servicing, breakdowns, service finds; yards; difficulty
-- [ ] The workshop: fitters, the workshop manager, who fixes what (needs staff)
+- [x] Staff and wages: the labour board, haggling, crews and casuals, managers, fitter cover
+- [ ] The workshop week: fitters' servicing, the workshop manager's dealer bookings and turnover calls
+- [ ] Running costs: insurance, safety system, drawings, rent (the rest of the weekly overheads)
 - [ ] The market: auctions, dealers, private sales
-- [ ] Staff and wages
 - [ ] Hire work
 - [ ] Tenders and rivals
 - [ ] Running contracts

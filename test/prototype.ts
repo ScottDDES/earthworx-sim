@@ -18,6 +18,8 @@ const EXPORTS = [
   'baseValue', 'value', 'mName', 'costIdx', 'dp', 'diffOf', 'svcCost', 'newMachine', 'overdue', 'svcLeft',
   'wear', 'breaks', 'breakdown', 'svcFind', 'fitCov', 'bigNoWsm', 'TYPES', 'YARDS', 'DIFF_P', 'PARTS',
   'service', 'fitterWeek',
+  'genCands', 'hireCand', 'fillRoles', 'mgrWeek', 'wages', 'fitPer', 'fitters', 'freeStaff', 'mgrUnlocked',
+  'UI', 'NAMES', 'ROLES', 'SKILLS', 'MGR',
 ];
 
 export interface Proto {
