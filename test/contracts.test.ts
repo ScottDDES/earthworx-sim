@@ -11,6 +11,7 @@ import {
   type ContractBiz, type ContractEvent, type Difficulty, type Job, type Machine, type MachineType, type Person, type Role,
   type TownId, type WeekReport,
 } from '../src';
+import { sameLines, jobPairs } from './docketWords';
 import { loadPrototype } from './prototype';
 
 const P = loadPrototype();
@@ -99,7 +100,7 @@ function expectSame(b: ContractBiz, S: any) {
 
 /** One week of contracts on both sides. */
 function runWeek(b: ContractBiz, S: any, d: Difficulty, wx: { town: TownId; wxStart: number }, seed: number, seen: Record<string, number>) {
-  const prep: any = { worked: 0, lost: 0, invoiced: 0, paid: 0, costs: 0, events: [] }, pdd: Record<string, number> = {};
+  const prep: any = { worked: 0, lost: 0, invoiced: 0, paid: 0, costs: 0, events: [] }, pdd: Record<string, number> = {}, pairs = jobPairs(S, b);
   P.setS(S);
   P.withRNG(P.seedRand(seed), () => {
     P.__weekStart(prep);
@@ -129,6 +130,7 @@ function runWeek(b: ContractBiz, S: any, d: Difficulty, wx: { town: TownId; wxSt
   expect(rep.costs).toBeCloseTo(prep.costs, 4);
   expect(rep.invoiced).toBeCloseTo(prep.invoiced, 4);
   expect(ev.length).toBe(prep.events.length);
+  sameLines(b, ev, prep.events, pairs);
   for (const e of ev) seen[e.k] = (seen[e.k] || 0) + 1;
 }
 
@@ -251,6 +253,7 @@ describe('the council checks a program', () => {
       expect(j).toEqual(pj);
       expect(b.rep).toBe(S.rep);
       expect(ev.length).toBe(prep.events.length);
+      sameLines(b, ev, prep.events, [{ pj, bj: j }]);
       for (const e of ev) { if (e.k === 'halfway') { if (e.cut) cuts++; else fine++; } if (e.k === 'deadline') deadline++; }
     }
     expect(cuts).toBeGreaterThan(30);

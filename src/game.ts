@@ -291,15 +291,28 @@ export interface Report {
   costs: number;
   events: unknown[];
   tix: string[];
+  /** Each day's rain, and whether it stopped work. */
+  days: { wet: boolean; mm: number }[];
+  /** The jobs on the books when the week started, so the docket can name ones that finished. Not saved. */
+  jobs?: Record<string, Job>;
 }
+
+/** The week's own events, beside the ones each part of the engine reports. */
+export type WeekEvent =
+  | { k: 'caughtUp'; amt: number }
+  | { k: 'missedRepay'; n: number }
+  | { k: 'paidOff' }
+  | { k: 'mood'; mood: Mood }
+  | { k: 'unlocked'; id: string };
 
 /** The end of the week. Does nothing while a card is waiting. */
 export function endWeek(c: Career): Report | null {
   if (c.phase !== 'play' || c.queue.length) return null;
   const rand = stream(c), d = diff(c), wx = { town: c.town, wxStart: c.wxStart };
-  const rep: Report = { week: c.week, rain: 0, mm: 0, worked: 0, lost: 0, invoiced: 0, paid: 0, costs: 0, events: [], tix: [] };
-  const ev = rep.events as (ContractEvent | WorkshopEvent | SafetyEvent | RainCallEvent | BankCallEvent | ShockEvent | HardcoreEvent | SaleEvent | RivalEvent | MapEvent | CloseEvent | CouncilEvent | BranchEvent | TaxEvent | HireEvent)[];
+  const rep: Report = { week: c.week, rain: 0, mm: 0, worked: 0, lost: 0, invoiced: 0, paid: 0, costs: 0, events: [], tix: [], days: [] };
+  const ev = rep.events as (ContractEvent | WorkshopEvent | SafetyEvent | RainCallEvent | BankCallEvent | ShockEvent | HardcoreEvent | SaleEvent | RivalEvent | MapEvent | CloseEvent | CouncilEvent | BranchEvent | TaxEvent | HireEvent | WeekEvent)[];
   const BK = { pays: 0, odi: 0, lc: 0, li: 0 };
+  Object.defineProperty(rep, 'jobs', { value: Object.fromEntries(c.jobs.map((j) => [j.id, j])), enumerable: false });
 
   staffSubs(c as never, null);
   staffOwn(c as never, null);
@@ -317,6 +330,7 @@ export function endWeek(c: Career): Report | null {
     }
     if (wet) rep.rain++;
     rep.mm += rainMm(wx, dayOffset(c.week, day));
+    rep.days.push({ wet, mm: rainMm(wx, dayOffset(c.week, day)) });
     const w = wctx(c);
     for (const j of c.jobs) jobDay(rand, c as never, j, day, wet, w, rep, downDays, ev as ContractEvent[]);
     endOfDay(c as never, day, ev as ContractEvent[]);
@@ -349,6 +363,8 @@ export function endWeek(c: Career): Report | null {
   BK.li = bw.loanInterest;
   BK.lc = bw.paid - bw.odInterest;
   rep.costs += bw.paid;
+  if (bw.caughtUp) ev.push({ k: 'caughtUp', amt: bw.caughtUp });
+  if (bw.missedNow) ev.push({ k: 'missedRepay', n: c.loan.missed });
   bankCalls(c, od, ev as BankCallEvent[]);
   shockWeek(rand, c as never, d, ev as ShockEvent[], ev as HireEvent[]);
   relWeek(c);
@@ -361,6 +377,7 @@ export function endWeek(c: Career): Report | null {
   if (c.loan.bal <= 0 && !c.loan.paidOff) {
     c.loan.bal = 0;
     c.loan.paidOff = true;
+    ev.push({ k: 'paidOff' });
   }
   salesWeek(rand, c as never, mood(c), ev as SaleEvent[]);
   for (const p of c.staff) if (p.off > 0) p.off--;
@@ -382,7 +399,8 @@ export function endWeek(c: Career): Report | null {
       c.ctenders = c.ctenders.filter((x) => x !== t);
     }
   }
-  marketWeek(c.mkt, wx, c.week);
+  const turned = marketWeek(c.mkt, wx, c.week);
+  if (turned) ev.push({ k: 'mood', mood: turned });
   rivalsWeek(rand, c as never, { fmul: fmul(c), mood: mood(c), mg: DIFFICULTY[d].mg, spawn: DIFFICULTY[d].spawn, canBuyOut: !!c.won2 && !c.loan.missed, won2: c.won2, won3: c.won3 }, ev as RivalEvent[]);
   mapWeek(rand, c.dmap!, c.week, fmul(c), mood(c), rep.mm, c.rivals.map((x) => x.name), ev as MapEvent[]);
   const T = tc(c as never);
@@ -403,7 +421,7 @@ export function endWeek(c: Career): Report | null {
   genCouncil(wr, c as never, planCtx(c), fmul(c));
   genMajor(wr, c as never, planCtx(c), fmul(c), canPrestige(c as never, c.whs.sys, c.yard));
   checkWin(c as never);
-  unlockWeek(c as never);
+  for (const id of unlockWeek(c as never)) ev.push({ k: 'unlocked', id });
   mgrWeek(c, rand);
   rainCallCheck(c as never, wx);
   rep.tix = tickets(c);

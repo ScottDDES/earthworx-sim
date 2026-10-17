@@ -6,6 +6,7 @@ import {
   overheads, pick, premParts, premium, seedRand, wages, workshopCtx, wsmWeek, type Difficulty, type Garage,
   type Machine, type MachineType, type Person, type Role, type Trait, type WorkshopEvent, type YardId,
 } from '../src';
+import { sameLines, jobPairs } from './docketWords';
 import { loadPrototype } from './prototype';
 
 const P = loadPrototype();
@@ -80,6 +81,7 @@ describe('the workshop week', () => {
       expectSame(g, S);
       expect(cost).toBe(rep.costs);
       expect(ev.some((e) => e.k === 'fitterWork')).toBe(rep.events.some((e) => / in the workshop: /.test(e)));
+      sameLines(g, ev, rep.events);
       if (cost) work++;
     }
     expect(work).toBeGreaterThan(300);
@@ -99,6 +101,7 @@ describe('the workshop week', () => {
       expectSame(g, S);
       expect(cost).toBe(rep.costs);
       expect(ev.some((e) => e.k === 'shortFitters')).toBe(rep.events.some((e) => /more fitter/.test(e)));
+      sameLines(g, ev, rep.events);
       if (g.queue.some((q) => q.k === 'turnover')) turn++;
       if (ev.some((e) => e.k === 'shortFitters')) short++;
       if (cost) booked++;

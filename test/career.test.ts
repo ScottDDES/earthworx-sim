@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { choose, drawCard, game, int, pick, seedRand } from '../src';
 import { cardView, resultText } from '../src/text/cardView';
+import { docketLines, docketStamps, eventText } from '../src/text/docket';
 import { LTI_STORIES } from '../src/text/safety';
 import { loadPrototype } from './prototype';
 
@@ -132,7 +133,15 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
       if (worn && S.fleet.length > 3) { const mode = (['trade', 'auction', 'list'] as const)[W % 3]!; both(`week ${W} sell ${mode}`, () => P.sell(worn.id, mode === 'list' ? undefined : mode), () => game.sellMachine(c, worn.id, mode)); }
       if (S.bank > 80000 && (S.cands || []).length && (S.staff || []).length < 4) { const id = S.cands[0].id; both(`week ${W} hire`, () => P.hireCand(id), () => game.hireCand(c, id)); }
       for (let k = 0; S.queue.length && k < 20; k++) answer(W);
-      both(`week ${W} end`, () => P.endWeek(), () => game.endWeek(c));
+      both(`week ${W} end`, () => P.endWeek(), () => {
+        const r = game.endWeek(c), PR = P.getS().report;
+        if (!r || !PR) return;
+        same(`week ${W} docket`, docketLines(c, r).join(' // '), PR.events.join(' // '));
+        same(`week ${W} stamps`, docketStamps(c, r).join(' / '), (PR.hl || []).join(' / '));
+        same(`week ${W} days`, JSON.stringify(r.days), JSON.stringify(PR.days));
+        same(`week ${W} lost`, String(r.lost), String(PR.lost));
+        for (const e of r.events as { k: string }[]) if (eventText(c, r, e) != null) EVENTS.add(e.k);
+      });
       S = P.getS();
     }
     return { weeks, diff: null, at, S };
@@ -145,6 +154,8 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
 
 /** The kinds of card whose words were checked. */
 const SEEN = new Set<string>();
+/** The kinds of docket line that were checked. */
+const EVENTS = new Set<string>();
 
 describe('whole careers', () => {
   it('play the same, week after week, start to finish', () => {
@@ -159,6 +170,7 @@ describe('whole careers', () => {
     }
     console.log(runs.join('\n'));
     console.log('cards worded: ' + [...SEEN].sort().join(', '));
+    console.log('docket lines: ' + [...EVENTS].sort().join(', '));
     expect(LTI_STORIES.length).toBe(4);
   });
 });

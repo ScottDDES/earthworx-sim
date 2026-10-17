@@ -7,6 +7,7 @@ import {
   rvOH, rvOHFor, rvPhase, rvWhs, rvWin, seedRand, whoPrices,
   type Difficulty, type Mood, type Rival, type RivalEvent, type RivalWorld, type TenderKind, type TownId,
 } from '../src';
+import { sameLines, jobPairs } from './docketWords';
 import { loadPrototype } from './prototype';
 
 const P = loadPrototype();
@@ -140,6 +141,7 @@ describe('the rivals week', () => {
         expect(w.clear).toEqual(S.clear);
         expect(w.queue).toEqual(S.queue);
         expect(ev.length).toBe(rep.events.length);
+        sameLines(w, ev, rep.events);
         for (const e of ev) seen[e.k] = (seen[e.k] || 0) + 1;
         // the market sells what they dump, and the player deals with buy-out offers
         w.rivSell.length = 0; S.rivSell.length = 0;
@@ -147,5 +149,29 @@ describe('the rivals week', () => {
       }
     }
     for (const k of ['sellingGear', 'wentUnder', 'newSmall', 'newMid']) expect(seen[k], k).toBeGreaterThan(5);
+  });
+});
+
+describe('rivals growing, in words', () => {
+  it('a small outfit grows, a mid one becomes a big player, and a big firm moves in: the docket reads the same', () => {
+    const R = seedRand(77);
+    const seen: Record<string, number> = {};
+    for (let i = 0; i < 400; i++) {
+      const town: TownId = pick(R, ['gdi', 'ct']), rivals = mkRivals(seedRand(i + 3), town);
+      for (const x of rivals) {
+        if (x.tier === 'small' && R() < 0.5) { x.fleet = int(R, 8, 12); x.stars = 2; x.cash = 400000; }
+        if (x.tier === 'mid' && R() < 0.5) { x.fleet = int(R, 16, 20); x.stars = 3; x.cash = 900000; }
+      }
+      const w: RivalWorld = { week: 40, town, rivals: rivals.filter((x) => R() < 0.7 || x.tier !== 'big'), gone: [], rivSell: [], clear: [], queue: [] };
+      const S = protoCareer({ town, week: 40, rivals: JSON.parse(JSON.stringify(w.rivals)), gone: [], rivSell: [], clear: [], loanStart: 180000, won2: true, won3: true, mkt: { f: 1.1, mood: 'steady' }, loan: { ...newLoan(0), missed: 0 } });
+      const seed = int(R, 1, 1e9), rep = { events: [] as string[] }, ev: RivalEvent[] = [];
+      P.setS(S);
+      P.withRNG(P.seedRand(seed), () => P.rivalsWeek(rep));
+      rivalsWeek(seedRand(seed), w, { fmul: 1, mood: 'steady', mg: DIFFICULTY.normal.mg, spawn: DIFFICULTY.normal.spawn, canBuyOut: true, won2: true, won3: true }, ev);
+      expect(w.rivals).toEqual(S.rivals);
+      sameLines(w, ev, rep.events);
+      for (const e of ev) seen[e.k] = (seen[e.k] || 0) + 1;
+    }
+    for (const k of ['grewMid', 'grewBig']) expect(seen[k], k).toBeGreaterThan(20);
   });
 });

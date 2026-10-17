@@ -9,6 +9,7 @@ import {
   type BranchEvent, type Difficulty, type HireEvent, type ShockEvent,
 } from '../src';
 import { accFromProto, playProto } from './bot';
+import { sameLines, jobPairs } from './docketWords';
 import { loadPrototype } from './prototype';
 
 const P = loadPrototype();
@@ -195,7 +196,7 @@ describe('buying a rival out', () => {
 describe('the branch depot', () => {
   it('opening it, floating gear there, a year of its weeks, and its cards', () => {
     const R = seedRand(217);
-    let weeks = 0, cards = 0;
+    let weeks = 0, cards = 0, lines = 0;
     for (let i = 0; i < 120; i++) {
       const { S, b } = pair(pick(R, SNAPS));
       Object.assign(S, { won3: true, yard: 'hub', bank: 900000 }); Object.assign(b, { won3: true, yard: 'hub', bank: 900000 });
@@ -223,6 +224,8 @@ describe('the branch depot', () => {
         expect(b.recv).toEqual(S.recv);
         expect(b.queue).toEqual(S.queue);
         expect(rep.costs).toBe(prep.costs);
+        sameLines(b, ev, prep.events);
+        if (ev.length) lines++;
         weeks++;
         // the manager's cards, answered at random
         const q = S.queue.find((x: any) => x.k === 'brtender' || x.k === 'brraise');
@@ -251,6 +254,7 @@ describe('the branch depot', () => {
       expect(b.branch ?? null).toEqual(S.branch ?? null);
     }
     expect(weeks).toBeGreaterThan(5000);
+    expect(lines).toBeGreaterThan(1000);
     expect(cards).toBeGreaterThan(50);
   });
 });
