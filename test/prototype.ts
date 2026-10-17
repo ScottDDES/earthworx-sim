@@ -42,7 +42,7 @@ const EXPORTS = [
   'shockWeek', 'meStretched', 'sellBuyer', 'ownerFlags', 'plOf', 'cashForecast', 'runway', 'fixedWeek', 'borrowRoom', 'borrow', 'payDown', 'alerts', 'lastInc', 'overheads', 'workInHand', 'retireOffer', 'retireNow', 'askBuyOut', 'sellUpWeek', 'askSellUp', 'sellPrice', 'walkAway', 'sellBest', 'rvYard', 'buyOutPay',
   'canBuyOut', 'branchWeek', 'openBranch', 'toBranch', 'toHome', 'closeBranch', 'brCrews', 'canBranch', 'room',
   'callGrader', 'earlyClient', 'rainCallCheck', 'checks', 'checks2', 'checks3', 'checks4', 'checks5', 'TICKETS', 'checkTix',
-  'tc', 'UNLOCKS', 'lastInc', 'hasCrew', 'ownedCounts', 'moveYard', 'mapTab', 'hireBrMgr', 'unlist', 'fireStaff', 'fixBand', 'fitGps', 'unlist',
+  'tc', 'UNLOCKS', 'lastInc', 'hasCrew', 'ownedCounts', 'moveYard', 'mapTab', 'hireBrMgr', 'unlist', 'fireStaff', 'fixBand', 'fitGps', 'coachTick', 'canRunOn', 'runOn', 'tabsWeek', 'nextGoal', 'coachOn', 'unlist',
 ];
 
 export interface Proto {
@@ -93,7 +93,7 @@ function weekHooks(): string {
     __bankCalls: function(rep){\n${calls}},
     __curve: function(){\n${curveBit}},
     __rainDay: function(d, rep){\n${rainDay}  return wet; },
-    __open: function(){ S.phase='play'; withRNG(worldRNG('open'), function(){ genOffers(); genMarket(); genTenders(); }); log('Open for business.'); },
+    __open: function(){ S.phase='play'; withRNG(worldRNG('open'), function(){ genOffers(); genMarket(); genTenders(); }); log('Open for business.'); coachTick(); },
     __startWeek: function(){ S.jobs.forEach(function(j){ j.wk = 0; j.wkDays = 0; }); },`;
 }
 

@@ -19,6 +19,9 @@ export function demoCareer(kind: string): game.Career | null {
   c.ownWon = 1;
   c.ownDone = 2;
   c.whs.sys = 2;
+  // a seasoned player: the tips are done and every tab's open
+  c.coach = { i: 5, at: 1, off: true };
+  c.tabs = { map: 1, bank: 1, board: 1 };
   const kinds: MachineType[] = ['grader', 'grader', 'roller', 'roller', 'cart', 'cart', 'cart', 'truck', 'truck'];
   for (const k of kinds) c.fleet.push(newMachine(rand, uid(c), k, 2016, 80, 9000));
   c.staff.push({ id: uid(c), name: 'Dave', role: 'grader', skill: 'solid', wage: 2100, off: 0, jobId: null }, { id: uid(c), name: 'Kylie', role: 'roller', skill: 'gun', wage: 1840, off: 0, jobId: null });

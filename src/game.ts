@@ -21,6 +21,7 @@ import { afterService, fitterWeek, wsmWeek, type WorkshopEvent } from './worksho
 import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium as premiumOf } from './overheads';
 import { accept as acceptOffer, askWait as askWaitHire, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
 import { relWeek } from './relations';
+import { coachTick, tabsWeek, type CoachState } from './coach';
 import { mRef, note, noteNews, type DiaryEntry } from './diary';
 import { dmap, mapWeek, type DistrictMap, type MapEvent } from './map';
 import { canTender, closeTender, crewDayCost, genTenders, otherContracts, setMk, subPrice, submitBid as submitBidT, withdrawBid as withdrawBidT, tbs, type CloseEvent, type Standing, type SubTender } from './tenders';
@@ -105,6 +106,12 @@ export interface Career {
   branch?: Branch | null;
   payables?: Payable[];
   unl?: Record<string, number>;
+  /** The getting-started coach, the tabs unlocked so far (and which are new), and the mentor notes read. */
+  coach?: CoachState;
+  tabs?: Record<string, number>;
+  tabsNew?: Record<string, number>;
+  tipsSeen?: Record<string, number>;
+  tipsOff?: boolean;
   rngSeed: string;
   rngA: number;
   [x: string]: any;
@@ -222,6 +229,8 @@ export function newCareer(setup: Setup, seed: number, wxStart?: number): Career 
   c.rngSeed = String(seed);
   c.rngA = seed;
   c.youJob = null;
+  c.coach = { i: 0, at: 1 };
+  c.tabs = {};
   note(c, { k: 'started', co: c.co, town: c.town, loan: setup.loan });
   return c;
 }
@@ -234,6 +243,7 @@ export function open(c: Career): void {
   c.market = genMarket(rand, { week: c.week, won: c.won, mood: mood(c), rivSell: c.rivSell, clear: c.clear }, () => uid(c));
   genTenders(rand, c as never, canTender((t) => owns(c, t), c.rep, c.whs.sys), mood(c), fmul(c));
   note(c, { k: 'open' });
+  coachTick(c);
 }
 
 // ---------- the player's actions ----------
@@ -328,7 +338,9 @@ export function approachRival(c: Career, name: string): void {
 }
 
 export function accept(c: Career, id: string): boolean {
-  return !!acceptOffer(c as never, id);
+  const ok = !!acceptOffer(c as never, id);
+  if (ok) coachTick(c);
+  return ok;
 }
 
 export type HireAnswer = { k: 'hired'; wage: number } | { k: 'walked'; ask: number; offer: number; rival: string };
@@ -611,6 +623,8 @@ export function endWeek(c: Career): Report | null {
   mgrWeek(c, rand);
   rainCallCheck(c as never, wx);
   rep.tix = tickets(c);
+  coachTick(c);
+  tabsWeek(c);
   closeBooks(c as never, { w: rep.week, invoiced: rep.invoiced, paid: rep.paid, rain: rep.rain, over, premium: premiumOf(premParts(fleetValue(c.fleet, c.week), wages(c.staff)), c, c.whs.sys, c.week), rent: YARDS[c.yard].rent, wages: wages(c.staff), staffN: c.staff.length, mode: tax(c) }, BK);
   taxWeek(c as never, rep.week, tax(c), ev as TaxEvent[], () => {
     yearEnd(Object.assign(c, { staffN: c.staff.length, fleetN: c.fleet.length }) as never, rep.week, worth(c));

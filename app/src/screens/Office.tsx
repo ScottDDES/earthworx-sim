@@ -8,6 +8,7 @@ import {
   rainCrews, type ForecastWeek, type WeekRow,
 } from '@engine';
 import { ownerFlags } from '@engine/text/office';
+import { Mentor } from '../Mentor';
 import { fyName } from '@engine/text/cardView';
 import { jobTitle } from '@engine/text/work';
 import { f, fk } from '../format';
@@ -125,7 +126,7 @@ function LineChart({ c, cur }: { c: Career; cur: readonly WeekRow[] }) {
 
 // ---------- the dashboard ----------
 
-function Dashboard({ c, go, toBank }: { c: Career; go: Go; toBank: () => void }) {
+function Dashboard({ c, act, go, toBank }: { c: Career; act: Act; go: Go; toBank: () => void }) {
   const [N, setN] = useState(13);
   const H = c.hist || [], cur = H.slice(-N), prev = H.length > N ? H.slice(-2 * N, -N) : [], P = plOf(cur), Q = prev.length ? plOf(prev) : null;
   const W = c.whs, nw = game.worth(c), wih = workInHand(c.jobs), dr = debtors(c.recv), wkTurn = cur.length ? P.rev / cur.length : 0, rw = game.runwayWeeks(c);
@@ -275,6 +276,7 @@ function Dashboard({ c, go, toBank }: { c: Career; go: Go; toBank: () => void })
       {c.won && HCs.length > 0 && (
         <Fold title="Head contractors" sum={pref ? pref + ' treat you as a preferred subbie' : 'Your standing with the four you work for'}>
           <div className="card">
+            <Mentor c={c} k="rel" act={act} />
             {HCs.map((h) => { const T = TIER_TEXT[relTier(c.rel, h)]!, v = relOf(c.rel, h); return (
               <div key={h} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '6px 0', borderBottom: '1px solid var(--soft)' }}>
                 <div className="row" style={{ flexWrap: 'nowrap' }}><span className="grow small"><b>{h}</b> <span className="tiny muted">{CLIENT_PM[h] ?? ''}</span></span><b className="small" style={{ color: T.c }}>{T.t}</b></div>
@@ -463,12 +465,13 @@ export function OfficeTab({ c, act, go }: { c: Career; act: Act; go: Go }) {
   const [v, setV] = useState<'dash' | 'bank'>('dash');
   return (
     <>
+      {v === 'dash' && <Mentor c={c} k="office" act={act} />}
       <div className="seg" role="tablist" aria-label="Office">
         {([['dash', 'Dashboard'], ['bank', 'Bank and loans']] as const).map(([k, l]) => (
           <button key={k} type="button" role="tab" aria-selected={v === k} className={v === k ? 'on' : ''} onClick={() => setV(k)}>{l}</button>
         ))}
       </div>
-      {v === 'bank' ? <Bank c={c} act={act} go={go} /> : <Dashboard c={c} go={go} toBank={() => setV('bank')} />}
+      {v === 'bank' ? <Bank c={c} act={act} go={go} /> : <Dashboard c={c} act={act} go={go} toBank={() => setV('bank')} />}
     </>
   );
 }

@@ -7,6 +7,7 @@ import {
   type Job, type Offer, type SubTender,
 } from '@engine';
 import { KIND_CHIP, KIND_LABEL, councilTitle, jobTitle, offerCatch, offerDetail, offerPay, offerTitle, pmOf, subTenderTitle } from '@engine/text/work';
+import { Mentor } from '../Mentor';
 import { f, fk } from '../format';
 import { CouncilCard, PlanSheet } from './Plan';
 
@@ -204,6 +205,7 @@ function PriceSheet({ c, t, act, onClose }: { c: Career; t: SubTender; act: Act;
         <div className="sub">Price a package · closes end of week {t.close}</div>
         <h2>{subTenderTitle(t)}</h2>
         <div className="small muted">For {t.hc}. Progress claims paid in {terms} weeks, {RETAIN * 100}% held as retention until the end. {t.weeks} weeks allowed, then {f(LD_WEEK)} a week in damages.</div>
+        <Mentor c={c} k="overheads" act={act} />
         {t.direct && <div className="card" style={{ border: '2px solid var(--teal)' }}><b>Offered direct by {pmOf(t.hc)}</b><div className="small">No other bidders. They have about {fk(t.budget!)} for it: price at or under that and it's yours.</div></div>}
         <div className="card" style={{ background: 'var(--warn-soft)', borderColor: 'transparent' }}>
           <div className="kv"><span>Cash to carry it</span><span className="num">{f(carry)}</span></div>

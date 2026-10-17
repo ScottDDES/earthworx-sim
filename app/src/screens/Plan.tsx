@@ -8,6 +8,7 @@ import {
 } from '@engine';
 import { CREW_COL, bottText, issueText } from '@engine/text/plan';
 import { councilTitle } from '@engine/text/work';
+import { Mentor } from '../Mentor';
 import { f, fk } from '../format';
 
 type Career = game.Career;
@@ -126,6 +127,8 @@ function PackageSheet({ c, t, act, onClose }: { c: Career; t: CouncilTender; act
           {t.roads.length > 8 && <button type="button" className="btn" onClick={() => setAllRoads(!allRoads)}>{allRoads ? 'Show fewer roads' : 'Show all ' + t.roads.length + ' roads'}</button>}
           <div className="tiny muted">{t.weeks} weeks allowed from the start, then {f(LD_OWN)} a week in damages. The council pays monthly claims in {COUNCIL_TERMS} weeks, less 5% retention. Water point {t.waterKm} km from the work.</div>
         </div>
+        <Mentor c={c} k="plan" act={act} />
+        <Mentor c={c} k="overheads" act={act} />
         <div className="sub">1 · Your plan</div>
         <div className="card">
           <div className="small muted">You own {own.grader} grader{own.grader !== 1 ? 's' : ''}, {own.roller} roller{own.roller !== 1 ? 's' : ''}, {own.cart} water cart{own.cart !== 1 ? 's' : ''} and {own.truck} side tipper{own.truck !== 1 ? 's' : ''} free for the start. Anything more is hired in.{away ? ` ${away} more ${away > 1 ? 'are' : 'is'} out on other work past week ${t.close + 1}, so the plan hires ${away > 1 ? 'them' : 'it'} in.` : ''}</div>
@@ -223,6 +226,8 @@ function ProgramSheet({ c, t, act, onClose }: { c: Career; t: CouncilTender; act
         {tab === 'crews' && (
           <>
             <div className="card"><ProgMap t={t} /></div>
+            <Mentor c={c} k="plan" act={act} />
+            <Mentor c={c} k="overheads" act={act} />
             <div className="sub">Your crews</div>
             <div className="seg" role="tablist">
               {P.crews.map((x, i) => (

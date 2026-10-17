@@ -68,6 +68,8 @@ npm run check      # type-check, then test: run this before every commit
 | `src/text/office.ts` | The workshop alerts and the dashboard's flags, checked every week of the whole-career test. |
 | `src/diary.ts` | The site diary (last 40) and the district news (last 12): codes and the data to word them, kept even after the job or machine is gone. |
 | `src/text/diary.ts` | The diary and news in words, checked after every move of the whole-career test and in each part's own tests. |
+| `src/coach.ts` | The getting-started coach, tabs appearing as they're needed, the mentor's notes read, and running quiet weeks on. Checked every week of the whole-career test. |
+| `src/text/coach.ts` | The coach's steps, Col's notes, and the goal line above End week. |
 | `src/text/map.ts` | What each road state is called and what a tapped road says, checked for every state in the whole-career test. |
 | `src/text/market.ts` | Where an auction lot came from, its guide, and how the hammer fell. |
 | `src/text/docket.ts` | The week's docket lines and stamps from the engine's events. Checked against the prototype every week of the whole-career test, and in the workshop, rivals, contracts and branch tests. |
@@ -133,9 +135,9 @@ Still open:
 - [x] Career: tickets wallet, contract tallies, track record, the ladder with each step's checklist, the district (market mood, rivals, approaching one to buy them out), selling up to retire, starting over
 - [x] Career: the site diary and "Lately" news
 - [x] Yard, second pass: workshop alerts, the branch depot (open, managers, send and bring home, close), a compact fleet list with filters, fix properly, GPS, the labour board with haggling, letting staff go, managers, safety and toolbox talks
-- [ ] Still to come: sound, seasons, save slots, tabs unlocking as you go
+- [x] Easing in: the getting-started coach, tabs that appear as needed (with NEW and count badges), the goal line above End week, Col's notes, and Run on
+- [ ] Still to come: sound, seasons, save slots
 - [x] Office: the dashboard (what's worth a look, cash, runway, work in hand, the 12-week cash forecast, trend charts, profit and loss, how the jobs went, the branch, head contractors, past years, the gear, safety, people, tenders, who owes what) and the bank page (borrowing against the fleet, paying the loan down, ringing around about selling)
-- [ ] The prototype's mentor tips (office, BAS, scoring, standing) aren't ported yet
 - [x] Map: the district roads by state, tap a road for its story, your roads
 
 ## Ported so far

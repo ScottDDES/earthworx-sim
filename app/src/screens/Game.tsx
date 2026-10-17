@@ -3,9 +3,12 @@
 
 import { useEffect, useState } from 'react';
 import { cardView, resultText, type CardView } from '@engine/text/cardView';
-import { MOODS, TOWNS, choose, dayOffset, drawCard, forecast, gstInBank, monthIdx, recordDate, yearOf, game } from '@engine';
+import { MOODS, TOWNS, alertMachines, canRunOn, coachOff, coachOk, coachOn, coachStep, runOn, tabIsNew, tabSeen, tabShown, whyNot, type RunSummary, choose, dayOffset, drawCard, forecast, gstInBank, monthIdx, recordDate, yearOf, game } from '@engine';
 import { docketLines, docketStamps } from '@engine/text/docket';
 import { TICKET_TEXT } from '@engine/text/career';
+import { COACH_TEXT, nextGoal } from '@engine/text/coach';
+import { COACH } from '@engine';
+import { Mentor } from '../Mentor';
 import { Icon, WeatherIcon } from '../Icon';
 import { MONTHS, f, fk } from '../format';
 import { YardTab } from './Yard';
@@ -24,8 +27,8 @@ const TABS: { k: Tab; label: string; icon: string }[] = [
   { k: 'work', label: 'Work', icon: 'work' },
   { k: 'map', label: 'Map', icon: 'map' },
   { k: 'market', label: 'Market', icon: 'market' },
-  { k: 'career', label: 'Career', icon: 'career' },
   { k: 'bank', label: 'Office', icon: 'office' },
+  { k: 'career', label: 'Career', icon: 'career' },
 ];
 
 export function TopBar({ c }: { c: Career }) {
@@ -102,6 +105,9 @@ function CardSheet({ c, act, onDone }: { c: Career; act: Act; onDone: (o: Outcom
         <h2 style={{ fontSize: 22 }}>{v.title}</h2>
         <div style={{ fontSize: 15, color: 'var(--ink)' }}>{v.body}</div>
         {v.table && <ResultTable t={v.table} />}
+        {q.k === 'bas' && <Mentor c={c} k="bas" act={act} />}
+        {q.k === 'yearend' && <Mentor c={c} k="year" act={act} />}
+        {(q.k === 'tresult' || q.k === 'cresult') && <Mentor c={c} k="score" act={act} />}
         {v.opts.map((o, i) => (
           <button key={o.id} type="button" className="choice" onClick={() => pick(i)}>
             <b>{o.label}</b>
@@ -131,15 +137,16 @@ function ResultSheet({ r, onClose }: { r: Outcome; onClose: () => void }) {
 }
 
 /** The week's docket: what got done, what it came to, the rain day by day, and everything that happened. */
-function Docket({ c, r, onClose }: { c: Career; r: game.Report; onClose: () => void }) {
-  const net = Math.round(r.paid - r.costs), lines = docketLines(c, r), stamps = docketStamps(c, r);
+function Docket({ c, r, onClose }: { c: Career; r: game.Report & { run?: RunSummary }; onClose: () => void }) {
+  const R = r.run, net = Math.round(R ? R.paid - R.costs : r.paid - r.costs), lines = docketLines(c, r), stamps = docketStamps(c, r);
   const wx = { town: c.town, wxStart: c.wxStart }, held = c.gst && gstInBank(game.tax(c)) ? c.gst.held : 0;
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label={'Week ' + r.week + ' report'}>
       <div className="sheet docket" aria-live="polite">
         <div className="row docket-head"><span className="sub grow">Docket {('000' + r.week).slice(-4)} · {c.co}</span><span className="sub">Week {r.week}</span></div>
-        <h2>{r.worked ? r.worked + ' machine-day' + (r.worked > 1 ? 's' : '') + ' worked' : r.rain >= 4 ? 'Rained out' : 'A quiet week'}</h2>
-        <div className="docket-net" style={{ color: net >= 0 ? 'var(--teal)' : 'var(--rust)' }}>{net >= 0 ? '+' : '−'}{f(Math.abs(net))} <span className="small muted">cash this week</span></div>
+        <h2>{R ? R.n + ' weeks run: weeks ' + R.from + ' to ' + R.to : r.worked ? r.worked + ' machine-day' + (r.worked > 1 ? 's' : '') + ' worked' : r.rain >= 4 ? 'Rained out' : 'A quiet week'}</h2>
+        {R && <div className="small muted">{R.worked} machine-days worked, {R.rain} days rained off, {f(R.invoiced)} invoiced. Stopped {R.n < 4 ? 'because something needs you.' : 'after four quiet weeks.'} The details below are from the last week.</div>}
+        <div className="docket-net" style={{ color: net >= 0 ? 'var(--teal)' : 'var(--rust)' }}>{net >= 0 ? '+' : '−'}{f(Math.abs(net))} <span className="small muted">{R ? 'cash over ' + R.n + ' weeks' : 'cash this week'}</span></div>
         {stamps.length > 0 && <div className="stamps">{stamps.map((t, i) => <span key={i} className="stamp">{t}</span>)}</div>}
         <div className="card">
           <div className="kv"><span>Rained off</span><span className="num">{r.rain} of 5 days</span></div>
@@ -183,11 +190,38 @@ function ComingNext({ name }: { name: string }) {
   );
 }
 
+/** The coach's step: what to do, and a button to the tab that shows you. */
+function CoachCard({ c, tab, act, go }: { c: Career; tab: Tab; act: Act; go: (t: Tab) => void }) {
+  const step = coachStep(c);
+  if (!step) return null;
+  const T = COACH_TEXT[step.id];
+  return (
+    <div className="card coach">
+      <div className="row"><span className="sub grow">Getting started · {c.coach!.i + 1} of {COACH.length}</span><button type="button" className="linkbtn" onClick={() => act((x) => coachOff(x))}>Skip the tips</button></div>
+      <b style={{ fontSize: 17 }}>{T.t}</b>
+      <div className="small">{T.d}</div>
+      <div className="btns">
+        {step.tab && tab !== step.tab && <button type="button" className="btn dark" onClick={() => go(step.tab as Tab)}>Show me</button>}
+        {step.ok && <button type="button" className="btn" onClick={() => act((x) => coachOk(x))}>Got it</button>}
+      </div>
+    </div>
+  );
+}
+
 export function GameScreen({ c, act, onNew }: { c: Career; act: Act; onNew: () => void }) {
-  const [tab, setTab] = useState<Tab>('yard');
-  const [report, setReport] = useState<game.Report | null>(null);
+  const [tab0, setTab0] = useState<Tab>(coachStep(c)?.id === 'earn' ? 'work' : 'yard');
+  const [report, setReport] = useState<(game.Report & { run?: RunSummary }) | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const endWeek = () => act((x) => { const r = game.endWeek(x); if (r) setReport(r); });
+  const runWeeks = () => act((x) => { const r = runOn(x); if (r) setReport(r); });
+  // a tab that hasn't appeared yet can't be open; looking at a new one clears its NEW badge
+  const tab: Tab = tabShown(c, tab0) ? tab0 : 'yard';
+  const setTab = (t: Tab) => setTab0(t);
+  useEffect(() => { if (tabIsNew(c, tab)) act((x) => tabSeen(x, tab)); });
+  const shown = TABS.filter((t) => tabShown(c, t.k));
+  const offers = c.offers.filter((o) => !whyNot(c as never, o)).length + c.tenders.filter((t) => !t.bid).length + c.ctenders.filter((t) => !t.bid).length;
+  const badge = (k: Tab): string | number => ({ yard: alertMachines(c.fleet), work: offers, bank: c.odOver || c.loan.missed ? '!' : 0 } as Record<string, string | number>)[k] || (tabIsNew(c, k) ? 'NEW' : 0);
+  const NG = nextGoal(c);
   return (
     <>
       <TopBar c={c} />
@@ -199,6 +233,8 @@ export function GameScreen({ c, act, onNew }: { c: Career; act: Act; onNew: () =
               <div className="small">You owe more than the business is worth. Get above water or it goes into administration.</div>
             </div>
           ) : null}
+          <CoachCard c={c} tab={tab} act={act} go={setTab} />
+          {!coachOn(c) && c.week >= 6 && tab !== 'bank' && <Mentor c={c} k="runon" act={act} />}
           {tab === 'yard' && <YardTab c={c} act={act} go={setTab} />}
           {tab === 'work' && <WorkTab c={c} act={act} />}
           {tab === 'map' && <MapTab c={c} />}
@@ -209,15 +245,27 @@ export function GameScreen({ c, act, onNew }: { c: Career; act: Act; onNew: () =
       </div>
       <div className="dock">
         <div className="wrap">
+          {NG && (
+            <button type="button" className="goal" onClick={() => setTab(NG.tab as Tab)}>
+              <span className="goal-k">{NG.tip ? 'Tip' : 'Goal'}</span><span className="goal-t">{NG.t}</span>
+            </button>
+          )}
           <div className="endrow">
             <button type="button" className="big" disabled={c.queue.length > 0} onClick={endWeek}>End week {c.week}<Icon k="go" /></button>
+            {!coachOn(c) && (
+              <button type="button" className="runon" disabled={!canRunOn(c)} onClick={runWeeks} aria-label="Run quiet weeks, up to four, and stop when something happens"><b>Run on</b><span>up to 4 wks</span></button>
+            )}
           </div>
-          <nav className="tabs" aria-label="Sections" style={{ gridTemplateColumns: `repeat(${TABS.length},minmax(0,1fr))` }}>
-            {TABS.map((t) => (
-              <button key={t.k} type="button" className={'tab' + (tab === t.k ? ' on' : '')} aria-current={tab === t.k ? 'page' : undefined} onClick={() => setTab(t.k)}>
-                <Icon k={t.icon} /><span>{t.label}</span>
-              </button>
-            ))}
+          <nav className="tabs" aria-label="Sections" style={{ gridTemplateColumns: `repeat(${shown.length},minmax(0,1fr))` }}>
+            {shown.map((t) => {
+              const b = badge(t.k);
+              return (
+                <button key={t.k} type="button" className={'tab' + (tab === t.k ? ' on' : '')} aria-current={tab === t.k ? 'page' : undefined} onClick={() => setTab(t.k)}>
+                  <Icon k={t.icon} /><span>{t.label}</span>
+                  {b ? <span className="badge" aria-label={b + ' to look at'}>{b}</span> : null}
+                </button>
+              );
+            })}
           </nav>
         </div>
       </div>

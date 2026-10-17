@@ -3,12 +3,13 @@
 // end the week. After every step the two careers are compared (words aside), and the first difference is reported.
 
 import { describe, expect, it } from 'vitest';
-import { choose, drawCard, game, int, pick, seedRand } from '../src';
+import { canRunOn, choose, coachOk, drawCard, game, int, pick, runOn, seedRand } from '../src';
 import { cardView, resultText } from '../src/text/cardView';
 import { hammerText, lotFrom, lotGuide } from '../src/text/market';
 import { ownerFlags } from '../src/text/office';
 import { roadNote } from '../src/text/map';
 import { diaryLines } from '../src/text/diary';
+import { nextGoal } from '../src/text/coach';
 import { jobTitle } from '../src/text/work';
 import { docketLines, docketStamps, eventText } from '../src/text/docket';
 import { LTI_STORIES } from '../src/text/safety';
@@ -33,7 +34,7 @@ function strip(x: any): any {
 /** The parts of a career both sides keep, in one shape. */
 function common(S: any, engine: boolean): any {
   const c = strip(S);
-  for (const k of ['log', 'news', 'report', 'coach', 'tabs', 'tabsNew', 'careerId', 'schema', 'seenWin', 'seenWin2', 'seenWin3', 'dayNow', 'staffN', 'fleetN', 'season', 'lb', 'alog', 'savedAt']) delete c[k];
+  for (const k of ['log', 'news', 'report', 'careerId', 'schema', 'seenWin', 'seenWin2', 'seenWin3', 'dayNow', 'staffN', 'fleetN', 'season', 'lb', 'alog', 'savedAt']) delete c[k];
   // accounts: one set of names
   if (!engine && c.acc) c.acc = Object.fromEntries(Object.entries(c.acc).map(([k, v]) => [ACC[k] ?? k, v]));
   if (c.acc) for (const k of Object.keys(c.acc)) if (!c.acc[k] && k !== 'openingBank') delete c.acc[k];
@@ -155,6 +156,19 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
       if (worn && S.fleet.length > 3) { const mode = (['trade', 'auction', 'list'] as const)[W % 3]!; both(`week ${W} sell ${mode}`, () => P.sell(worn.id, mode === 'list' ? undefined : mode), () => game.sellMachine(c, worn.id, mode)); }
       if (S.bank > 80000 && (S.cands || []).length && (S.staff || []).length < 4) { const id = S.cands[0].id; both(`week ${W} hire`, () => P.hireCand(id), () => game.hireCand(c, id)); }
       for (let k = 0; S.queue.length && k < 20; k++) answer(W);
+      // the coach's last step waits for "Got it"; now and then the bot says it
+      if (S.coach && !S.coach.off && S.coach.i === 4 && W % 7 === 0) both(`week ${W} coach ok`, () => { S.coach.ok = true; P.coachTick(); }, () => coachOk(c));
+      // and sometimes it runs quiet weeks on instead of ending just the one
+      if (W % 9 === 3 && P.canRunOn() !== false && canRunOn(c)) {
+        both(`week ${W} run on`, () => P.runOn(), () => {
+          const r = runOn(c), PR = P.getS().report;
+          if (!r || !PR) throw new Error('run on: engine ' + !!r + ', prototype ' + !!PR);
+          same(`week ${W} run`, JSON.stringify(r.run ?? null), JSON.stringify(PR.run ? { n: PR.run.n, from: PR.run.from, to: PR.run.to, invoiced: PR.run.invoiced, paid: PR.run.paid, costs: PR.run.costs, rain: PR.run.rain, worked: PR.run.worked } : null));
+          RUNS.push(r.run?.n ?? 1);
+        });
+        S = P.getS();
+        continue;
+      }
       both(`week ${W} end`, () => P.endWeek(), () => {
         const r = game.endWeek(c), PR = P.getS().report;
         if (!r || !PR) return;
@@ -169,6 +183,10 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
           FLAGS += mine.length;
         }
         for (const e of r.events as { k: string }[]) if (eventText(c, r, e) != null) EVENTS.add(e.k);
+        // the line above End week
+        const ng = nextGoal(c), png = P.nextGoal();
+        same(`week ${W} goal`, ng ? (ng.tip ? 'Tip' : 'Goal') + ' | ' + ng.t + ' | ' + ng.tab : 'none', png ? (P.coachOn() ? 'Tip' : 'Goal') + ' | ' + png.t + ' | ' + png.tab : 'none');
+        GOALS.add(ng ? ng.t.replace(/:.*/, '') : 'none');
         // a tapped road on the map, one of each state
         const st = new Set<string>();
         for (const x of c.dmap!.roads) {
@@ -199,6 +217,10 @@ const SEEN = new Set<string>();
 /** The kinds of docket line that were checked. */
 const EVENTS = new Set<string>();
 let FLAGS = 0;
+/** The kinds of goal line read. */
+const GOALS = new Set<string>();
+/** How many weeks each run-on went. */
+const RUNS: number[] = [];
 /** The kinds of diary and news entry that were checked. */
 const KINDS = new Set<string>();
 /** The road states whose words were checked. */
@@ -218,6 +240,9 @@ describe('whole careers', () => {
     console.log(runs.join('\n'));
     console.log('cards worded: ' + [...SEEN].sort().join(', '));
     console.log('docket lines: ' + [...EVENTS].sort().join(', '));
+    console.log('goal lines: ' + [...GOALS].sort().join(', '));
+    console.log('run on: ' + RUNS.length + ' runs, lengths ' + [1, 2, 3, 4].map((n) => n + ':' + RUNS.filter((x) => x === n).length).join(' '));
+    expect(new Set(RUNS).size).toBeGreaterThanOrEqual(3);
     console.log('diary kinds: ' + [...KINDS].sort().join(', '));
     console.log('roads worded: ' + [...ROADS].sort().join(', '));
     expect(ROADS.size).toBe(6);
