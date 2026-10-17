@@ -3,7 +3,8 @@
 // end the week. After every step the two careers are compared (words aside), and the first difference is reported.
 
 import { describe, expect, it } from 'vitest';
-import { choose, game, int, pick, seedRand } from '../src';
+import { cardOptions, choose, game, int, pick, seedRand } from '../src';
+import { CARD_TEXT } from '../src/text/cards';
 import { LTI_STORIES } from '../src/text/safety';
 import { loadPrototype } from './prototype';
 
@@ -81,13 +82,15 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
     };
     check('start');
     const both = (where: string, proto: () => void, engine: () => void) => { proto(); engine(); check(where); };
+    // every option a card offers has words for the screens
+    const worded = () => { const q = c.queue[0]; if (!q) return; for (const op of cardOptions(c, q) ?? []) if (!CARD_TEXT[q.k]?.options[op.id]) throw new Error(`no words for ${q.k}.${op.id}`); };
     // the first grader, then open for business
     const g = (S.market.listings || []).filter((m: any) => m.type === 'grader').sort((a: any, b: any) => a.price - b.price)[0];
     both('buy first grader', () => P.buy(g.id), () => game.buy(c, g.id));
     both('open', () => P.__open(), () => game.open(c));
     for (let w = 0; w < weeks && S.phase === 'play'; w++) {
       const W = S.week;
-      for (let k = 0; S.queue.length && k < 20; k++) both(`week ${W} card ${S.queue[0].k}`, () => P.choose(0), () => choose(c, 0));
+      for (let k = 0; S.queue.length && k < 20; k++) both(`week ${W} card ${S.queue[0].k}`, () => P.choose(0), () => { worded(); choose(c, 0); });
       for (const of of (S.offers || []).slice()) if (!P.whyNot(of)) both(`week ${W} accept ${of.kind}`, () => P.accept(of.id), () => game.accept(c, of.id));
       for (const t of (S.tenders || []).slice()) if (!t.bid) both(`week ${W} price subbie tender`, () => P.submitBid(t.id), () => game.submitBid(c, t.id));
       for (const t of (S.ctenders || []).slice()) if (!t.bid) both(`week ${W} price council tender`, () => P.submitCouncil(t.id), () => game.submitCouncil(c, t.id));
@@ -102,8 +105,13 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
         const m = (S.market.listings || []).filter((x: any) => x.type === need).sort((a: any, b: any) => a.price - b.price)[0];
         if (m && S.bank > m.price * 1.1 + 15000) both(`week ${W} buy ${need}`, () => P.buy(m.id), () => game.buy(c, m.id));
       }
+      // service the most overdue machine when there's money for it, and now and then sell a worn one
+      const due = S.fleet.filter((m: any) => m.hours - m.svcAt > 250 && m.status !== 'auction' && m.status !== 'listed').sort((a: any, b: any) => (b.hours - b.svcAt) - (a.hours - a.svcAt))[0];
+      if (due && S.bank > 30000) both(`week ${W} service`, () => P.service(due.id), () => game.service(c, due.id));
+      const worn = S.fleet.find((m: any) => m.status === 'idle' && m.cond < 30);
+      if (worn && S.fleet.length > 3) { const mode = (['trade', 'auction', 'list'] as const)[W % 3]!; both(`week ${W} sell ${mode}`, () => P.sell(worn.id, mode === 'list' ? undefined : mode), () => game.sellMachine(c, worn.id, mode)); }
       if (S.bank > 80000 && (S.cands || []).length && (S.staff || []).length < 4) { const id = S.cands[0].id; both(`week ${W} hire`, () => P.hireCand(id), () => game.hireCand(c, id)); }
-      for (let k = 0; S.queue.length && k < 20; k++) both(`week ${W} card ${S.queue[0].k}`, () => P.choose(0), () => choose(c, 0));
+      for (let k = 0; S.queue.length && k < 20; k++) both(`week ${W} card ${S.queue[0].k}`, () => P.choose(0), () => { worded(); choose(c, 0); });
       both(`week ${W} end`, () => P.endWeek(), () => game.endWeek(c));
       S = P.getS();
     }

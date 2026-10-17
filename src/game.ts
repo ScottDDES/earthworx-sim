@@ -6,8 +6,8 @@ import { bankWeek, newLoan, weeklyRepay, type Loan } from './bank';
 import { yearOf } from './calendar';
 import { DIFFICULTY, costIdx as costIdxOf, difficultyOf, type Difficulty } from './difficulty';
 import { book, newAccounts, type Accounts } from './ledger';
-import { TYPES, newMachine, value, type Machine } from './machines';
-import { MOODS, fmul as fmulOf, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
+import { TYPES, newMachine, serviced, svcCost, value, type Machine } from './machines';
+import { MOODS, fmul as fmulOf, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
 import { fromState, hashN, int, seedRand, type Rand } from './rng';
 import { mkRivals, rivalsWeek, type Rival, type RivalEvent } from './rivals';
 import { newWhs, safetyWeek, type SafetyEvent, type Whs } from './safety';
@@ -17,7 +17,7 @@ import { pickStart, rainMm, wetDay } from './weather';
 import { dayOffset } from './calendar';
 import { genCandidates, hire, wages, type Candidate, type Person } from './staff';
 import { genMgrApplicants, hireMgr as hireMgrPerson, mgrIs, mgrOf, mgrTraitsWeek, mgrUnlocked, workshopCtx, type MgrRole, type MgrApplicant } from './managers';
-import { fitterWeek, wsmWeek, type WorkshopEvent } from './workshop';
+import { afterService, fitterWeek, wsmWeek, type WorkshopEvent } from './workshop';
 import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium as premiumOf } from './overheads';
 import { accept as acceptOffer, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type HireEvent } from './hire';
 import { relWeek } from './relations';
@@ -427,3 +427,22 @@ function mgrWeek(c: Career, rand: Rand): void {
   c.ygSlow = mgrTraitsWeek(rand, c.staff, c.week, c.whs);
 }
 
+
+/** Book a dealer service: condition back up, and sometimes it turns up a fault (a card, or the workshop manager deals with it). */
+export function service(c: Career, id: string): boolean {
+  const m = c.fleet.find((x) => x.id === id);
+  if (!m) return false;
+  const w = wctx(c), cost = svcCost(m, w);
+  if (c.bank + odLimit(c) < cost) return false;
+  c.bank -= cost;
+  book(c.acc, 'workshop', cost);
+  tcAdd(c as never, 'svc');
+  serviced(m, 'dealer');
+  afterService(stream(c), c as never, m, null, w, []);
+  return true;
+}
+
+/** Sell an idle machine: trade it in, put it in the auction, or list it privately. */
+export function sellMachine(c: Career, id: string, mode: SellMode): boolean {
+  return sell(stream(c), c as never, id, mode, mgrIs(c.staff, 'dealer')) != null;
+}

@@ -6,6 +6,16 @@ The plan is in section 15 of the design document. Port the prototype one piece a
 
 ## Running it
 
+The game's screens are in `app/` (React, Vite). To play it in your browser:
+
+```
+cd app
+npm install        # once
+npm run dev        # then open http://localhost:5173
+```
+
+The engine:
+
 ```
 npm install        # once
 npm test           # run the tests
@@ -14,6 +24,10 @@ npm run check      # type-check, then test: run this before every commit
 ```
 
 ## What's here
+
+**Screens (`app/src`)**: `App.tsx` picks the screen; `store.ts` keeps the career, saves it on the device after every change and redraws; `screens/` has Setup, Shop, Game (header, tabs, dock, cards, the week's docket), Yard, and End. `prototype.css` and `icons.ts` are copied from the prototype by `scripts/extract-look.mjs`, so the look matches.
+
+**Engine (`src`)**:
 
 | File | What it does |
 |---|---|
@@ -94,6 +108,16 @@ Still open:
 
 - The whole-career test plays a simple bot (first choice on every card). It never reaches flood recovery programs, the branch
   or managers; those have their own side-by-side tests, but a stronger bot would cover them in whole careers too.
+
+## Screens so far
+
+- [x] Setup, buying your first machine, opening for business
+- [x] The game shell: header, tabs, End week, the week's docket, cards with their options
+- [x] Yard: forecast, your yard and moving, machines (service, sell), people
+- [ ] Card details (names and amounts on each card) and what happened after you chose
+- [ ] The docket's events in words
+- [ ] Work: hire jobs, booking in, tenders and planning
+- [ ] Market, Career, Office, Map
 
 ## Ported so far
 
