@@ -14,6 +14,8 @@ npm install        # once
 npm run dev        # then open http://localhost:5173
 ```
 
+To look at later screens without playing up to them, open http://localhost:5173/?demo=council: a business that's run its own contract, with a council package and a flood recovery program out to tender.
+
 The engine:
 
 ```
@@ -118,7 +120,7 @@ Still open:
 - [ ] Card details (names and amounts on each card) and what happened after you chose
 - [ ] The docket's events in words
 - [x] Work: hire offers (take it, or ring to book it in), jobs on the go (progress, what a waiting job needs, subbing out and taking back), subbie tenders with the full pricing sheet
-- [ ] Work: council tender and program planning (council tenders can be priced on the standard plan for now)
+- [x] Work: council tender planning (crews, graders, rollers, carts, trucks, pit, who supplies the plant, program, price) and flood recovery programs (map, crews road by road, timeline, holdups, plant, price)
 - [ ] Market, Career, Office, Map
 
 ## Ported so far

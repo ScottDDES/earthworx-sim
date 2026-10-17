@@ -9,6 +9,7 @@ import {
   type Person, type PlanCtx, type PlanEval, type ProgOp, type Role, type Standing, type TownId, type YardId,
 } from '../src';
 import { loadPrototype } from './prototype';
+import { bottText, issueText } from '../src/text/plan';
 
 const P = loadPrototype();
 const LOAN_FOR: Record<Difficulty, number> = { easy: 350000, normal: 180000, hard: 80000, hc: 80000 };
@@ -140,6 +141,7 @@ describe('planning', () => {
       const mine = planEval(p(), t, t.pl), theirs = P.planEval(S.ctenders[0], S.ctenders[0].pl);
       expect(evalCore(mine)).toEqual(evalCore(theirs));
       expect(mine.bott.k).toBe(BOTT_K[theirs.bott.k]);
+      expect(bottText(mine.bott, t)).toBe(theirs.bott.t);
       botts[mine.bott.k] = (botts[mine.bott.k] || 0) + 1;
       // the price
       const ov = P.overheads(), n = P.otherContracts();
@@ -179,6 +181,8 @@ describe('planning', () => {
       expect(t.pl).toEqual(pt.pl);
       const mine = planEval(p(), t, t.pl), theirs = P.planEval(pt, pt.pl);
       expect(evalCore(mine)).toEqual(evalCore(theirs));
+      expect(mine.issues!.map((x) => issueText(x, t))).toEqual(theirs.issues.map((x: any) => x.t));
+      expect(bottText(mine.bott, t)).toBe(theirs.bott.t);
       issues += mine.issues!.length;
     }
     expect(issues).toBeGreaterThan(100);

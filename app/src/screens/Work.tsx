@@ -8,6 +8,7 @@ import {
 } from '@engine';
 import { KIND_CHIP, KIND_LABEL, councilTitle, jobTitle, offerCatch, offerDetail, offerPay, offerTitle, pmOf, subTenderTitle } from '@engine/text/work';
 import { f, fk } from '../format';
+import { CouncilCard, PlanSheet } from './Plan';
 
 type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
@@ -264,6 +265,8 @@ function PriceSheet({ c, t, act, onClose }: { c: Career; t: SubTender; act: Act;
 
 export function WorkTab({ c, act }: { c: Career; act: Act }) {
   const [pricing, setPricing] = useState<string | null>(null);
+  const [planning, setPlanning] = useState<string | null>(null);
+  const ct = planning ? c.ctenders.find((t) => t.id === planning) : undefined;
   const [msg, setMsg] = useState<string | null>(null);
   const pt = pricing ? c.tenders.find((t) => t.id === pricing) : undefined;
   const can = canTender((t) => game.owns(c, t), c.rep, c.whs.sys);
@@ -274,12 +277,7 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
         <>
           <div className="sub">Council tenders</div>
           {c.ctenders.length ? c.ctenders.map((t) => (
-            <div key={t.id} className="card">
-              <div className="row"><span className={'chip ' + (t.major ? 'c-dark' : 'c-rain')}>{t.major ? 'RECOVERY PROGRAM' : 'COUNCIL'}</span><span className="grow" /><span className="tiny muted">Closes end of week {t.close}</span></div>
-              <b>{councilTitle(t)}</b>
-              {t.bid ? <div className="small" style={{ color: 'var(--teal)', fontWeight: 700 }}>Your bid is in: {f(t.bid)}</div> : <div className="small muted">Planning these is the next screen to build. For now you can price it on the standard plan.</div>}
-              {!t.bid && <button type="button" className="btn ink full" disabled={game.capFull(c)} onClick={() => act((x) => game.submitCouncil(x, t.id))}>Price it on the standard plan</button>}
-            </div>
+            <CouncilCard key={t.id} t={t} onPlan={() => act((x) => { game.openProgram(x, t.id); setPlanning(t.id); })} />
           )) : <div className="card"><div className="small muted">No council packages out right now. They come out most months.</div></div>}
         </>
       )}
@@ -297,6 +295,7 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
       {!c.offers.length && <div className="card"><div className="small muted">Nothing else this week. New work comes up every Monday.</div></div>}
       {c.offers.map((o) => <OfferCard key={o.id} c={c} o={o} act={act} onMsg={setMsg} />)}
       {pt && <PriceSheet c={c} t={pt} act={act} onClose={() => setPricing(null)} />}
+      {ct && <PlanSheet c={c} t={ct} act={act} onClose={() => setPlanning(null)} />}
     </>
   );
 }

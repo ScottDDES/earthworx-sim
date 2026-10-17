@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { game } from '@engine';
+import { demoCareer } from './demo';
 
 type Setup = game.Setup;
 
@@ -37,7 +38,9 @@ export interface Store {
 }
 
 export function useGame(): Store {
-  const ref = useRef<Career | null>(load());
+  // ?demo=council starts a ready-made career for looking at later screens
+  const demo = new URLSearchParams(location.search).get('demo');
+  const ref = useRef<Career | null>(demo ? demoCareer(demo) ?? load() : load());
   const [, setVersion] = useState(0);
   const bump = useCallback(() => setVersion((v) => v + 1), []);
 

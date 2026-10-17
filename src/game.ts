@@ -23,8 +23,8 @@ import { accept as acceptOffer, askWait as askWaitHire, genOffers, recvWeek, sta
 import { relWeek } from './relations';
 import { dmap, mapWeek, type DistrictMap, type MapEvent } from './map';
 import { canTender, closeTender, crewDayCost, genTenders, otherContracts, setMk, subPrice, submitBid as submitBidT, withdrawBid as withdrawBidT, tbs, type CloseEvent, type Standing, type SubTender } from './tenders';
-import { closeCouncil, genMajor, genCouncil, canPrestige, setCmk, setOh, submitCouncil as submitCouncilT, type CouncilEvent } from './council';
-import type { CouncilTender, PlanCtx } from './planning';
+import { closeCouncil, councilPrice, genMajor, genCouncil, canPrestige, progAct as progActC, setCmk, setHm as setHmC, setOh, setPlan as setPlanC, submitCouncil as submitCouncilT, type CouncilEvent, type ProgOp } from './council';
+import { autoPlan, planEval, type CouncilTender, type PlanCtx } from './planning';
 import { endOfDay, jobDay, settleJob, staffOwn, staffSubs, seatStaff, subOut as subOutC, subQuotes, takeBack as takeBackC, terminateWeek, type ContractEvent, type SubQuote } from './contracts';
 import { bankCalls, closeBooks, gstInBank, hardcoreWeek, netWorth, newGst, odLimit, payablesWeek, taxMode, taxWeek, yearEnd, type BankCallEvent, type GstState, type HardcoreEvent, type TaxEvent, type TaxMode, type WeekRow, type YearReview } from './office';
 import { sellUpWeek, shockWeek, type ShockEvent } from './shocks';
@@ -488,4 +488,39 @@ export function subOut(c: Career, jobId: string, i: number): boolean {
 
 export function takeBack(c: Career, jobId: string): boolean {
   return takeBackC(c as never, jobId);
+}
+
+/** Change a council plan: crews, graders, rollers, carts, trucks a crew, the pit, subbie crews, or how many of your own ('own:grader'). */
+export function setPlan(c: Career, id: string, k: string, d: number): void {
+  const t = c.ctenders.find((x) => x.id === id);
+  if (t) setPlanC(planCtx(c), t, k as never, d);
+}
+
+/** Hire a machine type dry (your casual drives) or wet (a subbie with operator). */
+export function setHireMode(c: Career, id: string, k: string, v: 'dry' | 'wet'): void {
+  const t = c.ctenders.find((x) => x.id === id);
+  if (t) setHmC(t, k, v);
+}
+
+/**
+ * Open a flood recovery program for planning. The first time, its roads are split between three crews.
+ * (The prototype does this when the sheet is first drawn, so it's a step of its own here.)
+ */
+export function openProgram(c: Career, id: string): void {
+  const t = c.ctenders.find((x) => x.id === id);
+  if (t && t.major && !t.pl.prog) t.pl.prog = autoPlan(t, 3);
+}
+
+/** Change a program's crews and roads (see council.progAct). */
+export function programAct(c: Career, id: string, op: ProgOp): void {
+  const t = c.ctenders.find((x) => x.id === id);
+  if (t) progActC(t, op);
+}
+
+/** A council tender's plan as it stands: weeks, cost, method points, what's holding it up, and your price. */
+export function evaluate(c: Career, id: string) {
+  const t = c.ctenders.find((x) => x.id === id);
+  if (!t) return null;
+  const e = planEval(planCtx(c), t, t.pl);
+  return { e, price: councilPrice(t, e, overheads(c), otherContracts(c.jobs)) };
 }
