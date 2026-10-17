@@ -5,5 +5,6 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react()],
   resolve: { alias: { '@engine': new URL('../src', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1') } },
-  server: { port: 5173 },
+  // the phone app projects churn thousands of files while they build; the dev server needn't watch them
+  server: { port: 5173, watch: { ignored: ['**/android/**', '**/ios/**', '**/dist/**'] } },
 });
