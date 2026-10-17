@@ -49,6 +49,7 @@ npm run check      # type-check, then test: run this before every commit
 | `src/game.ts` | The whole game: a career, starting one, opening for business, the player's actions, and the week in the prototype's exact order. Exported as `game`. |
 | `src/choose.ts` | Answering the card at the front of the queue: every kind of card, its options in order, drawn on its own seed. |
 | `src/text/` | Words the player reads, kept out of the rules. The engine records which story happened; screens look up the words here. |
+| `src/compat.ts` | The one switch for where the real game differs from the prototype (see below), and the fair shuffle. |
 | `src/index.ts` | The front door. Screens import from here only. |
 | `test/parity.test.ts` | Runs the prototype and this engine side by side and fails if they ever disagree. |
 | `test/machines.test.ts` | The same for machines, yards and difficulty. |
@@ -65,6 +66,8 @@ npm run check      # type-check, then test: run this before every commit
 | `test/outside.test.ts` | Shocks, selling up, buy-outs and the branch, on careers the prototype played. |
 | `test/cards.test.ts` | Cards, the rain call and the ladder, on careers the prototype played. |
 | `test/career.test.ts` | Whole careers: 40 careers of four years, prototype and engine side by side, compared after every move and every week. |
+| `test/fixes.test.ts` | The differences from the prototype: the fair shuffle, and replaying a career from its seed. |
+| `test/setup.ts` | Turns on "behave exactly like the prototype" for the side-by-side tests. |
 | `test/bot.ts` | A simple bot that plays the prototype, so tests get real, lived-in careers to check against. |
 | `test/prototype.ts` | Loads the prototype for the tests (from `../game-prototype`, or set `PROTOTYPE`). Also cuts blocks out of its week loop and compiles them inside it, so tests can run them word for word. |
 
@@ -75,14 +78,22 @@ npm run check      # type-check, then test: run this before every commit
 3. **Every ported piece gets a parity test** before anything is built on it, and the test is checked by breaking the rule on purpose and watching it fail. If you change a rule on purpose, change the test in the same commit and say why in the commit message.
 4. **Small files, one topic each.**
 
-## To fix after the port
+## Where the real game differs from the prototype
 
-- The prototype picks which real year's rain a career replays with `Math.random()`, outside the career's seed. The engine takes it from a separate seed (or as a parameter), so careers are fully reproducible from their seed alone.
-- The whole-career test plays a simple bot (first choice on every card). It never reaches flood recovery programs, the branch or managers; those are covered by their own side-by-side tests, but a stronger bot would cover them in whole careers too.
+The engine matches the prototype rule for rule, except where it does better. Each difference sits behind one switch,
+`compat.prototype` in `src/compat.ts`. The game leaves it off. The side-by-side tests turn it on (`test/setup.ts`), so they
+still check every rule against the prototype exactly. `test/fixes.test.ts` tests the differences themselves.
 
-Things the prototype does that should change, kept for now so careers match it exactly:
+- **Fair shuffles.** The prototype shuffles with `sort(() => rand() - 0.5)`, which is biased (some orders come up far more
+  often) and depends on the browser. The engine does a fair Fisher–Yates shuffle: which idle machines head contractors ring
+  about, council package road names, flood program roads and lots, Charters Towers road names, and subbie quotes.
+- **A career replays from its seed alone.** The prototype picks which real year's rain a career replays with `Math.random()`,
+  outside the career's seed. The engine takes it from the seed (or as a parameter, which the side-by-side tests use).
 
-- Several places shuffle with `sort(() => rand() - 0.5)`, which is biased and depends on the browser's sort: dry-hire enquiries, council package road names, and program roads and Charters Towers road names. Marked `TODO after the port` in the code.
+Still open:
+
+- The whole-career test plays a simple bot (first choice on every card). It never reaches flood recovery programs, the branch
+  or managers; those have their own side-by-side tests, but a stronger bot would cover them in whole careers too.
 
 ## Ported so far
 

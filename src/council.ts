@@ -8,6 +8,7 @@ import { TOWNS } from './towns';
 import { BOQ, CT_PITS, CT_ROADS, dmap, mapRival, mapWork, pickRoads, placePos } from './map';
 import type { Mood } from './market';
 import { int, pick, type Rand } from './rng';
+import { shuffled } from './compat';
 import { rvOHFor, rvWin, whoPrices } from './rivals';
 import {
   autoPlan, newCrew, planCounts, planEval, progRun, stdPlan, subCrewTerms, tidyCrew,
@@ -57,8 +58,7 @@ export function genCouncil(rand: Rand, st: CouncilWorld, p: PlanCtx, fmul: numbe
   const cap = st.won3 ? 3 : 2, more = st.won3 ? 0.55 : 0.35;
   if (st.ctenders.length >= cap || (st.ctenders.length && rand() > more) || rand() > Math.min(0.95, (st.won3 ? 0.8 : 0.65) * fmul)) return null;
   const T = TOWNS[st.town];
-  // TODO after the port: a biased shuffle, kept so careers match the prototype.
-  const pl = T.places.slice().sort(() => rand() - 0.5), n = int(rand, 3, 5), roads: PlanRoad[] = [];
+  const pl = shuffled(rand, T.places), n = int(rand, 3, 5), roads: PlanRoad[] = [];
   // the place is picked before the map is touched: making the map rolls dice, so the order matters
   const mp0 = placePos(st.town, pick(rand, T.places)), M = dmap(rand, st), mids = pickRoads(M, mp0[0], mp0[1], 40);
   for (let i = 0; i < n; i++) {
@@ -111,8 +111,7 @@ export function genMajor(rand: Rand, st: CouncilWorld, p: PlanCtx, fmul: number,
   } else {
     const pool: (typeof BOQ)[string]['roads'] = [];
     for (const k of Object.keys(BOQ)) pool.push(...BOQ[k]!.roads);
-    // TODO after the port: a biased shuffle, kept so careers match the prototype.
-    const names = CT_ROADS.slice().sort(() => rand() - 0.5);
+    const names = shuffled(rand, CT_ROADS);
     area = pick(rand, TOWNS.ct.places);
     const cx = int(rand, 30, 90) * (rand() < 0.5 ? -1 : 1), cy = int(rand, 20, 80) * (rand() < 0.5 ? -1 : 1);
     roads = names.slice(0, int(rand, 18, 30)).map((nm) => {
@@ -130,8 +129,7 @@ export function genMajor(rand: Rand, st: CouncilWorld, p: PlanCtx, fmul: number,
   }
   const prest = prestigeOk && rand() < 0.4, tot = roads.reduce((a, x) => a + x[1] + x[2], 0);
   const lots = prest ? 1 : Math.max(1, Math.min(4, Math.round(tot / int(rand, 55, 95))));
-  // TODO after the port: a biased shuffle, kept so careers match the prototype.
-  roads.sort(() => rand() - 0.5);
+  roads = shuffled(rand, roads);
   const per = Math.ceil(roads.length / lots), lot = int(rand, 0, lots - 1), mine = roads.slice(lot * per, (lot + 1) * per).filter((x) => x[1] + x[2] >= 0.3);
   if (!mine.length) return null;
   const q = { hfg: 0, mfg: 0, lfg: 0, resheet: 0 }, hz: number[] = [];

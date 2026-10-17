@@ -31,3 +31,4 @@ export * from './career';
 // The whole game, as one namespace: game.newCareer, game.endWeek, game.buy, ...
 export * as game from './game';
 export * from './choose';
+export * from './compat';

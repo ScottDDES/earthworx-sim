@@ -12,6 +12,7 @@ import { HEAD_CONTRACTORS } from './market';
 import { mapDone, type DistrictMap } from './map';
 import { relAdd } from './relations';
 import { int, pick, type Rand } from './rng';
+import { shuffled } from './compat';
 import { SKILLS, ROLES, type Person } from './staff';
 import { TOWNS, type TownId } from './towns';
 import { forecast, type WeatherCtx } from './weather';
@@ -220,8 +221,7 @@ export function genOffers(rand: Rand, b: Biz, fmul: number, won: boolean, won2: 
   if (won && contractors.length) {
     const idle = b.fleet.filter((m) => m.status === 'idle' && m.down === 0);
     const extra = Math.min(6, Math.round(idle.length * (won2 ? 0.6 : 0.3) * (0.6 + rand() * 0.8)));
-    // TODO after the port: this comparator is a biased shuffle. Kept for now so careers match the prototype.
-    idle.sort(() => rand() - 0.5).slice(0, extra).forEach((m) => {
+    shuffled(rand, idle).slice(0, extra).forEach((m) => {
       const Ty = TYPES[m.type], client = pick(rand, contractors), place = pick(rand, T.places), id = uid(b);
       const days = int(rand, 2, 6), rate = round(Ty.dry * rf * (0.92 + rand() * 0.16), 100);
       out.push({ id, kind: 'dry', type: m.type, place, client, days, rate, terms: CLIENTS[client]!.terms, enq: true });

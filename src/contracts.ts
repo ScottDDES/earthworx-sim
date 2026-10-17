@@ -15,6 +15,7 @@ import { mapDone, type DistrictMap } from './map';
 import { FLOAT_DAYS, FLOAT_KM, FLOAT_MOVE, SITE_WEEK, TRUCK_DAY, crewMul, crewPeople, flow, hm, roadDist, subRate, weeksFor, type PlanCtx } from './planning';
 import { relAdd } from './relations';
 import { int, type Rand } from './rng';
+import { shuffled } from './compat';
 import { ROLES, fillRoles, type Person } from './staff';
 import { LD_WEEK, MOB, RETAIN, TREAT } from './tenders';
 import { LD_OWN } from './council';
@@ -854,8 +855,7 @@ export function leftDays(j: Job): number {
 /** This week's quotes from local outfits to take a contract off your hands. New ones each week; some weeks nobody's free. */
 export function subQuotes(rand: Rand, b: ContractBiz, j: Job): SubQuote[] {
   if (j.quotes && j.quotesWk === b.week) return j.quotes as SubQuote[];
-  // TODO after the port: a biased shuffle, kept so careers match the prototype.
-  const names = SUBBIES.slice().sort(() => rand() - 0.5), n = rand() < 0.15 ? 0 : int(rand, 1, 3), out: SubQuote[] = [], left = leftDays(j);
+  const names = shuffled(rand, SUBBIES), n = rand() < 0.15 ? 0 : int(rand, 1, 3), out: SubQuote[] = [], left = leftDays(j);
   for (let i = 0; i < n; i++) {
     const crews = j.kind === 'own' && left > 40 && rand() < 0.5 ? 2 : 1, pace = Math.round((0.76 + rand() * 0.16) * 100) / 100;
     const q = { name: names[i]!, crews, pace } as SubQuote;
