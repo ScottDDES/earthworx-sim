@@ -2,11 +2,11 @@
 // the district (the market and the other outfits), and selling up to retire.
 
 import { useState } from 'react';
-import { MOODS, TICKETS, TIER, canBuyOut, checks, checks2, checks3, checks4, checks5, ownedCounts, rung, rvForm, rvPhase, stars, game } from '@engine';
+import { MOODS, TICKETS, inherit, TIER, canBuyOut, checks, checks2, checks3, checks4, checks5, ownedCounts, rung, rvForm, rvPhase, stars, game } from '@engine';
 import { STEPS, TICKET_CATS, TICKET_TEXT, checkWords, districtForm, starTxt } from '@engine/text/career';
 import { diaryLines } from '@engine/text/diary';
 import { sfx } from '../sound';
-import { f } from '../format';
+import { f, fk } from '../format';
 import { SlotsBar, SlotsCard, type Saves } from '../Slots';
 
 type Career = game.Career;
@@ -140,6 +140,13 @@ function RetireSheet({ c, act, onClose }: { c: Career; act: Act; onClose: () => 
         </div>
         <div className="small">This ends the career. What you walk away with goes on the board as your final result.</div>
         <button type="button" className="big" onClick={() => { act((x) => { game.retireNow(x); sfx('win', x.sound); }); onClose(); }}>Sign and retire · {f(o.walk)}</button>
+        {c.won3 && (
+          <div className="card">
+            <b>Or hand it to the next generation</b>
+            <div className="small muted">Your kids take over {c.co} and start again from one machine, with the family name, a star of track record, and {f(inherit(o.walk))} of the family money. Your tickets and the family history carry on.</div>
+            <button type="button" className="btn dark full" onClick={() => { act((x) => { game.handOnNow(x); sfx('win', x.sound); }); onClose(); }}>Hand it on</button>
+          </div>
+        )}
         <button type="button" className="btn full" onClick={onClose}>Not yet</button>
       </div>
     </div>
@@ -169,6 +176,15 @@ export function CareerTab({ c, act, onNew, saves }: { c: Career; act: Act; onNew
     <>
       {slots ? <SlotsCard saves={saves} onClose={() => setSlots(false)} /> : <SlotsBar saves={saves} onOpen={() => setSlots(true)} />}
       <Wallet c={c} />
+      {(c.gen || 1) > 1 && (
+        <div className="card">
+          <div className="row"><b className="grow">The family business</b><span className="chip c-dark">GENERATION {c.gen}</span></div>
+          {(c.dyn as game.Generation[] | undefined || []).map((d) => (
+            <div key={d.gen} className="kv"><span>Generation {d.gen} <span className="tiny muted">{STEPS[d.stage - 1]?.t ?? ''}</span></span><span className="num">{d.weeks} wks · {fk(d.walk)}</span></div>
+          ))}
+          <div className="tiny muted">What each generation built before handing it on.</div>
+        </div>
+      )}
       {(c.ownWon ?? 0) > 0 && (
         <div className="card">
           <div className="sub">Council contracts</div>

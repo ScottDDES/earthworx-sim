@@ -138,7 +138,8 @@ Still open:
 - [x] Easing in: the getting-started coach, tabs that appear as needed (with NEW and count badges), the goal line above End week, Col's notes, and Run on
 - [x] Three save slots: switch between careers (saving where you are first), start a new one in an empty save, a confirm before wiping a save, and a warning if the device can't save. Save 1 keeps the old key, so earlier careers carry on. The demo is never saved.
 - [x] Sound, off unless you turn it on (Career tab): a stamp for tickets and finished work, a diesel each week, two notes for a win
-- [ ] Still to come: seasons (fixed-length challenge runs; they need the leaderboard, which stays private), handing the business to the next generation
+- [x] Handing the business to the next generation (from Regional contractor): the family money, a star of track record, the tickets and the family history carry on; the end screen now matches the prototype's
+- [ ] Still to come: seasons (fixed-length challenge runs; they need the leaderboard, which stays private)
 - [x] Office: the dashboard (what's worth a look, cash, runway, work in hand, the 12-week cash forecast, trend charts, profit and loss, how the jobs went, the branch, head contractors, past years, the gear, safety, people, tenders, who owes what) and the bank page (borrowing against the fleet, paying the loan down, ringing around about selling)
 - [x] Map: the district roads by state, tap a road for its story, your roads
 

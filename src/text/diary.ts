@@ -123,6 +123,8 @@ export function diaryText(c: Career, e: any): string {
     case 'soldTwo': return 'Sold ' + e.ms.map(label).join(' and ') + ' to ' + e.to + ' for ' + f(e.price) + '.';
     case 'boughtGearOff': return e.who + ' has bought gear off ' + c.co + '.';
     case 'soldBusiness': return 'Sold ' + c.co + ' to ' + e.to + ' for ' + f(e.price) + '.';
+    case 'handedOn': return 'Handed ' + c.co + ' to the next generation.';
+    case 'nextGen': return 'Generation ' + e.gen + ' takes over ' + e.co + ', with ' + f(e.gift) + ' of the family money and a name people know.';
     case 'retired': return 'Sold ' + c.co + ' to ' + (e.to ?? 'A contractor from the coast') + ' for ' + f(e.price) + ' and retired.';
     case 'callout': return 'Storm call-out for the council: ' + f(e.amt) + ' invoiced.';
     case 'knockedBack': return e.name + ' knocked back ' + f(e.offer) + ' a week.';

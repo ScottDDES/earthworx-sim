@@ -30,7 +30,7 @@ import { autoPlan, planEval, type CouncilTender, type PlanCtx } from './planning
 import { endOfDay, jobDay, settleJob, staffOwn, staffSubs, seatStaff, subOut as subOutC, subQuotes, takeBack as takeBackC, terminateWeek, type ContractEvent, type SubQuote } from './contracts';
 import { bankCalls, closeBooks, gstInBank, hardcoreWeek, netWorth, newGst, odLimit, payablesWeek, taxMode, taxWeek, yearEnd, type BankCallEvent, type GstState, type HardcoreEvent, type TaxEvent, type TaxMode, type WeekRow, type YearReview, type Payable } from './office';
 import { borrow, borrowRoom, cashForecast, fixedWeek, payDown, runway, type ForecastWeek } from './books';
-import { askSellUp, retire, retireOffer, sellUpWeek, shockWeek, type RetireOffer, type ShockEvent } from './shocks';
+import { askSellUp, handOn, inherit, retire, retireOffer, sellUpWeek, shockWeek, type RetireOffer, type ShockEvent } from './shocks';
 import { branchWeek, closeBranch, hireBrMgr, openBranch, toBranch, toHome, type Branch, type BranchEvent, type BranchMgrKind } from './branch';
 import { curveWeek, rainCallCheck, rainCallDay, rainCrews, swmsWeek, type RainCallEvent } from './cards';
 import { checkTix, checkWin, rung, tc, tcAdd, unlockWeek, unlocked } from './career';
@@ -330,6 +330,44 @@ export function retireNow(c: Career): void {
   if (!c.won || c.phase !== 'play') return;
   const g = rung(c as never);
   retire(c as never, mood(c), stars(c.rep), c.gst && gstInBank(tax(c)) ? c.gst.held : 0, { stage: g, peak: g });
+}
+
+/** Hand the business on to your kids: only once you're a regional contractor. */
+export function handOnNow(c: Career): void {
+  if (!c.won3 || c.phase !== 'play') return;
+  const g = rung(c as never);
+  handOn(c as never, mood(c), stars(c.rep), c.gst && gstInBank(tax(c)) ? c.gst.held : 0, { stage: g, peak: g });
+}
+
+/** One generation's run, for the family history. */
+export interface Generation {
+  gen: number;
+  weeks: number;
+  walk: number;
+  stage: number;
+}
+
+/**
+ * The next generation takes over: a new career under the same name, loan, town and mode, starting from one
+ * machine, with the family money, a star of track record, the tickets, and the history. No coach, every tab open.
+ */
+export function nextGeneration(prev: Career, seed: number, wxStart?: number): Career | null {
+  const u = prev.soldUp as { legacy?: boolean; week: number; walk: number; stage: number; peak?: number } | undefined;
+  if (!u || !u.legacy) return null;
+  const gen = (prev.gen || 1) + 1, gift = inherit(u.walk);
+  const c = newCareer({ co: prev.co, loan: prev.loanStart || 180000, town: prev.town, hc: !!prev.hardcore }, seed, wxStart);
+  c.gen = gen;
+  c.dyn = [...((prev.dyn as Generation[]) || []), { gen: prev.gen || 1, weeks: u.week, walk: u.walk, stage: u.peak || u.stage }];
+  c.bank += gift;
+  c.rep = Math.max(c.rep, 5);
+  c.tix = prev.tix || c.tix;
+  c.tc = prev.tc || c.tc;
+  c.tipsSeen = prev.tipsSeen;
+  c.tipsOff = prev.tipsOff;
+  c.coach = { off: true } as CoachState;
+  c.tabs = { map: 1, bank: 1, board: 1 };
+  note(c, { k: 'nextGen', gen, co: c.co, gift });
+  return c;
 }
 
 /** Approach a struggling rival about buying them out: their offer comes up as a card. */

@@ -197,6 +197,19 @@ export function retireOffer(b: SellUpState & { ownDone?: number; majorDone?: num
   return { who: x ? x.name : null, price, v, walk: walkAway(b, price, gstHeldInBank) };
 }
 
+/** What the next generation starts with: a quarter of what you'd walk away with, up to $300k. */
+export function inherit(walk: number): number {
+  return round(Math.max(0, Math.min(300000, walk * 0.25)), 1000);
+}
+
+/** Hand the business to the next generation. This career ends; the next starts from one machine (game.nextGeneration). */
+export function handOn(b: SellUpState & { ownDone?: number; majorDone?: number }, mood: Mood, starsN: number, gstHeldInBank: number, info: Record<string, number>): void {
+  const o = retireOffer(b, mood, starsN, gstHeldInBank);
+  b.soldUp = { to: 'the next generation', price: o.price, walk: o.walk, week: b.week, ...info, fleet: sellGear(b.fleet).length, earned: Math.round(b.stats.earned), retired: true, legacy: true } as never;
+  note(b, { k: 'handedOn' });
+  b.phase = 'sold';
+}
+
 /** Sign and retire. The career ends. info: the stage and peak on the ladder, for the record. */
 export function retire(b: SellUpState & { ownDone?: number; majorDone?: number }, mood: Mood, starsN: number, gstHeldInBank: number, info: Record<string, number>): RetireOffer {
   const o = retireOffer(b, mood, starsN, gstHeldInBank), x = b.rivals.find((y) => y.name === o.who);

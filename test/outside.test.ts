@@ -5,12 +5,13 @@ import {
   BR_SLOTS, DIFFICULTY, YARDS, askSellUp, brCrews, brRaise, brTender, brTenderCard, branchWeek, buyOutAll, buyOutBest, buyOutOffer,
   buyOutPay, canBranch, canBuyOut, closeBranch, collapseCard, collapseClaim, collapseSell, costIdx, insureBroker, int, meStretched,
   odLimit, openBranch, pick, seedRand, sellAll, sellBest, sellBuyer, sellPrice, sellTwo, sellUpWeek, shockWeek, stars, toBranch,
-  toHome, hireBrMgr, walkAway, workshopCtx, lendCap, fleetValue, taxMode, gstInBank, retire, retireOffer,
+  toHome, hireBrMgr, walkAway, handOn, game, workshopCtx, lendCap, fleetValue, taxMode, gstInBank, retire, retireOffer,
   type BranchEvent, type Difficulty, type HireEvent, type ShockEvent,
 } from '../src';
 import { accFromProto, playProto } from './bot';
 import { sameLines, jobPairs } from './docketWords';
 import { diaryMark, diarySame } from './diaryCheck';
+import { diaryLines } from '../src/text/diary';
 import { loadPrototype } from './prototype';
 
 const P = loadPrototype();
@@ -182,6 +183,42 @@ describe('retiring', () => {
     }
     expect(n).toBe(1500);
     expect(coast).toBeGreaterThan(100);
+  });
+});
+
+describe('handing on to the next generation', () => {
+  it('the same record when you hand it on, and the next generation starts with the same inheritance', () => {
+    const R = seedRand(218);
+    let n = 0, third = 0;
+    for (let i = 0; i < 400; i++) {
+      const { S, b } = pair(pick(R, SNAPS));
+      S.won3 = b.won3 = true;
+      // sometimes this is already the second generation, with a history
+      if (R() < 0.3) { S.gen = b.gen = 2; S.dyn = clone([{ gen: 1, weeks: 210, walk: 640000, stage: 7 }]); b.dyn = clone(S.dyn); }
+      if (R() < 0.3) { S.tipsSeen = { office: 12 }; b.tipsSeen = clone(S.tipsSeen); }
+      P.setS(S);
+      const mood = (S.mkt?.mood ?? 'steady'), held = S.gst && gstInBank(taxMode(S.loanStart, !!S.hardcore)) ? S.gst.held : 0, rung = P.rung();
+      let mk = diaryMark(P, b);
+      P.handOn();
+      handOn(b, mood, stars(b.rep), held, { stage: rung, peak: rung });
+      expect(diarySame(P, b, mk)).toEqual(['handedOn']);
+      const { to, price, walk, week, fleet, earned, retired, legacy } = S.soldUp;
+      expect(b.soldUp).toEqual({ to, price, walk, week, stage: rung, peak: rung, fleet, earned, retired, legacy });
+      expect(b.phase).toBe(S.phase);
+      // the next generation: a fresh career, so only what's handed down is compared
+      const prevTix = clone(S.tix), prevTc = clone(S.tc);
+      P.nextGen();
+      const N = P.getS(), c = game.nextGeneration(b, int(R, 1, 1e9))!;
+      for (const k of ['gen', 'dyn', 'rep', 'tix', 'tc', 'tipsSeen', 'tipsOff', 'coach', 'tabs', 'co', 'town', 'loanStart', 'hardcore', 'phase']) expect(c[k], k).toEqual(N[k]);
+      expect(c.tix).toEqual(prevTix);
+      expect(c.tc).toEqual(prevTc);
+      expect(c.bank).toBe(N.bank);
+      expect(diaryLines(c).map((x) => x.t)).toEqual(N.log.map((x: any) => x.t));
+      if (c.gen === 3) third++;
+      n++;
+    }
+    expect(n).toBe(400);
+    expect(third).toBeGreaterThan(50);
   });
 });
 

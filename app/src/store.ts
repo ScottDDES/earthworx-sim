@@ -97,6 +97,8 @@ export interface Store {
   quit: () => void;
   /** Save where you are, then switch to save n (an empty one goes to setting up a career). */
   switchSlot: (n: number) => void;
+  /** A business handed on: the next generation takes it over, in the same save. */
+  nextGen: () => void;
 }
 
 export function useGame(): Store {
@@ -147,5 +149,12 @@ export function useGame(): Store {
     bump();
   }, [bump]);
 
-  return { career: ref.current, slot: slotRef.current, saveFailed: failed, demo: !!demoRef.current, act, start, quit, switchSlot };
+  const nextGen = useCallback(() => {
+    if (!ref.current) return;
+    const next = game.nextGeneration(ref.current, 1 + Math.floor(Math.random() * 2147483646));
+    if (next) ref.current = next;
+    bump();
+  }, [bump]);
+
+  return { career: ref.current, slot: slotRef.current, saveFailed: failed, demo: !!demoRef.current, act, start, quit, switchSlot, nextGen };
 }
