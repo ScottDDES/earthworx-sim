@@ -24,6 +24,8 @@ const EXPORTS = [
   'genMarket', 'marketWeek', 'fundIdx', 'fmul', 'buy', 'inspect', 'bid', 'hammer', 'sell', 'canFinance', 'lendCap',
   'finDeposit', 'MOODS', 'CLIENTS', 'fk',
   'curve', 'riskMult', 'whsNp', 'npOf', 'safetyWeek', 'upgradeWhs', 'hurtPick', 'whs', 'unlocked', 'TOWNS',
+  'genOffers', 'accept', 'whyNot', 'bookable', 'waitOdds', 'askWait', 'release', 'invoice', 'driverOff', 'rateFactor',
+  'relAdd', 'relTier', 'relWeek', 'relPts', 'stars',
 ];
 
 export interface Proto {
@@ -31,9 +33,44 @@ export interface Proto {
   [fn: string]: any;
 }
 
+/** Text of the prototype between two markers (start included, end not). Throws if either is missing. */
+export function cut(start: string, end: string, from = 0): string {
+  const a = js.indexOf(start, from);
+  const b = a < 0 ? -1 : js.indexOf(end, a + start.length);
+  if (a < 0 || b < 0) throw new Error(`Couldn't find ${a < 0 ? start : end} in the prototype.`);
+  return js.slice(a, b);
+}
+
+/** Cuts a block out and strips its opening and closing wrapper text, checking both are there. */
+function inner(block: string, open: string, close: string): string {
+  if (!block.startsWith(open)) throw new Error('Block does not start with: ' + open);
+  const body = block.slice(open.length).trimEnd();
+  if (!body.endsWith(close)) throw new Error('Block does not end with: ' + close);
+  return body.slice(0, body.length - close.length);
+}
+
+/**
+ * Pieces of the prototype's week loop, wrapped as functions and compiled inside the prototype,
+ * so they run word for word with all its helpers in reach.
+ */
+function weekHooks(): string {
+  const week = js.indexOf('function endWeek(){');
+  const jobOpen = '    S.jobs.forEach(function(j){ var c0 = rep.costs; (function(){\n';
+  const day = inner(cut(jobOpen, '    // Anything that finished today', week), jobOpen, '})(); jobCost(j, rep.costs-c0); });');
+  const afterDay = cut('    // Anything that finished today', '  }\n  // invoices and completions', week);
+  const setOpen = '  S.jobs.slice().forEach(function(j){ var c0 = rep.costs; (function(){\n';
+  const settle = inner(cut(setOpen + '    if(j.after) return;', '  fitterWeek(rep); wsmWeek(rep);', week), setOpen, '})(); jobCost(j, rep.costs-c0); jobDone(j); });');
+  const recv = cut('  // money coming in\n', '  // the bank\n', week);
+  return `__day: function(j, d, wet, rep, downDays){ var c0 = rep.costs; (function(){\n${day}})(); jobCost(j, rep.costs-c0); },
+    __afterDay: function(d, rep){\n${afterDay}},
+    __settle: function(j, rep, downDays){ var c0 = rep.costs; (function(){\n${settle}})(); jobCost(j, rep.costs-c0); jobDone(j); },
+    __recv: function(rep){\n${recv}},
+    __startWeek: function(){ S.jobs.forEach(function(j){ j.wk = 0; j.wkDays = 0; }); },`;
+}
+
 export function loadPrototype(): Proto {
   const end = js.lastIndexOf('})();');
-  const hook = `window.__parity = { setS: function(v){ S = v; }, ${EXPORTS.map((n) => `${n}: ${n}`).join(', ')} };\n`;
+  const hook = `window.__parity = { setS: function(v){ S = v; }, ${weekHooks()} ${EXPORTS.map((n) => `${n}: ${n}`).join(', ')} };\n`;
   const src = js.slice(0, end) + hook + js.slice(end);
   const el = { innerHTML: '' };
   const win: any = { scrollTo() {} };

@@ -15,3 +15,5 @@ export * from './overheads';
 export * from './workshop';
 export * from './market';
 export * from './safety';
+export * from './relations';
+export * from './hire';

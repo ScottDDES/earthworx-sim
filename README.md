@@ -33,6 +33,8 @@ npm run check      # type-check, then test: run this before every commit
 | `src/overheads.ts` | Weekly running costs: insurance (base, plant, workers' comp, your record), drawings, rent, wages, safety system, toolbox talks. |
 | `src/market.ts` | The plant market: the mood (boom to bust, driven by last year's rain), listings, distress sales, the auction lot, finance, buying, inspecting, bidding, selling. |
 | `src/safety.ts` | Incident odds, the register, safety points on tenders, stepping up the system, and the serious-incident, near-miss, quiet-crew and SWMS cards. |
+| `src/hire.ts` | Hire work: wet, dry, council day labour and private jobs. Offers, taking them, booking the next one in behind, the working day, the week's invoices, getting paid, late payers. |
+| `src/relations.ts` | Standing with each head contractor: −10 to +10, tiers, tender points, fading. |
 | `src/text/` | Words the player reads, kept out of the rules. The engine records which story happened; screens look up the words here. |
 | `src/index.ts` | The front door. Screens import from here only. |
 | `test/parity.test.ts` | Runs the prototype and this engine side by side and fails if they ever disagree. |
@@ -40,15 +42,22 @@ npm run check      # type-check, then test: run this before every commit
 | `test/staff.test.ts` | The same for staff, managers and workshop cover. |
 | `test/workshop.test.ts` | The same for the workshop week and running costs. |
 | `test/market.test.ts` | The same for the market. |
+| `test/hire.test.ts` | Hire work, including 400 businesses run side by side for six weeks each through the prototype's own week-loop code. |
 | `test/safety.test.ts` | The same for safety, including the words in `src/text/safety.ts`. |
-| `test/prototype.ts` | Loads the prototype for the tests (from `../game-prototype`, or set `PROTOTYPE`). |
+| `test/prototype.ts` | Loads the prototype for the tests (from `../game-prototype`, or set `PROTOTYPE`). Also cuts blocks out of its week loop and compiles them inside it, so tests can run them word for word. |
 
 ## Rules for the code
 
-1. **Engine code never draws anything and never writes text the player reads.** It returns numbers and facts, such as `{ missedNow: true }`, and the screens turn those into words. That way wording can change without touching the rules, and the game can be translated later. Where a story is picked at random, the engine stores which one (a number) and the words live in `src/text/`. Don't reorder those lists: saved careers point into them by position.
+1. **Engine code never draws anything and never writes text the player reads.** It returns numbers and facts, such as `{ missedNow: true }`, and the screens turn those into words. That way wording can change without touching the rules, and the game can be translated later. Where a story is picked at random, the engine stores which one (a number) and the words live in `src/text/`. Don't reorder those lists: saved careers point into them by position. Names are data, not sentences, and can stay in the engine: places, client names, kinds of private job.
 2. **Every roll uses the career's stream** (`fromState`), never `Math.random()`. The one exception is picking a new career's seed.
 3. **Every ported piece gets a parity test** before anything is built on it, and the test is checked by breaking the rule on purpose and watching it fail. If you change a rule on purpose, change the test in the same commit and say why in the commit message.
 4. **Small files, one topic each.**
+
+## To fix after the port
+
+Things the prototype does that should change, kept for now so careers match it exactly:
+
+- Dry-hire enquiries shuffle idle machines with `sort(() => rand() - 0.5)`, which is biased and depends on the browser's sort.
 
 ## Ported so far
 
@@ -59,7 +68,7 @@ npm run check      # type-check, then test: run this before every commit
 - [x] Running costs: insurance, safety system levels, drawings, rent, toolbox talks
 - [x] Safety: incidents, crew culture, the register, insurance loading, the safety cards
 - [x] The market: mood, listings, auctions, finance, buying and selling
-- [ ] Hire work
+- [x] Hire work: offers, booking in, the working day, invoices, getting paid, late payers, head contractor standing
 - [ ] Tenders and rivals
 - [ ] Running contracts
 - [ ] The week loop (`endWeek`), plus a full-career parity test
