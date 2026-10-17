@@ -143,7 +143,11 @@ export interface Biz {
   dmap?: DistrictMap;
 }
 
-export interface JobLog { w: number; kind: string; client: string; rev: number; cost: number; cut: boolean; sub: boolean; part: boolean; plan: number | null; oh: number }
+export interface JobLog {
+  w: number; kind: string; client: string; rev: number; cost: number; cut: boolean; sub: boolean; part: boolean; plan: number | null; oh: number;
+  /** What a screen needs to name the job. */
+  tn?: Pick<Job, 'kind' | 'type' | 'client' | 'place' | 'nm' | 'major' | 'prestige'>;
+}
 
 export function uid(b: { seq: number }): string {
   b.seq = (b.seq || 0) + 1;
@@ -526,7 +530,8 @@ export function jobDone(b: Biz, j: Job): void {
   j.jlog = 1;
   b.jlog = b.jlog || [];
   b.jlog.unshift({ w: b.week, kind: (j.major ? 'major' : j.kind) as string, client: j.client, rev: Math.round(j.earned || 0), cost: Math.round(j.spent || 0),
-    plan: j.planCost ? Math.round(j.planCost as number) : null, oh: (j.planOH as number) || 0, cut: !!j.cut, sub: j.state === 'subbed', part: !!j.part0 });
+    plan: j.planCost ? Math.round(j.planCost as number) : null, oh: (j.planOH as number) || 0, cut: !!j.cut, sub: j.state === 'subbed', part: !!j.part0,
+    tn: { kind: j.kind, type: j.type, client: j.client, place: j.place, nm: j.nm, major: j.major, prestige: j.prestige } });
   if (b.jlog.length > 40) b.jlog.length = 40;
 }
 

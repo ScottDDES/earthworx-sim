@@ -65,7 +65,7 @@ function expectSame(b: Biz, S: any) {
   expect(b.acc.jobCosts).toBeCloseTo(S.acc.jc, 6);
   expect(b.acc.machineDays).toBe(S.acc.md);
   expect(b.acc.breakdowns).toBe(S.acc.brk);
-  expect((b.jlog || []).map((x) => x)).toEqual((S.jlog || []).map(jlogAsEngine));
+  expect((b.jlog || []).map(({ tn, ...x }) => x)).toEqual((S.jlog || []).map(jlogAsEngine));
 }
 
 describe('offers', () => {

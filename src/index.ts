@@ -32,3 +32,4 @@ export * from './career';
 export * as game from './game';
 export * from './choose';
 export * from './compat';
+export * from './books';

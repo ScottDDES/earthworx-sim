@@ -12,6 +12,7 @@ import { YardTab } from './Yard';
 import { WorkTab } from './Work';
 import { MarketTab } from './Market';
 import { CareerTab } from './Career';
+import { OfficeTab } from './Office';
 
 type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
@@ -200,7 +201,7 @@ export function GameScreen({ c, act, onNew }: { c: Career; act: Act; onNew: () =
           {tab === 'work' && <WorkTab c={c} act={act} />}
           {tab === 'market' && <MarketTab c={c} act={act} />}
           {tab === 'career' && <CareerTab c={c} act={act} onNew={onNew} />}
-          {tab === 'bank' && <ComingNext name="Office: money, the bank and the books" />}
+          {tab === 'bank' && <OfficeTab c={c} act={act} go={setTab} />}
         </main>
       </div>
       <div className="dock">

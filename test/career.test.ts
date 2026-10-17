@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { choose, drawCard, game, int, pick, seedRand } from '../src';
 import { cardView, resultText } from '../src/text/cardView';
 import { hammerText, lotFrom, lotGuide } from '../src/text/market';
+import { ownerFlags } from '../src/text/office';
 import { docketLines, docketStamps, eventText } from '../src/text/docket';
 import { LTI_STORIES } from '../src/text/safety';
 import { loadPrototype } from './prototype';
@@ -43,6 +44,7 @@ function common(S: any, engine: boolean): any {
   // the incident register: when and how bad (names and stories are words)
   if (c.whs) c.whs.inc = c.whs.inc.map((x: any) => ({ w: x.w, sev: x.sev }));
   // the job log and the year in review
+  if (engine && c.jlog) c.jlog = c.jlog.map(({ tn, ...x }: any) => x);
   if (!engine && c.jlog) c.jlog = c.jlog.map((x: any) => ({ w: x.w, kind: x.k, client: x.c, rev: x.rev, cost: x.cost, plan: x.plan, oh: x.oh, cut: x.cut, sub: x.sub, part: x.part }));
   if (c.years) c.years = c.years.map((y: any) => { const { fy, first, best, worst, ...r } = y; return { ...r, best: best ? best.rev : null, worst: worst ? worst.rev : null }; });
   return c;
@@ -148,6 +150,12 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
         same(`week ${W} stamps`, docketStamps(c, r).join(' / '), (PR.hl || []).join(' / '));
         same(`week ${W} days`, JSON.stringify(r.days), JSON.stringify(PR.days));
         same(`week ${W} lost`, String(r.lost), String(PR.lost));
+        // the office dashboard's flags, over each period
+        for (const N of [13, 52]) {
+          const pc = P.getS().hist.slice(-N), mine = ownerFlags(c, (c.hist || []).slice(-N));
+          same(`week ${W} flags (${N} wks)`, mine.map((x) => x.join(' | ')).join(' // '), P.ownerFlags(pc, P.plOf(pc)).map((x: any) => x.join(' | ')).join(' // '));
+          FLAGS += mine.length;
+        }
         for (const e of r.events as { k: string }[]) if (eventText(c, r, e) != null) EVENTS.add(e.k);
       });
       S = P.getS();
@@ -164,6 +172,7 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
 const SEEN = new Set<string>();
 /** The kinds of docket line that were checked. */
 const EVENTS = new Set<string>();
+let FLAGS = 0;
 
 describe('whole careers', () => {
   it('play the same, week after week, start to finish', () => {
@@ -179,6 +188,7 @@ describe('whole careers', () => {
     console.log(runs.join('\n'));
     console.log('cards worded: ' + [...SEEN].sort().join(', '));
     console.log('docket lines: ' + [...EVENTS].sort().join(', '));
+    expect(FLAGS).toBeGreaterThan(1000);
     expect(LTI_STORIES.length).toBe(4);
   });
 });

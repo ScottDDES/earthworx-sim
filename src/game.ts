@@ -19,15 +19,16 @@ import { genCandidates, hire, wages, type Candidate, type Person } from './staff
 import { genMgrApplicants, hireMgr as hireMgrPerson, mgrIs, mgrOf, mgrTraitsWeek, mgrUnlocked, workshopCtx, type MgrRole, type MgrApplicant } from './managers';
 import { afterService, fitterWeek, wsmWeek, type WorkshopEvent } from './workshop';
 import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium as premiumOf } from './overheads';
-import { accept as acceptOffer, askWait as askWaitHire, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type HireEvent } from './hire';
+import { accept as acceptOffer, askWait as askWaitHire, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
 import { relWeek } from './relations';
 import { dmap, mapWeek, type DistrictMap, type MapEvent } from './map';
 import { canTender, closeTender, crewDayCost, genTenders, otherContracts, setMk, subPrice, submitBid as submitBidT, withdrawBid as withdrawBidT, tbs, type CloseEvent, type Standing, type SubTender } from './tenders';
 import { closeCouncil, councilPrice, genMajor, genCouncil, canPrestige, progAct as progActC, setCmk, setHm as setHmC, setOh, setPlan as setPlanC, submitCouncil as submitCouncilT, type CouncilEvent, type ProgOp } from './council';
 import { autoPlan, planEval, type CouncilTender, type PlanCtx } from './planning';
 import { endOfDay, jobDay, settleJob, staffOwn, staffSubs, seatStaff, subOut as subOutC, subQuotes, takeBack as takeBackC, terminateWeek, type ContractEvent, type SubQuote } from './contracts';
-import { bankCalls, closeBooks, gstInBank, hardcoreWeek, netWorth, newGst, odLimit, payablesWeek, taxMode, taxWeek, yearEnd, type BankCallEvent, type GstState, type HardcoreEvent, type TaxEvent, type TaxMode, type WeekRow, type YearReview } from './office';
-import { retire, retireOffer, sellUpWeek, shockWeek, type RetireOffer, type ShockEvent } from './shocks';
+import { bankCalls, closeBooks, gstInBank, hardcoreWeek, netWorth, newGst, odLimit, payablesWeek, taxMode, taxWeek, yearEnd, type BankCallEvent, type GstState, type HardcoreEvent, type TaxEvent, type TaxMode, type WeekRow, type YearReview, type Payable } from './office';
+import { borrow, borrowRoom, cashForecast, fixedWeek, payDown, runway, type ForecastWeek } from './books';
+import { askSellUp, retire, retireOffer, sellUpWeek, shockWeek, type RetireOffer, type ShockEvent } from './shocks';
 import { branchWeek, type Branch, type BranchEvent } from './branch';
 import { curveWeek, rainCallCheck, rainCallDay, rainCrews, swmsWeek, type RainCallEvent } from './cards';
 import { checkTix, checkWin, rung, tc, tcAdd, unlockWeek } from './career';
@@ -95,6 +96,12 @@ export interface Career {
   acc: Accounts;
   tb?: { s: [number, number]; c: [number, number]; since: number };
   gst?: GstState;
+  hist?: WeekRow[];
+  jlog?: JobLog[];
+  years?: YearReview[];
+  branch?: Branch | null;
+  payables?: Payable[];
+  unl?: Record<string, number>;
   rngSeed: string;
   rngA: number;
   [x: string]: any;
@@ -255,6 +262,46 @@ export function hammer(c: Career): HammerResult | null {
     tickets(c);
   }
   return res;
+}
+
+/** How far into the overdraft the bank lets you go. */
+export function odLimitOf(c: Career): number {
+  return odLimit(c);
+}
+
+/** The next n weeks of cash. */
+export function cashAhead(c: Career, n = 12): ForecastWeek[] {
+  return cashForecast(c, n, overheads(c), !!c.gst && gstInBank(tax(c)));
+}
+
+/** Weeks of fixed costs the cash and overdraft cover. */
+export function runwayWeeks(c: Career): number {
+  return runway(c.bank, odLimit(c), fixedWeek(overheads(c), c.loan));
+}
+
+/** How much more the bank will lend against the fleet. */
+export function canBorrow(c: Career): number {
+  return borrowRoom(lendCap(fleetValue(c.fleet, c.week), c.won, c.won2, c.won3), c.loan);
+}
+
+/** Borrow against the fleet. Returns what was lent. */
+export function borrowAgainstFleet(c: Career, amt: number): number {
+  return borrow(c as never, amt, canBorrow(c));
+}
+
+/** Pay the loan down. Returns what came off it. */
+export function payLoanDown(c: Career, amt: number): number {
+  return payDown(c as never, amt);
+}
+
+/** Ring around about selling: false and why if nobody will talk. */
+export function ringAround(c: Career): 'asked' | 'tooSoon' | 'nobody' {
+  if (c.week - (c.sellAsk ?? -99) < 4) return 'tooSoon';
+  if (!askSellUp(c as never, true)) {
+    c.sellAsk = c.week;
+    return 'nobody';
+  }
+  return 'asked';
 }
 
 /** What a buyer would pay if you sold up and retired now. */

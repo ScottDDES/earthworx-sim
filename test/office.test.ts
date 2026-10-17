@@ -7,6 +7,8 @@ import {
   type BankCallEvent, type HardcoreEvent, type TaxEvent, type TaxMode,
 } from '../src';
 import { accFromProto, playProto } from './bot';
+import { borrow, borrowRoom, cashForecast, fixedWeek, lastInc, machineAlerts, payDown, runway } from '../src/books';
+import { alertText } from '../src/text/office';
 import { loadPrototype } from './prototype';
 
 const P = loadPrototype();
@@ -247,5 +249,61 @@ describe("the office's cards", () => {
       expect({ ...mine.gst, due: [] }).toEqual({ ...S.gst, due: [] });
       expect(mine.gst.due.length).toBe(S.gst.due.length);
     }
+  });
+});
+
+describe('the owner\'s office', () => {
+  it('the cash forecast, runway, alerts and last incident match', () => {
+    let bas = 0, short = 0, alerts = 0;
+    for (const S of SNAPS) {
+      P.setS(clone(S));
+      const mode: TaxMode = taxMode(S.loanStart, !!S.hardcore), over = P.overheads();
+      const F = cashForecast(S, 12, over, !!S.gst && gstInBank(mode)), PF = P.cashForecast(12);
+      expect(F).toEqual(PF);
+      if (F.some((x) => x.bas)) bas++;
+      expect(fixedWeek(over, S.loan)).toBe(P.fixedWeek());
+      const rw = runway(S.bank, P.odLimit(), fixedWeek(over, S.loan));
+      expect(rw).toBe(P.runway());
+      if (rw < 10) short++;
+      const A = machineAlerts(S.fleet), PA = P.alerts();
+      expect(A.map((a) => a.id)).toEqual(PA.map((a: any) => a.m.id));
+      expect(A.map((a) => alertText(a, S.fleet))).toEqual(PA.map((a: any) => a.t));
+      expect(A.map((a) => ['overdue', 'wornOut', 'badlyWorn'].includes(a.k) ? 'bad' : 'warn')).toEqual(PA.map((a: any) => a.lvl));
+      alerts += A.length;
+      expect(lastInc(S.whs, ['lti', 'serious'])).toBe(P.lastInc(['lti', 'serious']));
+    }
+    expect(bas).toBeGreaterThan(10);
+    expect(short).toBeGreaterThan(5);
+    expect(alerts).toBeGreaterThan(30);
+  });
+
+  it('borrowing against the fleet and paying the loan down', () => {
+    const R = seedRand(117);
+    let lent = 0, paid = 0, cleared = 0;
+    for (let i = 0; i < 1500; i++) {
+      const S = clone(pick(R, SNAPS)), b = clone(S);
+      b.acc = accFromProto(S.acc);
+      if (R() < 0.3) S.bank = b.bank = int(R, 0, 400) * 1000;
+      if (R() < 0.7) S.won = b.won = true;
+      P.setS(S);
+      const room = borrowRoom(P.lendCap(), b.loan);
+      expect(room).toBe(P.borrowRoom());
+      if (R() < 0.5) {
+        const amt = pick(R, [25000, 50000, 100000, room]);
+        P.borrow(amt);
+        if (borrow(b, amt, room)) lent++;
+      } else {
+        const amt = pick(R, [10000, 50000, b.loan.bal]);
+        P.payDown(amt);
+        if (payDown(b, amt)) paid++;
+        if (b.loan.paidOff) cleared++;
+      }
+      expect(b.bank).toBe(S.bank);
+      expect(b.loan).toEqual(S.loan);
+      expect(b.acc.loan).toBe(S.acc.loan);
+    }
+    expect(lent).toBeGreaterThan(100);
+    expect(paid).toBeGreaterThan(100);
+    expect(cleared).toBeGreaterThan(10);
   });
 });
