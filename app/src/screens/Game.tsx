@@ -13,14 +13,16 @@ import { WorkTab } from './Work';
 import { MarketTab } from './Market';
 import { CareerTab } from './Career';
 import { OfficeTab } from './Office';
+import { MapTab } from './Map';
 
 type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
-type Tab = 'yard' | 'work' | 'market' | 'career' | 'bank';
+type Tab = 'yard' | 'work' | 'map' | 'market' | 'career' | 'bank';
 
 const TABS: { k: Tab; label: string; icon: string }[] = [
   { k: 'yard', label: 'Yard', icon: 'yard' },
   { k: 'work', label: 'Work', icon: 'work' },
+  { k: 'map', label: 'Map', icon: 'map' },
   { k: 'market', label: 'Market', icon: 'market' },
   { k: 'career', label: 'Career', icon: 'career' },
   { k: 'bank', label: 'Office', icon: 'office' },
@@ -199,6 +201,7 @@ export function GameScreen({ c, act, onNew }: { c: Career; act: Act; onNew: () =
           ) : null}
           {tab === 'yard' && <YardTab c={c} act={act} />}
           {tab === 'work' && <WorkTab c={c} act={act} />}
+          {tab === 'map' && <MapTab c={c} />}
           {tab === 'market' && <MarketTab c={c} act={act} />}
           {tab === 'career' && <CareerTab c={c} act={act} onNew={onNew} />}
           {tab === 'bank' && <OfficeTab c={c} act={act} go={setTab} />}

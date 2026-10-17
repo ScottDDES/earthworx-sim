@@ -66,6 +66,7 @@ npm run check      # type-check, then test: run this before every commit
 | `src/choose.ts` | Drawing the card at the front of the queue (its options in order and its numbers, on its own seed) and answering it (what happened). |
 | `src/books.ts` | The office's numbers: the cash forecast, runway, borrowing and paying down, machine alerts. |
 | `src/text/office.ts` | The workshop alerts and the dashboard's flags, checked every week of the whole-career test. |
+| `src/text/map.ts` | What each road state is called and what a tapped road says, checked for every state in the whole-career test. |
 | `src/text/market.ts` | Where an auction lot came from, its guide, and how the hammer fell. |
 | `src/text/docket.ts` | The week's docket lines and stamps from the engine's events. Checked against the prototype every week of the whole-career test, and in the workshop, rivals, contracts and branch tests. |
 | `src/text/cardView.ts` | Every card's words with names and amounts, and the result line after choosing. Checked word for word against the prototype in the whole-career test, taking every option in turn. |
@@ -131,7 +132,7 @@ Still open:
 - [ ] Career still to come: the site diary and "Lately" news (the engine doesn't keep a diary of events yet), sound, seasons, save slots
 - [x] Office: the dashboard (what's worth a look, cash, runway, work in hand, the 12-week cash forecast, trend charts, profit and loss, how the jobs went, the branch, head contractors, past years, the gear, safety, people, tenders, who owes what) and the bank page (borrowing against the fleet, paying the loan down, ringing around about selling)
 - [ ] The prototype's mentor tips (office, BAS, scoring, standing) aren't ported yet
-- [ ] Map
+- [x] Map: the district roads by state, tap a road for its story, your roads
 
 ## Ported so far
 

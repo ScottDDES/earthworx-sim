@@ -42,7 +42,7 @@ const EXPORTS = [
   'shockWeek', 'meStretched', 'sellBuyer', 'ownerFlags', 'plOf', 'cashForecast', 'runway', 'fixedWeek', 'borrowRoom', 'borrow', 'payDown', 'alerts', 'lastInc', 'overheads', 'workInHand', 'retireOffer', 'retireNow', 'askBuyOut', 'sellUpWeek', 'askSellUp', 'sellPrice', 'walkAway', 'sellBest', 'rvYard', 'buyOutPay',
   'canBuyOut', 'branchWeek', 'openBranch', 'toBranch', 'toHome', 'closeBranch', 'brCrews', 'canBranch', 'room',
   'callGrader', 'earlyClient', 'rainCallCheck', 'checks', 'checks2', 'checks3', 'checks4', 'checks5', 'TICKETS', 'checkTix',
-  'tc', 'UNLOCKS', 'lastInc', 'hasCrew', 'ownedCounts', 'moveYard',
+  'tc', 'UNLOCKS', 'lastInc', 'hasCrew', 'ownedCounts', 'moveYard', 'mapTab',
 ];
 
 export interface Proto {

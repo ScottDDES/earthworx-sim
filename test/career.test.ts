@@ -7,6 +7,8 @@ import { choose, drawCard, game, int, pick, seedRand } from '../src';
 import { cardView, resultText } from '../src/text/cardView';
 import { hammerText, lotFrom, lotGuide } from '../src/text/market';
 import { ownerFlags } from '../src/text/office';
+import { roadNote } from '../src/text/map';
+import { jobTitle } from '../src/text/work';
 import { docketLines, docketStamps, eventText } from '../src/text/docket';
 import { LTI_STORIES } from '../src/text/safety';
 import { loadPrototype } from './prototype';
@@ -157,6 +159,20 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
           FLAGS += mine.length;
         }
         for (const e of r.events as { k: string }[]) if (eventText(c, r, e) != null) EVENTS.add(e.k);
+        // a tapped road on the map, one of each state
+        const st = new Set<string>();
+        for (const x of c.dmap!.roads) {
+          if (st.has(x.st)) continue;
+          st.add(x.st);
+          P.UI.road = x.id;
+          const h: string = P.mapTab(), i = h.indexOf('border:2px solid var(--ink)');
+          const m = h.slice(i).match(/<b class="grow">(.*?)<\/b>.*?<div class="small muted">(.*?)<\/div>/)!;
+          const un = (t: string) => t.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+          const j = x.jobId ? c.jobs.find((y) => y.id === x.jobId) : null;
+          same(`week ${W} road ${x.st}`, x.n + ' | ' + roadNote(x, j ? jobTitle(j) : null), un(m[1]!) + ' | ' + un(m[2]!));
+          ROADS.add(x.st);
+        }
+        P.UI.road = null;
       });
       S = P.getS();
     }
@@ -173,6 +189,8 @@ const SEEN = new Set<string>();
 /** The kinds of docket line that were checked. */
 const EVENTS = new Set<string>();
 let FLAGS = 0;
+/** The road states whose words were checked. */
+const ROADS = new Set<string>();
 
 describe('whole careers', () => {
   it('play the same, week after week, start to finish', () => {
@@ -188,6 +206,8 @@ describe('whole careers', () => {
     console.log(runs.join('\n'));
     console.log('cards worded: ' + [...SEEN].sort().join(', '));
     console.log('docket lines: ' + [...EVENTS].sort().join(', '));
+    console.log('roads worded: ' + [...ROADS].sort().join(', '));
+    expect(ROADS.size).toBe(6);
     expect(FLAGS).toBeGreaterThan(1000);
     expect(LTI_STORIES.length).toBe(4);
   });
