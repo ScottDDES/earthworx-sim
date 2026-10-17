@@ -61,6 +61,8 @@ export interface Machine {
   band?: Bandaid | null;
   repair?: number;
   bandBroke?: string | null;
+  /** The workshop manager won't call for it to be turned over again until this week. */
+  toSnooze?: number;
 }
 
 export const SVC_EVERY = 250;

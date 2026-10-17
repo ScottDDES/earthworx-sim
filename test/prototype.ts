@@ -20,6 +20,7 @@ const EXPORTS = [
   'service', 'fitterWeek',
   'genCands', 'hireCand', 'fillRoles', 'mgrWeek', 'wages', 'fitPer', 'fitters', 'freeStaff', 'mgrUnlocked',
   'UI', 'NAMES', 'ROLES', 'SKILLS', 'MGR',
+  'wsmWeek', 'overheads', 'premium', 'premParts', 'fleetValue', 'talksCost', 'rainCrews', 'odLimit', 'WHS_SYS',
 ];
 
 export interface Proto {

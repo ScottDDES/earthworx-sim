@@ -11,3 +11,5 @@ export * from './yards';
 export * from './machines';
 export * from './staff';
 export * from './managers';
+export * from './overheads';
+export * from './workshop';
