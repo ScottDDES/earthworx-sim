@@ -32,17 +32,20 @@ npm run check      # type-check, then test: run this before every commit
 | `src/workshop.ts` | The workshop week: fitters' servicing, the workshop manager's dealer bookings, faults found, turnover calls. Returns events, not words. |
 | `src/overheads.ts` | Weekly running costs: insurance (base, plant, workers' comp, your record), drawings, rent, wages, safety system, toolbox talks. |
 | `src/market.ts` | The plant market: the mood (boom to bust, driven by last year's rain), listings, distress sales, the auction lot, finance, buying, inspecting, bidding, selling. |
+| `src/safety.ts` | Incident odds, the register, safety points on tenders, stepping up the system, and the serious-incident, near-miss, quiet-crew and SWMS cards. |
+| `src/text/` | Words the player reads, kept out of the rules. The engine records which story happened; screens look up the words here. |
 | `src/index.ts` | The front door. Screens import from here only. |
 | `test/parity.test.ts` | Runs the prototype and this engine side by side and fails if they ever disagree. |
 | `test/machines.test.ts` | The same for machines, yards and difficulty. |
 | `test/staff.test.ts` | The same for staff, managers and workshop cover. |
 | `test/workshop.test.ts` | The same for the workshop week and running costs. |
 | `test/market.test.ts` | The same for the market. |
+| `test/safety.test.ts` | The same for safety, including the words in `src/text/safety.ts`. |
 | `test/prototype.ts` | Loads the prototype for the tests (from `../game-prototype`, or set `PROTOTYPE`). |
 
 ## Rules for the code
 
-1. **Engine code never draws anything and never writes text the player reads.** It returns numbers and facts, such as `{ missedNow: true }`, and the screens turn those into words. That way wording can change without touching the rules, and the game can be translated later.
+1. **Engine code never draws anything and never writes text the player reads.** It returns numbers and facts, such as `{ missedNow: true }`, and the screens turn those into words. That way wording can change without touching the rules, and the game can be translated later. Where a story is picked at random, the engine stores which one (a number) and the words live in `src/text/`. Don't reorder those lists: saved careers point into them by position.
 2. **Every roll uses the career's stream** (`fromState`), never `Math.random()`. The one exception is picking a new career's seed.
 3. **Every ported piece gets a parity test** before anything is built on it, and the test is checked by breaking the rule on purpose and watching it fail. If you change a rule on purpose, change the test in the same commit and say why in the commit message.
 4. **Small files, one topic each.**
@@ -54,7 +57,7 @@ npm run check      # type-check, then test: run this before every commit
 - [x] Staff and wages: the labour board, haggling, crews and casuals, managers, fitter cover
 - [x] The workshop week: fitters' servicing, the workshop manager's dealer bookings and turnover calls
 - [x] Running costs: insurance, safety system levels, drawings, rent, toolbox talks
-- [ ] Safety: incidents, crew culture, the insurance loading going up
+- [x] Safety: incidents, crew culture, the register, insurance loading, the safety cards
 - [x] The market: mood, listings, auctions, finance, buying and selling
 - [ ] Hire work
 - [ ] Tenders and rivals

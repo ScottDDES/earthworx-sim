@@ -23,6 +23,7 @@ const EXPORTS = [
   'wsmWeek', 'overheads', 'premium', 'premParts', 'fleetValue', 'talksCost', 'rainCrews', 'odLimit', 'WHS_SYS',
   'genMarket', 'marketWeek', 'fundIdx', 'fmul', 'buy', 'inspect', 'bid', 'hammer', 'sell', 'canFinance', 'lendCap',
   'finDeposit', 'MOODS', 'CLIENTS', 'fk',
+  'curve', 'riskMult', 'whsNp', 'npOf', 'safetyWeek', 'upgradeWhs', 'hurtPick', 'whs', 'unlocked', 'TOWNS',
 ];
 
 export interface Proto {
