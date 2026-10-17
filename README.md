@@ -139,6 +139,8 @@ Still open:
 - [x] Three save slots: switch between careers (saving where you are first), start a new one in an empty save, a confirm before wiping a save, and a warning if the device can't save. Save 1 keeps the old key, so earlier careers carry on. The demo is never saved.
 - [x] Sound, off unless you turn it on (Career tab): a stamp for tickets and finished work, a diesel each week, two notes for a win
 - [x] Handing the business to the next generation (from Regional contractor): the family money, a star of track record, the tickets and the family history carry on; the end screen now matches the prototype's
+- [x] Phone app shell (Capacitor 8.5.2): `app/android` and `app/ios`, the font shipped inside the app (works offline, nothing fetched from Google), Android's back button. App id `biz.ddes.earthmoving` is a placeholder: confirm before the first upload, it can't change after.
+- [ ] Building the Android app needs Android Studio on this PC; the iPhone app needs Xcode on a Mac (or a cloud build)
 - [ ] Still to come: seasons (fixed-length challenge runs; they need the leaderboard, which stays private)
 - [x] Office: the dashboard (what's worth a look, cash, runway, work in hand, the 12-week cash forecast, trend charts, profit and loss, how the jobs went, the branch, head contractors, past years, the gear, safety, people, tenders, who owes what) and the bank page (borrowing against the fleet, paying the loan down, ringing around about selling)
 - [x] Map: the district roads by state, tap a road for its story, your roads
@@ -162,3 +164,15 @@ Still open:
 - [x] Outside events: shocks, selling up, buying out a rival, the branch depot
 - [x] The remaining cards and rain calls; unlocks, the career ladder and tickets (ticket counters get wired in during assembly)
 - [x] Career start, the week loop (`endWeek`), card answers, ticket counters, and a full-career parity test
+
+## The phone app
+
+The game is a normal web app; Capacitor wraps the built game in an Android and an iPhone app.
+
+```bash
+cd app
+npm run build          # the game, into dist/
+npx cap sync           # copy it into android/ and ios/
+npx cap open android   # Android Studio: run on a phone, or build a release bundle for Google Play
+npx cap open ios       # Xcode, on a Mac: run on an iPhone, or archive for the App Store
+```

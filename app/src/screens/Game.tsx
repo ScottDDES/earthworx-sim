@@ -11,6 +11,7 @@ import { COACH } from '@engine';
 import { Mentor } from '../Mentor';
 import { Icon, WeatherIcon } from '../Icon';
 import { sfx } from '../sound';
+import { useBackButton } from '../back';
 import { MONTHS, f, fk } from '../format';
 import { YardTab } from './Yard';
 import { WorkTab } from './Work';
@@ -224,6 +225,7 @@ export function GameScreen({ c, act, onNew, saves, saveFailed, demo }: { c: Care
   const tab: Tab = tabShown(c, tab0) ? tab0 : 'yard';
   const setTab = (t: Tab) => setTab0(t);
   useEffect(() => { if (tabIsNew(c, tab)) act((x) => tabSeen(x, tab)); });
+  useBackButton(tab, () => setTab('yard'));
   const shown = TABS.filter((t) => tabShown(c, t.k));
   const offers = c.offers.filter((o) => !whyNot(c as never, o)).length + c.tenders.filter((t) => !t.bid).length + c.ctenders.filter((t) => !t.bid).length;
   const badge = (k: Tab): string | number => ({ yard: alertMachines(c.fleet), work: offers, bank: c.odOver || c.loan.missed ? '!' : 0 } as Record<string, string | number>)[k] || (tabIsNew(c, k) ? 'NEW' : 0);

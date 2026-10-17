@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 const html = readFileSync(here('../../game-prototype/earthmoving-sim.html'), 'utf8').split('\r\n').join('\n');
-const css = html.slice(html.indexOf('<style>') + 7, html.indexOf('</style>'));
+// the app ships the font itself (@fontsource-variable/archivo), which names it 'Archivo Variable'
+const css = html.slice(html.indexOf('<style>') + 7, html.indexOf('</style>')).split(":'Archivo',").join(":'Archivo Variable','Archivo',");
 writeFileSync(here('../app/src/prototype.css'), '/* Copied from the prototype by scripts/extract-look.mjs. Don\'t edit by hand. */\n' + css);
 
 const block = (name) => {
