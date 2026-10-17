@@ -21,6 +21,7 @@ import { afterService, fitterWeek, wsmWeek, type WorkshopEvent } from './worksho
 import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium as premiumOf } from './overheads';
 import { accept as acceptOffer, askWait as askWaitHire, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
 import { relWeek } from './relations';
+import { seasonWeek } from './seasons';
 import { coachTick, tabsWeek, type CoachState } from './coach';
 import { mRef, note, noteNews, type DiaryEntry } from './diary';
 import { dmap, mapWeek, type DistrictMap, type MapEvent } from './map';
@@ -112,6 +113,9 @@ export interface Career {
   tabsNew?: Record<string, number>;
   tipsSeen?: Record<string, number>;
   tipsOff?: boolean;
+  /** A season (a short scored game) and its recorded moves. */
+  season?: import('./seasons').SeasonState;
+  alog?: unknown[];
   rngSeed: string;
   rngA: number;
   [x: string]: any;
@@ -667,6 +671,7 @@ export function endWeek(c: Career): Report | null {
   taxWeek(c as never, rep.week, tax(c), ev as TaxEvent[], () => {
     yearEnd(Object.assign(c, { staffN: c.staff.length, fleetN: c.fleet.length }) as never, rep.week, worth(c));
   });
+  if (seasonWeek(c)) return rep;
   c.report = rep;
   return rep;
 }

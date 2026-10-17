@@ -33,6 +33,8 @@ export function diaryText(c: Career, e: any): string {
   switch (e.k) {
     case 'started': return 'Started ' + e.co + ' in ' + TOWNS[e.town as keyof typeof TOWNS].name + ' with a ' + fk(e.loan) + ' loan.';
     case 'open': return 'Open for business.';
+    case 'presetRegional': return 'Two crews, a regional depot and a flood recovery program won at ' + (e.bid != null ? f(e.bid) : '') + '. Deliver it by 30 June.';
+    case 'seasonOver': return 'Season over: ' + (e.score >= 0 ? '+' : '') + f(e.score) + ' net worth in ' + e.done + ' weeks.';
     case 'ticket': return 'New ticket: ' + TICKET_TEXT[e.id]!.n + '.';
     // the market
     case 'financed': return 'Financed ' + f(e.lent) + ' of the price over five years. Loan repayments are now ' + f(e.weekly) + ' a week.';

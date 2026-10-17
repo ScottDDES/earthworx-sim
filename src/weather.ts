@@ -15,6 +15,11 @@ export interface WeatherCtx {
 
 const DAY_MS = 864e5;
 
+/** Where in the record 1 April of a given year falls. */
+export function wxStartFor(year: number): number {
+  return Math.round((Date.UTC(year, 3, 1) - RAIN_FROM) / DAY_MS);
+}
+
 /** Picks where in the record a new career starts: 1 April of a random year. */
 export function pickStart(rand: Rand): number {
   const y = 1995 + Math.floor(rand() * 29);

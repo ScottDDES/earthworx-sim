@@ -3,7 +3,7 @@
 // end the week. After every step the two careers are compared (words aside), and the first difference is reported.
 
 import { describe, expect, it } from 'vitest';
-import { canRunOn, choose, coachOk, drawCard, game, int, pick, runOn, seedRand } from '../src';
+import { SEASONS, canRunOn, choose, coachOk, drawCard, game, int, pick, play, replaySeason, runOn, seedRand, startSeason, type SeasonId } from '../src';
 import { cardView, resultText } from '../src/text/cardView';
 import { hammerText, lotFrom, lotGuide } from '../src/text/market';
 import { ownerFlags } from '../src/text/office';
@@ -34,6 +34,9 @@ function strip(x: any): any {
 /** The parts of a career both sides keep, in one shape. */
 function common(S: any, engine: boolean): any {
   const c = strip(S);
+  // a season: the prototype keeps its name and its own version number, and records taps where the engine records commands
+  if (c.season) { delete c.season.n; delete c.season.v; }
+  delete c.alog;
   for (const k of ['log', 'news', 'report', 'careerId', 'schema', 'seenWin', 'seenWin2', 'seenWin3', 'dayNow', 'staffN', 'fleetN', 'season', 'lb', 'alog', 'savedAt']) delete c[k];
   // accounts: one set of names
   if (!engine && c.acc) c.acc = Object.fromEntries(Object.entries(c.acc).map(([k, v]) => [ACC[k] ?? k, v]));
@@ -73,15 +76,16 @@ function mulberry(seed: number) {
 }
 
 /** Plays one career on both sides. Returns how far it got before they differed (or the weeks asked for). */
-function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc: boolean }, weeks: number): { weeks: number; diff: string | null; at: string; S: any } {
+function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc: boolean; season?: SeasonId }, weeks: number): { weeks: number; diff: string | null; at: string; S: any; c?: any } {
   const keep = Math.random;
   Math.random = mulberry(seed);
   let at = 'start';
   try {
     P.UI.setup = { step: 1, co: 'Side By Side Earthmoving', loan: setup.loan, town: setup.town, hc: setup.hc };
-    P.start();
+    if (setup.season) P.startSeason(setup.season, 'Side By Side Earthmoving'); else P.start();
     let S = P.getS();
-    const c = game.newCareer({ co: 'Side By Side Earthmoving', ...setup }, +S.rngSeed, S.wxStart);
+    const c = setup.season ? startSeason(setup.season, 'Side By Side Earthmoving') : game.newCareer({ co: 'Side By Side Earthmoving', ...setup }, +S.rngSeed, S.wxStart);
+    const G: any = setup.season ? { ...game, ...play } : { ...game, choose, runOn, coachOk };
     const check = (where: string) => {
       at = where;
       const d = firstDiff(common(c, true), common(P.getS(), false));
@@ -116,52 +120,54 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
           same(`${k} body`, v.body, pc.body);
           same(`${k} options`, v.opts.map((o) => o.label + ' | ' + o.sub).join(' // '), pc.opts.map((o: any) => o.label + ' | ' + o.sub).join(' // '));
         }
-        const a = choose(c, i);
+        const a = G.choose(c, i);
         if (a && d) { same(`${k} result`, resultText(c, a), P.UI.result.res); SEEN.add(k); }
       });
     };
     // the first grader, then open for business
     const g = (S.market.listings || []).filter((m: any) => m.type === 'grader').sort((a: any, b: any) => a.price - b.price)[0];
-    both('buy first grader', () => P.buy(g.id), () => game.buy(c, g.id));
-    both('open', () => P.__open(), () => game.open(c));
+    if (S.phase === 'shop') {
+      both('buy first grader', () => P.buy(g.id), () => G.buy(c, g.id));
+      both('open', () => P.__open(), () => G.open(c));
+    }
     for (let w = 0; w < weeks && S.phase === 'play'; w++) {
       const W = S.week;
       for (let k = 0; S.queue.length && k < 20; k++) answer(W);
-      for (const of of (S.offers || []).slice()) if (!P.whyNot(of)) both(`week ${W} accept ${of.kind}`, () => P.accept(of.id), () => game.accept(c, of.id));
-      for (const t of (S.tenders || []).slice()) if (!t.bid) both(`week ${W} price subbie tender`, () => P.submitBid(t.id), () => game.submitBid(c, t.id));
-      for (const t of (S.ctenders || []).slice()) if (!t.bid) both(`week ${W} price council tender`, () => P.submitCouncil(t.id), () => game.submitCouncil(c, t.id));
+      for (const of of (S.offers || []).slice()) if (!P.whyNot(of)) both(`week ${W} accept ${of.kind}`, () => P.accept(of.id), () => G.accept(c, of.id));
+      for (const t of (S.tenders || []).slice()) if (!t.bid) both(`week ${W} price subbie tender`, () => P.submitBid(t.id), () => G.submitBid(c, t.id));
+      for (const t of (S.ctenders || []).slice()) if (!t.bid) both(`week ${W} price council tender`, () => P.submitCouncil(t.id), () => G.submitCouncil(c, t.id));
       if (P.room() <= 0) {
         const next = S.yard === 'home' ? 'fenced' : S.yard === 'fenced' && S.won ? 'depot' : S.yard === 'depot' && S.won2 ? 'regional' : null;
         const cost: Record<string, number> = { fenced: 4000, depot: 18000, regional: 60000 };
-        if (next && S.bank > cost[next]! + 40000) both(`week ${W} move to ${next}`, () => P.moveYard(next), () => game.moveYard(c, next as never));
+        if (next && S.bank > cost[next]! + 40000) both(`week ${W} move to ${next}`, () => P.moveYard(next), () => G.moveYard(c, next as never));
       }
       if (S.fleet.length < 10 && P.room() > 0) {
         const want: Record<string, number> = { roller: 1, cart: 2, grader: 2, truck: 1 };
         const need = ['roller', 'cart', 'grader', 'truck'].find((k) => S.fleet.filter((m: any) => m.type === k).length < want[k]!) || 'grader';
         const m = (S.market.listings || []).filter((x: any) => x.type === need).sort((a: any, b: any) => a.price - b.price)[0];
-        if (m && S.bank > m.price * 1.1 + 15000) both(`week ${W} buy ${need}`, () => P.buy(m.id), () => game.buy(c, m.id));
+        if (m && S.bank > m.price * 1.1 + 15000) both(`week ${W} buy ${need}`, () => P.buy(m.id), () => G.buy(c, m.id));
       }
       // now and then: a mechanic's check on a private listing, and a go at the auction
       const pv = (S.market.listings || []).find((x: any) => x.seller === 'private' && !x.revealed);
-      if (pv && W % 4 === 1 && S.bank > 20000) both(`week ${W} inspect`, () => P.inspect(pv.id), () => game.inspectListing(c, pv.id));
+      if (pv && W % 4 === 1 && S.bank > 20000) both(`week ${W} inspect`, () => P.inspect(pv.id), () => G.inspectListing(c, pv.id));
       const lot = S.market.lot;
       if (lot && !lot.done && W % 5 === 2 && P.room() > 0 && S.bank > 60000) {
-        for (let k = 0; k < 1 + (W % 3); k++) both(`week ${W} bid`, () => P.bid(5000), () => game.bid(c, 5000));
-        both(`week ${W} hammer`, () => P.hammer(), () => game.hammer(c));
+        for (let k = 0; k < 1 + (W % 3); k++) both(`week ${W} bid`, () => P.bid(5000), () => G.bid(c, 5000));
+        both(`week ${W} hammer`, () => P.hammer(), () => G.hammer(c));
       }
       // service the most overdue machine when there's money for it, and now and then sell a worn one
       const due = S.fleet.filter((m: any) => m.hours - m.svcAt > 250 && m.status !== 'auction' && m.status !== 'listed').sort((a: any, b: any) => (b.hours - b.svcAt) - (a.hours - a.svcAt))[0];
-      if (due && S.bank > 30000) both(`week ${W} service`, () => P.service(due.id), () => game.service(c, due.id));
+      if (due && S.bank > 30000) both(`week ${W} service`, () => P.service(due.id), () => G.service(c, due.id));
       const worn = S.fleet.find((m: any) => m.status === 'idle' && m.cond < 30);
-      if (worn && S.fleet.length > 3) { const mode = (['trade', 'auction', 'list'] as const)[W % 3]!; both(`week ${W} sell ${mode}`, () => P.sell(worn.id, mode === 'list' ? undefined : mode), () => game.sellMachine(c, worn.id, mode)); }
-      if (S.bank > 80000 && (S.cands || []).length && (S.staff || []).length < 4) { const id = S.cands[0].id; both(`week ${W} hire`, () => P.hireCand(id), () => game.hireCand(c, id)); }
+      if (worn && S.fleet.length > 3) { const mode = (['trade', 'auction', 'list'] as const)[W % 3]!; both(`week ${W} sell ${mode}`, () => P.sell(worn.id, mode === 'list' ? undefined : mode), () => G.sellMachine(c, worn.id, mode)); }
+      if (S.bank > 80000 && (S.cands || []).length && (S.staff || []).length < 4) { const id = S.cands[0].id; both(`week ${W} hire`, () => P.hireCand(id), () => G.hireCand(c, id)); }
       for (let k = 0; S.queue.length && k < 20; k++) answer(W);
       // the coach's last step waits for "Got it"; now and then the bot says it
-      if (S.coach && !S.coach.off && S.coach.i === 4 && W % 7 === 0) both(`week ${W} coach ok`, () => { S.coach.ok = true; P.coachTick(); }, () => coachOk(c));
+      if (S.coach && !S.coach.off && S.coach.i === 4 && W % 7 === 0) both(`week ${W} coach ok`, () => { S.coach.ok = true; P.coachTick(); }, () => G.coachOk(c));
       // and sometimes it runs quiet weeks on instead of ending just the one
       if (W % 9 === 3 && P.canRunOn() !== false && canRunOn(c)) {
         both(`week ${W} run on`, () => P.runOn(), () => {
-          const r = runOn(c), PR = P.getS().report;
+          const r = G.runOn(c), PR = P.getS().report;
           if (!r || !PR) throw new Error('run on: engine ' + !!r + ', prototype ' + !!PR);
           same(`week ${W} run`, JSON.stringify(r.run ?? null), JSON.stringify(PR.run ? { n: PR.run.n, from: PR.run.from, to: PR.run.to, invoiced: PR.run.invoiced, paid: PR.run.paid, costs: PR.run.costs, rain: PR.run.rain, worked: PR.run.worked } : null));
           RUNS.push(r.run?.n ?? 1);
@@ -170,7 +176,7 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
         continue;
       }
       both(`week ${W} end`, () => P.endWeek(), () => {
-        const r = game.endWeek(c), PR = P.getS().report;
+        const r = G.endWeek(c), PR = P.getS().report;
         if (!r || !PR) return;
         same(`week ${W} docket`, docketLines(c, r).join(' // '), PR.events.join(' // '));
         same(`week ${W} stamps`, docketStamps(c, r).join(' / '), (PR.hl || []).join(' / '));
@@ -204,7 +210,7 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
       });
       S = P.getS();
     }
-    return { weeks, diff: null, at, S };
+    return { weeks, diff: null, at, S, c };
   } catch (e) {
     return { weeks: 0, diff: (e as Error).message, at, S: P.getS() };
   } finally {
@@ -248,5 +254,37 @@ describe('whole careers', () => {
     expect(ROADS.size).toBe(6);
     expect(FLAGS).toBeGreaterThan(1000);
     expect(LTI_STORIES.length).toBe(4);
+  });
+});
+
+describe('seasons', () => {
+  it('each season plays the same as the prototype, and its recorded moves replay to the same score', () => {
+    const out: string[] = [];
+    for (const D of SEASONS) {
+      for (const seed of [11, 22, 33]) {
+        const r = sideBySide(seed, { loan: D.loan, town: D.town, hc: false, season: D.id }, 120);
+        if (r.diff) { console.log(out.join(' // ')); expect(r.diff).toBeNull(); }
+        const c = r.c, S = r.S;
+        expect(c.phase).toBe('seasonEnd');
+        expect(c.season.score).toBe(S.season.score);
+        expect(c.season.done).toBe(S.season.done);
+        // the server's check: play the recording again from nothing
+        const re = replaySeason(D.id, JSON.parse(JSON.stringify(c.alog)));
+        expect(re).toEqual({ ok: true, score: c.season.score, week: c.season.done });
+        out.push(`${D.id} seed ${seed}: ${c.season.score >= 0 ? '+' : ''}${c.season.score} in ${c.season.done} weeks, ${c.alog.length} moves`);
+      }
+    }
+    console.log(out.join(' // '));
+  });
+
+  it('a doctored recording does not replay to the claimed score', () => {
+    const D = SEASONS[0]!, r = sideBySide(44, { loan: D.loan, town: D.town, hc: false, season: D.id }, 120), moves = JSON.parse(JSON.stringify(r.c.alog));
+    expect(replaySeason(D.id, [...moves, ['giveMeMoney', 1e9]]).ok).toBe(true);
+    // a move that isn't a command is refused outright, wherever it sits
+    expect(replaySeason(D.id, [['giveMeMoney', 1e9], ...moves])).toEqual({ ok: false, why: 'unknown move' });
+    // dropping moves changes the result (or never finishes the season)
+    const cut = replaySeason(D.id, moves.filter((m: any[]) => m[0] !== 'buy'));
+    expect(cut.ok && cut.score === r.c.season.score).toBe(false);
+    expect(replaySeason('nope', moves).ok).toBe(false);
   });
 });

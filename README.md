@@ -70,6 +70,7 @@ npm run check      # type-check, then test: run this before every commit
 | `src/text/diary.ts` | The diary and news in words, checked after every move of the whole-career test and in each part's own tests. |
 | `src/coach.ts` | The getting-started coach, tabs appearing as they're needed, the mentor's notes read, and running quiet weeks on. Checked every week of the whole-career test. |
 | `src/text/coach.ts` | The coach's steps, Col's notes, and the goal line above End week. |
+| `src/seasons.ts` | Seasons: three short games on real weather, the same seed for everyone, scored on net worth gained. Every move is recorded as a command (`play.*`), and `replaySeason` plays a recording again from nothing to get the true score: the leaderboard server's check. Checked against the prototype, and every recording replays exactly. |
 | `src/text/map.ts` | What each road state is called and what a tapped road says, checked for every state in the whole-career test. |
 | `src/text/market.ts` | Where an auction lot came from, its guide, and how the hammer fell. |
 | `src/text/docket.ts` | The week's docket lines and stamps from the engine's events. Checked against the prototype every week of the whole-career test, and in the workshop, rivals, contracts and branch tests. |
