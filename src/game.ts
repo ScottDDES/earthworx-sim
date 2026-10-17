@@ -27,7 +27,7 @@ import { closeCouncil, councilPrice, genMajor, genCouncil, canPrestige, progAct 
 import { autoPlan, planEval, type CouncilTender, type PlanCtx } from './planning';
 import { endOfDay, jobDay, settleJob, staffOwn, staffSubs, seatStaff, subOut as subOutC, subQuotes, takeBack as takeBackC, terminateWeek, type ContractEvent, type SubQuote } from './contracts';
 import { bankCalls, closeBooks, gstInBank, hardcoreWeek, netWorth, newGst, odLimit, payablesWeek, taxMode, taxWeek, yearEnd, type BankCallEvent, type GstState, type HardcoreEvent, type TaxEvent, type TaxMode, type WeekRow, type YearReview } from './office';
-import { sellUpWeek, shockWeek, type ShockEvent } from './shocks';
+import { retire, retireOffer, sellUpWeek, shockWeek, type RetireOffer, type ShockEvent } from './shocks';
 import { branchWeek, type Branch, type BranchEvent } from './branch';
 import { curveWeek, rainCallCheck, rainCallDay, rainCrews, swmsWeek, type RainCallEvent } from './cards';
 import { checkTix, checkWin, rung, tc, tcAdd, unlockWeek } from './career';
@@ -255,6 +255,23 @@ export function hammer(c: Career): HammerResult | null {
     tickets(c);
   }
   return res;
+}
+
+/** What a buyer would pay if you sold up and retired now. */
+export function retireQuote(c: Career): RetireOffer {
+  return retireOffer(c as never, mood(c), stars(c.rep), c.gst && gstInBank(tax(c)) ? c.gst.held : 0);
+}
+
+/** Sell up and retire: the career ends. */
+export function retireNow(c: Career): void {
+  if (!c.won || c.phase !== 'play') return;
+  const g = rung(c as never);
+  retire(c as never, mood(c), stars(c.rep), c.gst && gstInBank(tax(c)) ? c.gst.held : 0, { stage: g, peak: g });
+}
+
+/** Approach a struggling rival about buying them out: their offer comes up as a card. */
+export function approachRival(c: Career, name: string): void {
+  if (!c.queue.some((q) => q.k === 'buyout' && q.name === name)) c.queue.push({ k: 'buyout', name });
 }
 
 export function accept(c: Career, id: string): boolean {

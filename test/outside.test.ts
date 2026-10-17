@@ -5,7 +5,7 @@ import {
   BR_SLOTS, DIFFICULTY, YARDS, askSellUp, brCrews, brRaise, brTender, brTenderCard, branchWeek, buyOutAll, buyOutBest, buyOutOffer,
   buyOutPay, canBranch, canBuyOut, closeBranch, collapseCard, collapseClaim, collapseSell, costIdx, insureBroker, int, meStretched,
   odLimit, openBranch, pick, seedRand, sellAll, sellBest, sellBuyer, sellPrice, sellTwo, sellUpWeek, shockWeek, stars, toBranch,
-  toHome, walkAway, workshopCtx, lendCap, fleetValue, taxMode, gstInBank,
+  toHome, walkAway, workshopCtx, lendCap, fleetValue, taxMode, gstInBank, retire, retireOffer,
   type BranchEvent, type Difficulty, type HireEvent, type ShockEvent,
 } from '../src';
 import { accFromProto, playProto } from './bot';
@@ -153,6 +153,33 @@ describe('selling up', () => {
     }
     expect(two).toBeGreaterThan(100);
     expect(all).toBeGreaterThan(100);
+  });
+});
+
+describe('retiring', () => {
+  it('the same offer, and the same record when you sign', () => {
+    const R = seedRand(216);
+    let n = 0, coast = 0;
+    for (let i = 0; i < 1500; i++) {
+      const { S, b } = pair(pick(R, SNAPS));
+      if (R() < 0.2) { for (const x of S.rivals) x.cash = -1; b.rivals = clone(S.rivals); }
+      S.ownDone = b.ownDone = int(R, 0, 4); S.majorDone = b.majorDone = int(R, 0, 3);
+      P.setS(S);
+      const mood = (S.mkt?.mood ?? 'steady'), mode = taxMode(S.loanStart, !!S.hardcore), held = S.gst && gstInBank(mode) ? S.gst.held : 0;
+      const po = P.retireOffer(), o = retireOffer(b, mood, stars(b.rep), held);
+      expect({ ...o, who: o.who ?? 'A contractor from the coast' }).toEqual(po);
+      if (!o.who) coast++;
+      const rung = P.rung();
+      P.retireNow();
+      retire(b, mood, stars(b.rep), held, { stage: rung, peak: rung });
+      const { to, price, walk, week, fleet, earned, retired } = S.soldUp;
+      expect(b.soldUp).toEqual({ to, price, walk, week, stage: rung, peak: rung, fleet, earned, retired });
+      expect(b.rivals).toEqual(S.rivals);
+      expect(b.phase).toBe(S.phase);
+      n++;
+    }
+    expect(n).toBe(1500);
+    expect(coast).toBeGreaterThan(100);
   });
 });
 

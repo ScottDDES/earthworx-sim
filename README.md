@@ -125,7 +125,9 @@ Still open:
 - [x] Work: hire offers (take it, or ring to book it in), jobs on the go (progress, what a waiting job needs, subbing out and taking back), subbie tenders with the full pricing sheet
 - [x] Work: council tender planning (crews, graders, rollers, carts, trucks, pit, who supplies the plant, program, price) and flood recovery programs (map, crews road by road, timeline, holdups, plant, price)
 - [x] Market: this week's auction (bid, let the hammer fall) and machines for sale (buy, finance, a mechanic's check)
-- [ ] Career, Office, Map
+- [x] Career: tickets wallet, contract tallies, track record, the ladder with each step's checklist, the district (market mood, rivals, approaching one to buy them out), selling up to retire, starting over
+- [ ] Career still to come: the site diary and "Lately" news (the engine doesn't keep a diary of events yet), sound, seasons, save slots
+- [ ] Office, Map
 
 ## Ported so far
 

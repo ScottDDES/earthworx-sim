@@ -175,6 +175,35 @@ export function walkAway(b: SellUpState, price: number, gstHeldInBank: number): 
   return Math.round(price + b.bank + b.recv.reduce((a, x) => a + (x.due < 9999 ? x.amt : x.amt * 0.5), 0) - (b.payables || []).reduce((a, x) => a + x.amt, 0) - b.loan.bal - gstHeldInBank);
 }
 
+// ---------- retiring ----------
+
+export interface RetireOffer {
+  /** The outfit buying, or null for a contractor from the coast. */
+  who: string | null;
+  price: number;
+  v: number;
+  walk: number;
+}
+
+/** Sell up on your own terms: 85% of the gear (moved by the market), $25k a star, and up to $60k for contracts delivered. */
+export function retireOffer(b: SellUpState & { ownDone?: number; majorDone?: number }, mood: Mood, starsN: number, gstHeldInBank: number): RetireOffer {
+  const x = sellBuyer(b.rivals), v = sellGear(b.fleet).reduce((a, m) => a + value(m, b.week), 0);
+  const price = round(v * 0.85 * MOODS[mood].pm + starsN * 25000 + Math.min(10, (b.ownDone || 0) + (b.majorDone || 0) * 3) * 6000, 1000);
+  return { who: x ? x.name : null, price, v, walk: walkAway(b, price, gstHeldInBank) };
+}
+
+/** Sign and retire. The career ends. info: the stage and peak on the ladder, for the record. */
+export function retire(b: SellUpState & { ownDone?: number; majorDone?: number }, mood: Mood, starsN: number, gstHeldInBank: number, info: Record<string, number>): RetireOffer {
+  const o = retireOffer(b, mood, starsN, gstHeldInBank), x = b.rivals.find((y) => y.name === o.who);
+  if (x) {
+    x.fleet += sellGear(b.fleet).length;
+    x.stars = Math.max(x.stars, starsN);
+  }
+  b.soldUp = { to: o.who ?? 'A contractor from the coast', price: o.price, walk: o.walk, week: b.week, ...info, fleet: sellGear(b.fleet).length, earned: Math.round(b.stats.earned), retired: true } as never;
+  b.phase = 'sold';
+  return o;
+}
+
 /** Sell them your two best spare machines for 72% of value. Anything pulled off a council job is replaced by dry hire there. */
 export function sellTwo(b: SellUpState, x: Rival, mood: Mood): number {
   const best = sellBest(b), bprice = round(best.reduce((a, m) => a + value(m, b.week), 0) * 0.72 * MOODS[mood].pm, 500);

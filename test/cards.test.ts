@@ -11,6 +11,7 @@ import {
 } from '../src';
 import { TOWNS, drawCard } from '../src';
 import { cardView, resultText } from '../src/text/cardView';
+import { checkWords } from '../src/text/career';
 import { BAD_BACK_STORY, LTI_MACHINES, LTI_STORIES } from '../src/text/safety';
 import { accFromProto, snapshots } from './bot';
 import { loadPrototype } from './prototype';
@@ -335,5 +336,17 @@ describe('card words', () => {
       seen[kind] = (seen[kind] || 0) + 1;
     }
     expect(Object.values(seen).every((x) => x > 80)).toBe(true);
+  });
+});
+
+describe('ladder words', () => {
+  it('each step\'s checklist reads the same as the prototype\'s, ticks and all', () => {
+    for (const S0 of SNAPS) {
+      const { S, b } = pair(S0);
+      P.setS(S);
+      const st = { ...b, owned: ownedCounts(b.fleet) };
+      const pairs: [number, any[], boolean[]][] = [[3, P.checks(), checks(b)], [4, P.checks2(), checks2(b)], [5, P.checks3(), checks3(b)], [7, P.checks4(), checks4(b)], [8, P.checks5(), checks5(b)]];
+      for (const [k, proto, ok] of pairs) expect(checkWords(k, st, ok)).toEqual(proto.map((x: any) => ({ t: x.t, ok: x.ok })));
+    }
   });
 });

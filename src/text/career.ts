@@ -49,3 +49,45 @@ export const TICKET_TEXT: Record<string, { n: string; d: string }> = {
   hc4: { n: 'Back from the brink', d: 'Get back above water after trading insolvent.' },
   million: { n: 'Seven figures', d: 'Build a net worth of $1 million.' },
 };
+
+/** The ladder, step by step: what it is, and what it opens up. */
+export const STEPS: { t: string; d: string; u?: string }[] = [
+  { t: 'Owner-operator', d: 'One machine and you on it. Wet hire, dry hire, council day labour, private jobs.' },
+  { t: 'Small fleet', d: 'Two or more machines, or an operator on the payroll.', u: 'SWMS and a WHS plan' },
+  { t: 'Ready to subcontract', d: 'The kit and the track record to run a section of a flood recovery job.', u: 'subcontract tenders, a depot with a workshop and a fitter, toolbox talks, a full IMS, GPS on graders, buying on finance' },
+  { t: 'Subcontractor', d: 'Price flood works packages for head contractors, win some, and finish them on time.' },
+  { t: 'Your own contract', d: 'Plan and tender council flood works packages in your own name.', u: 'council tenders, site supervisors, an operations manager, a regional depot, ISO 45001' },
+  { t: 'Regional contractor', d: 'Several crews, and the council now lets you price whole flood recovery programs.', u: 'flood recovery programs, a plant hub, a branch depot in the other town' },
+  { t: 'Flood recovery contractor', d: 'Dozens of roads, months of work, and a hard 30 June deadline.' },
+  { t: 'Prestige contractor', d: 'The state roads department lets whole-area programs to a few certified outfits with the depot to run them. Better rates, bigger scale, and the big firms bidding against you.' },
+];
+
+export interface LadderState {
+  rep: number;
+  subsDone?: number;
+  ownDone?: number;
+  majorDone?: number;
+  prestigeDone?: number;
+  owned: Record<string, number>;
+}
+
+/** What each step needs, ticked off: step 3 (index 2) onwards. ok is from the engine's checks. */
+export function checkWords(step: number, st: LadderState, ok: boolean[]): { t: string; ok: boolean }[] {
+  const o = st.owned, m = (n: number | undefined, k: number) => Math.min(n || 0, k);
+  const T: Record<number, string[]> = {
+    3: ['Own a grader, roller and water cart', '1 star of track record (' + Math.min(st.rep, 5) + ' of 5 points)', 'No missed loan repayments', 'SWMS and a WHS plan (Yard, Safety)'],
+    4: ['Finish 3 subcontracts (' + m(st.subsDone, 3) + ' of 3)', '2 stars of track record (' + Math.min(st.rep, 12) + ' of 12 points)'],
+    5: ['Finish 2 council contracts (' + m(st.ownDone, 2) + ' of 2)', 'Own two full crews (graders ' + m(o.grader, 2) + '/2, rollers ' + m(o.roller, 2) + '/2, carts ' + m(o.cart, 2) + '/2)'],
+    7: ['Deliver a flood recovery program by 30 June (' + m(st.majorDone, 1) + ' of 1)'],
+    8: ['Deliver 2 flood recovery programs (' + m(st.majorDone, 2) + ' of 2)', 'Certified to ISO 45001', 'Run from a plant hub', 'Deliver a state road program (' + m(st.prestigeDone, 1) + ' of 1)'],
+  };
+  return (T[step] ?? []).map((t, i) => ({ t, ok: !!ok[i] }));
+}
+
+/** Stars as ★★☆. */
+export const starTxt = (n: number) => '★★★'.slice(0, n) + '☆☆☆'.slice(0, 3 - n);
+
+/** What a rival's up to, on the district card. */
+export function districtForm(form: string, jobs: number, idle: number): string {
+  return (jobs ? 'On ' + jobs + ' job' + (jobs > 1 ? 's' : '') + ' · ' : '') + (form === 'new' ? 'New in town' : form === 'stretched' ? 'Short of cash, selling gear' : form === 'hungry' ? 'No work for ' + idle + ' weeks' : form === 'growing' ? 'Winning work, buying gear' : 'Steady');
+}

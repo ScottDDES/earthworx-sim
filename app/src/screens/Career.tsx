@@ -1,0 +1,178 @@
+// The Career tab: your tickets, where you are on the ladder and what the next step needs, your track record,
+// the district (the market and the other outfits), and selling up to retire.
+
+import { useState } from 'react';
+import { MOODS, TICKETS, TIER, canBuyOut, checks, checks2, checks3, checks4, checks5, ownedCounts, rung, rvForm, rvPhase, stars, game } from '@engine';
+import { STEPS, TICKET_CATS, TICKET_TEXT, checkWords, districtForm, starTxt } from '@engine/text/career';
+import { f } from '../format';
+
+type Career = game.Career;
+type Act = (fn: (c: Career) => unknown) => void;
+
+const tixNo = (n: number) => 'TKT ' + ('000' + n).slice(-4);
+
+function Ticket({ c, id, small }: { c: Career; id: string; small?: boolean }) {
+  const g = c.tix?.[id], T = TICKET_TEXT[id]!;
+  return (
+    <div className={'ticket' + (g ? ' got' : '')}>
+      <span className="tno">{g ? tixNo(g.no) + ' · WK ' + g.w : 'NOT YET'}</span>
+      <b>{T.n}</b>
+      {!small && <span className="tiny muted">{T.d}</span>}
+    </div>
+  );
+}
+
+function Wallet({ c }: { c: Career }) {
+  const [open, setOpen] = useState(false);
+  const got = TICKETS.filter((t) => c.tix?.[t.id]), n = got.length;
+  const recent = got.slice().sort((a, b) => c.tix![b.id]!.no - c.tix![a.id]!.no).slice(0, 3);
+  const next = TICKETS.filter((t) => !c.tix?.[t.id]).slice(0, 2);
+  return (
+    <div className="card">
+      <div className="row"><b className="grow" style={{ fontSize: 18 }}>Your tickets</b><span className="num"><b>{n}</b> of {TICKETS.length}</span></div>
+      <div className="bar"><i style={{ width: (n / TICKETS.length) * 100 + '%', background: 'var(--hi)' }} /></div>
+      {!open ? (
+        <>
+          {recent.length ? <div className="tix">{recent.map((t) => <Ticket key={t.id} c={c} id={t.id} small />)}</div>
+            : <div className="small muted">Earn tickets by doing the real thing: your first hire job, a clean year, a program in early. They show here and on the board.</div>}
+          {next.length > 0 && (
+            <div className="tiny muted">Up next: {next.map((t, i) => <span key={t.id}>{i ? ', ' : ''}<b>{TICKET_TEXT[t.id]!.n}</b> ({TICKET_TEXT[t.id]!.d.replace(/\.$/, '').toLowerCase()})</span>)}.</div>
+          )}
+        </>
+      ) : (
+        Object.keys(TICKET_CATS).map((cat) => (
+          <div key={cat}>
+            <div className="sub" style={{ marginTop: 6 }}>{TICKET_CATS[cat]}</div>
+            <div className="tix">{TICKETS.filter((t) => t.c === cat).map((t) => <Ticket key={t.id} c={c} id={t.id} />)}</div>
+          </div>
+        ))
+      )}
+      <button type="button" className="btn full" onClick={() => setOpen(!open)}>{open ? 'Close the wallet' : 'Open the wallet'}</button>
+    </div>
+  );
+}
+
+function Ladder({ c }: { c: Career }) {
+  const [all, setAll] = useState(false);
+  const rg = rung(c as never), st = { ...c, owned: ownedCounts(c.fleet) };
+  const ok: Record<number, boolean[]> = { 3: checks(c as never), 4: checks2(c as never), 5: checks3(c as never), 7: checks4(c as never), 8: checks5(c as never) };
+  const later = STEPS.length - (rg + 1);
+  return (
+    <div className="card">
+      {STEPS.map((s, i) => {
+        const k = i + 1, cls = k < rg ? 'done' : k === rg ? 'here' : '';
+        if (k > rg + 1 && !all) {
+          if (k !== rg + 2) return null;
+          return (
+            <div key={k} className="row" style={{ padding: '4px 0 2px' }}>
+              <span className="small muted grow">{later} more step{later > 1 ? 's' : ''} after that, up to {STEPS[STEPS.length - 1]!.t}.</span>
+              <button type="button" className="btn" onClick={() => setAll(true)}>Show all</button>
+            </div>
+          );
+        }
+        return (
+          <div key={k} className="step">
+            <span className={'dot ' + cls}>{k < rg ? '✓' : k}</span>
+            <div className="grow" style={{ display: 'flex', flexDirection: 'column', gap: 3, paddingBottom: 10 }}>
+              <b style={{ color: k > rg ? 'var(--muted)' : 'var(--ink)' }}>{s.t}{k === rg && <> <span className="chip c-dark" style={{ marginLeft: 4 }}>YOU</span></>}</b>
+              <span className="small muted">{s.d}</span>
+              {s.u && k > rg && <span className="tiny" style={{ color: 'var(--teal)', fontWeight: 600 }}>Unlocks: {s.u}</span>}
+              {ok[k] && checkWords(k, st, ok[k]!).map((x) => (
+                <span key={x.t} className="check"><span className={x.ok ? 'ok' : 'no'}>{x.ok ? '✓' : '○'}</span>{x.t}</span>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function District({ c, act }: { c: Career; act: Act }) {
+  const md = game.mood(c), M = MOODS[md];
+  const order = ['big', 'mid', 'small'];
+  const rv = c.rivals.slice().sort((a, b) => order.indexOf(a.tier) - order.indexOf(b.tier) || b.stars - a.stars);
+  return (
+    <div className="card">
+      <div className="row"><b className="grow">Around the district</b><span className={'chip ' + (md === 'boom' ? 'c-job' : md === 'bust' ? 'c-bad' : 'c-idle')}>{M.t.toUpperCase()}</span></div>
+      <div className="small muted">{M.d}</div>
+      {rv.map((x) => (
+        <div key={x.name}>
+          <div className="kv">
+            <span>{x.name}<br /><span className="tiny muted">{TIER[x.tier].t} · {x.fleet} machines · {districtForm(rvForm(x, true), x.jobs.length, x.idle)}</span></span>
+            <span style={{ color: 'var(--gold)', letterSpacing: 1 }}>{starTxt(x.stars)}</span>
+          </div>
+          {canBuyOut(c as never) && rvPhase(x) === 'stretched' && (
+            <button type="button" className="btn full" onClick={() => act((y) => game.approachRival(y, x.name))}>Approach {x.name} about buying them out</button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RetireSheet({ c, act, onClose }: { c: Career; act: Act; onClose: () => void }) {
+  const o = game.retireQuote(c), who = o.who ?? 'A contractor from the coast';
+  return (
+    <div className="overlay" role="dialog" aria-modal="true" aria-label="Sell up and retire">
+      <div className="sheet">
+        <div className="sub">Sell up and retire</div>
+        <h2>{who} will buy the business</h2>
+        <div className="card">
+          <div className="kv"><span>Your machines</span><span className="num">{c.fleet.filter((m) => m.status !== 'auction').length}, worth about {f(o.v)}</span></div>
+          <div className="kv"><span>Their offer, for the gear, the name and your track record</span><span className="num">{f(o.price)}</span></div>
+          <div className="kv"><b>You walk away with</b><b className="num" style={{ color: o.walk < 0 ? 'var(--rust)' : 'var(--teal)' }}>{f(o.walk)}</b></div>
+          <div className="tiny muted">After the loan, overdraft and anything owed to subbies are paid out, plus what clients still owe you. The market is {MOODS[game.mood(c)].t.toLowerCase()}: offers are better in a boom.</div>
+        </div>
+        <div className="small">This ends the career. What you walk away with goes on the board as your final result.</div>
+        <button type="button" className="big" onClick={() => { act((x) => game.retireNow(x)); onClose(); }}>Sign and retire · {f(o.walk)}</button>
+        <button type="button" className="btn full" onClick={onClose}>Not yet</button>
+      </div>
+    </div>
+  );
+}
+
+export function CareerTab({ c, act, onNew }: { c: Career; act: Act; onNew: () => void }) {
+  const [retire, setRetire] = useState(false);
+  const [wipe, setWipe] = useState(false);
+  const n = stars(c.rep);
+  return (
+    <>
+      <Wallet c={c} />
+      {(c.ownWon ?? 0) > 0 && (
+        <div className="card">
+          <div className="sub">Council contracts</div>
+          <div className="kv"><span>Won</span><span className="num">{c.ownWon}</span></div>
+          <div className="kv"><span>Finished</span><span className="num">{c.ownDone || 0}</span></div>
+          <div className="kv"><span>Finished late</span><span className="num">{c.ownLate || 0}</span></div>
+        </div>
+      )}
+      {c.subsWon > 0 && (
+        <div className="card">
+          <div className="sub">Subcontracting</div>
+          <div className="kv"><span>Packages won</span><span className="num">{c.subsWon}</span></div>
+          <div className="kv"><span>Finished</span><span className="num">{c.subsDone}</span></div>
+          <div className="kv"><span>Finished late</span><span className="num">{c.lds}</span></div>
+        </div>
+      )}
+      <div className="card">
+        <div className="row"><b className="grow">Track record</b><span style={{ color: 'var(--gold)', fontSize: 20, letterSpacing: 2 }} aria-label={n + ' of 3 stars'}>{starTxt(n)}</span></div>
+        <div className="tiny muted">{c.rep} points. Finished jobs earn points (council work earns 2). Walking off a job costs one.</div>
+      </div>
+      <Ladder c={c} />
+      <District c={c} act={act} />
+      {c.won && c.phase === 'play' && (
+        <div className="card">
+          <b>Sell up and retire</b>
+          <div className="small muted">End the career on your terms: a buyer takes the gear, the name and your track record, and what you walk away with goes on the board as your final result.</div>
+          <button type="button" className="btn full" onClick={() => setRetire(true)}>See what it's worth</button>
+        </div>
+      )}
+      <div className="card">
+        <div className="small muted">Starting again wipes this career.</div>
+        <button type="button" className="btn full" onClick={() => (wipe ? onNew() : setWipe(true))}>{wipe ? 'Tap again to wipe it and start over' : 'Start a new career'}</button>
+      </div>
+      {retire && <RetireSheet c={c} act={act} onClose={() => setRetire(false)} />}
+    </>
+  );
+}
