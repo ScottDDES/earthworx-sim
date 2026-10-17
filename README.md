@@ -41,6 +41,7 @@ npm run check      # type-check, then test: run this before every commit
 | `src/planning.ts` | Planning a council job: crews, water carts, trucks, pits, weeks lost to rain, cost, what's holding it up; programs crew by crew and road by road with floats; the plan a rival would draw up. |
 | `src/council.ts` | Council packages and flood recovery programs: what comes up, deadlines, pricing, the plan controls, closing and scoring, signing your own contract. |
 | `src/contracts.ts` | Running contracts: staffing subbie and council jobs, the working day for every kind of job, programs crew by crew, claims, retention and damages, the halfway and deadline checks, subbing out and taking back, the contract cards. |
+| `src/office.ts` | The office: paying subbies and the tax office, the overdraft limit and the bank's calls, net worth, GST and the BAS, closing the books each week, the year in review, Hardcore insolvency, and the bank and BAS cards. |
 | `src/text/` | Words the player reads, kept out of the rules. The engine records which story happened; screens look up the words here. |
 | `src/index.ts` | The front door. Screens import from here only. |
 | `test/parity.test.ts` | Runs the prototype and this engine side by side and fails if they ever disagree. |
@@ -54,6 +55,8 @@ npm run check      # type-check, then test: run this before every commit
 | `test/council.test.ts` | Planning and council tenders: 1,500 packages and 600 programs made, 1,500 plans and 400 programs evaluated after random changes, 1,500 closed, 600 signed. |
 | `test/contracts.test.ts` | Contracts: 160 businesses run up to 40 weeks each, 300 subbed out, 1,500 program checks, 600 contract cards. |
 | `test/safety.test.ts` | The same for safety, including the words in `src/text/safety.ts`. |
+| `test/office.test.ts` | The office, on 100+ snapshots of careers the prototype played itself. |
+| `test/bot.ts` | A simple bot that plays the prototype, so tests get real, lived-in careers to check against. |
 | `test/prototype.ts` | Loads the prototype for the tests (from `../game-prototype`, or set `PROTOTYPE`). Also cuts blocks out of its week loop and compiles them inside it, so tests can run them word for word. |
 
 ## Rules for the code
@@ -84,4 +87,7 @@ Things the prototype does that should change, kept for now so careers match it e
 - [x] Subbie tenders: pricing, scoring, closing, direct offers, signing
 - [x] Council tenders, flood recovery programs and job planning
 - [x] Running contracts: staffing, the working day, programs, claims, retention, damages, subbing out, contract cards
-- [ ] The week loop (`endWeek`): the rest of the curve-ball cards, rain calls, paying subbies, then a full-career parity test
+- [x] The office: payables, the bank's calls, GST and BAS, closing the books, the year in review, Hardcore
+- [ ] Outside events: shocks, selling up, buying out a rival, the branch depot
+- [ ] The remaining cards and rain calls; unlocks and the career ladder
+- [ ] Career start, the week loop (`endWeek`), and a full-career parity test

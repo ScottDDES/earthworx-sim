@@ -23,3 +23,4 @@ export * from './tenders';
 export * from './planning';
 export * from './council';
 export * from './contracts';
+export * from './office';

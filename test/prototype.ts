@@ -36,6 +36,9 @@ const EXPORTS = [
   'signOwn', 'setPlan', 'setHm', 'progAct', 'canPrestige', 'jobEnds', 'capFull',
   'staffSubs', 'staffOwn', 'subQuotes', 'subOut', 'takeBack', 'canTakeBack', 'addDays', 'swapIn', 'finishPts',
   'programCheck', 'cutWork',
+  'closeBooks', 'taxWeek', 'yearEnd', 'hardcoreWeek', 'netWorth', 'workInHand', 'debtors', 'taxMode', 'gstInBank', 'gst',
+  'claimFinance', 'plOf', 'utilOf', 'rvWorth', 'acc', 'tbs',
+  'start', 'endWeek', 'choose', 'hireCand', 'submitBid', 'tPrice', 'rung', 'checkWin', 'unlockWeek',
 ];
 
 export interface Proto {
@@ -72,17 +75,22 @@ function weekHooks(): string {
   const settle = inner(cut(setOpen + '    if(j.after) return;', '  fitterWeek(rep); wsmWeek(rep);', week), setOpen, '})(); jobCost(j, rep.costs-c0); jobDone(j); });');
   const recv = cut('  // money coming in\n', '  // the bank\n', week);
   const start = cut('  acc(); staffSubs(); staffOwn();\n', '  var p = rainP(), downDays = {};', week);
+  const payables = cut('  // paying the subbies\n', '  // money coming in\n', week);
+  // the bank's calls sit inside the loan block; reopen it so the braces balance
+  const calls = 'var L = S.loan, od = odLimit(); if(L.bal>0){\n' + cut('    if(L.missed>=3 && !S.queue.some(', '  shockWeek(rep); relWeek();', week);
   return `__day: function(j, d, wet, rep, downDays){ var c0 = rep.costs; (function(){\n${day}})(); jobCost(j, rep.costs-c0); },
     __afterDay: function(d, rep){\n${afterDay}},
     __settle: function(j, rep, downDays){ var c0 = rep.costs; (function(){\n${settle}})(); jobCost(j, rep.costs-c0); jobDone(j); },
     __recv: function(rep){\n${recv}},
     __weekStart: function(rep){\n${start}},
+    __payables: function(rep, BK){\n${payables}},
+    __bankCalls: function(rep){\n${calls}},
     __startWeek: function(){ S.jobs.forEach(function(j){ j.wk = 0; j.wkDays = 0; }); },`;
 }
 
 export function loadPrototype(): Proto {
   const end = js.lastIndexOf('})();');
-  const hook = `window.__parity = { setS: function(v){ S = v; }, ${weekHooks()} ${EXPORTS.map((n) => `${n}: ${n}`).join(', ')} };\n`;
+  const hook = `window.__parity = { setS: function(v){ S = v; }, getS: function(){ return S; }, ${weekHooks()} ${EXPORTS.map((n) => `${n}: ${n}`).join(', ')} };\n`;
   const src = js.slice(0, end) + hook + js.slice(end);
   const el = { innerHTML: '' };
   const win: any = { scrollTo() {} };
