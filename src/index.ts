@@ -6,3 +6,6 @@ export * from './towns';
 export * from './weather';
 export * from './bank';
 export * from './ledger';
+export * from './difficulty';
+export * from './yards';
+export * from './machines';

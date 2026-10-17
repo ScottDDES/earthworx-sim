@@ -15,6 +15,9 @@ const js = html.slice(html.indexOf('<script>') + 8, html.lastIndexOf('</script>'
 const EXPORTS = [
   'seedRand', 'hashN', 'ri', 'pick', 'withRNG', 'weeklyRepay', 'monthIdx', 'yearOf',
   'wxMm', 'wetDay', 'forecast', 'wxDate', 'wxOff', 'rainP', 'wxMean',
+  'baseValue', 'value', 'mName', 'costIdx', 'dp', 'diffOf', 'svcCost', 'newMachine', 'overdue', 'svcLeft',
+  'wear', 'breaks', 'breakdown', 'svcFind', 'fitCov', 'bigNoWsm', 'TYPES', 'YARDS', 'DIFF_P', 'PARTS',
+  'service', 'fitterWeek',
 ];
 
 export interface Proto {
