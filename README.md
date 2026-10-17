@@ -139,7 +139,7 @@ Still open:
 - [x] Three save slots: switch between careers (saving where you are first), start a new one in an empty save, a confirm before wiping a save, and a warning if the device can't save. Save 1 keeps the old key, so earlier careers carry on. The demo is never saved.
 - [x] Sound, off unless you turn it on (Career tab): a stamp for tickets and finished work, a diesel each week, two notes for a win
 - [x] Handing the business to the next generation (from Regional contractor): the family money, a star of track record, the tickets and the family history carry on; the end screen now matches the prototype's
-- [x] Phone app shell (Capacitor 8.5.2): `app/android` and `app/ios`, the font shipped inside the app (works offline, nothing fetched from Google), Android's back button. App id `biz.ddes.earthmoving` is a placeholder: confirm before the first upload, it can't change after.
+- [x] Phone app shell (Capacitor 8.5.2): `app/android` and `app/ios`, the font shipped inside the app (works offline, nothing fetched from Google), Android's back button. The app is called Earthworx Sim (name chosen 2026-10-18; store title "Earthworx Sim: Earthmoving Business"). App id `biz.ddes.earthmoving` is permanent once uploaded. Before the first upload, check "earthworx" on IP Australia (classes 9, 41): several real earthmoving firms trade as Earthworx.
 - [x] Android test build works on this PC (Android Studio, SDK 36, Java 21)
 - [ ] The iPhone app needs Xcode on a Mac (or a cloud build); app icon and splash are still Capacitor's defaults
 - [ ] Still to come: seasons (fixed-length challenge runs; they need the leaderboard, which stays private)

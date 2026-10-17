@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Earthmoving</string>
-    <string name="title_activity_main">Earthmoving</string>
+    <string name="app_name">Earthworx Sim</string>
+    <string name="title_activity_main">Earthworx Sim</string>
     <string name="package_name">biz.ddes.earthmoving</string>
     <string name="custom_url_scheme">biz.ddes.earthmoving</string>
 </resources>

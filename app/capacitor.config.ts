@@ -5,7 +5,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'biz.ddes.earthmoving',
-  appName: 'Earthmoving',
+  appName: 'Earthworx Sim',
   webDir: 'dist',
   android: {
     // the game is all on the phone; nothing loads over plain http

@@ -25,7 +25,7 @@ export function SetupScreen({ onStart, saves }: { onStart: (s: game.Setup) => vo
       <div className="wrap setup">
         <div className="hero">
           <div className="row">
-            <span className="tiny grow" style={{ color: 'var(--head-muted)' }}>Earthmoving</span>
+            <span className="tiny grow" style={{ color: 'var(--head-muted)' }}>Earthworx Sim</span>
             <span style={{ color: '#FFC700' }}><MachineIcon type="grader" /></span>
           </div>
           <h1>Start your own earthmoving company</h1>
