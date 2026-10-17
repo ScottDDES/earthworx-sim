@@ -6,16 +6,16 @@ import { bankWeek, newLoan, weeklyRepay, type Loan } from './bank';
 import { yearOf } from './calendar';
 import { DIFFICULTY, costIdx as costIdxOf, difficultyOf, type Difficulty } from './difficulty';
 import { book, newAccounts, type Accounts } from './ledger';
-import { TYPES, newMachine, serviced, svcCost, value, type Machine } from './machines';
+import { GPS_COST, TYPES, newMachine, serviced, svcCost, value, type Machine } from './machines';
 import { MOODS, fmul as fmulOf, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, unlist, inspect as inspectL, bid as bidL, hammer as hammerL, type HammerResult, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
-import { fromState, hashN, int, seedRand, type Rand } from './rng';
+import { fromState, hashN, int, pick, seedRand, type Rand } from './rng';
 import { mkRivals, rivalsWeek, type Rival, type RivalEvent } from './rivals';
-import { newWhs, safetyWeek, type SafetyEvent, type Whs } from './safety';
+import { newWhs, safetyWeek, upgradeWhs, type SafetyEvent, type Whs } from './safety';
 import { YARDS, type YardId } from './yards';
 import { TOWNS, type TownId } from './towns';
 import { pickStart, rainMm, wetDay } from './weather';
 import { dayOffset } from './calendar';
-import { genCandidates, hire, wages, type Candidate, type Person } from './staff';
+import { SKILLS, genCandidates, hire, wages, type Candidate, type Person } from './staff';
 import { genMgrApplicants, hireMgr as hireMgrPerson, mgrIs, mgrOf, mgrTraitsWeek, mgrUnlocked, workshopCtx, type MgrRole, type MgrApplicant } from './managers';
 import { afterService, fitterWeek, wsmWeek, type WorkshopEvent } from './workshop';
 import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium as premiumOf } from './overheads';
@@ -30,9 +30,9 @@ import { endOfDay, jobDay, settleJob, staffOwn, staffSubs, seatStaff, subOut as 
 import { bankCalls, closeBooks, gstInBank, hardcoreWeek, netWorth, newGst, odLimit, payablesWeek, taxMode, taxWeek, yearEnd, type BankCallEvent, type GstState, type HardcoreEvent, type TaxEvent, type TaxMode, type WeekRow, type YearReview, type Payable } from './office';
 import { borrow, borrowRoom, cashForecast, fixedWeek, payDown, runway, type ForecastWeek } from './books';
 import { askSellUp, retire, retireOffer, sellUpWeek, shockWeek, type RetireOffer, type ShockEvent } from './shocks';
-import { branchWeek, type Branch, type BranchEvent } from './branch';
+import { branchWeek, closeBranch, hireBrMgr, openBranch, toBranch, toHome, type Branch, type BranchEvent, type BranchMgrKind } from './branch';
 import { curveWeek, rainCallCheck, rainCallDay, rainCrews, swmsWeek, type RainCallEvent } from './cards';
-import { checkTix, checkWin, rung, tc, tcAdd, unlockWeek } from './career';
+import { checkTix, checkWin, rung, tc, tcAdd, unlockWeek, unlocked } from './career';
 
 export interface Setup {
   co: string;
@@ -331,16 +331,96 @@ export function accept(c: Career, id: string): boolean {
   return !!acceptOffer(c as never, id);
 }
 
-export function hireCand(c: Career, id: string): boolean {
+export type HireAnswer = { k: 'hired'; wage: number } | { k: 'walked'; ask: number; offer: number; rival: string };
+
+/**
+ * Hire someone off the labour board at what they ask, or haggle: offer 12% less and they might take it
+ * (keen ones more likely), or walk and take a job with a rival.
+ */
+export function hireCand(c: Career, id: string, haggle = false): HireAnswer | null {
   const cd = c.cands.find((x) => x.id === id);
-  if (!cd) return false;
+  if (!cd) return null;
+  let wage = cd.ask;
   c.cands = c.cands.filter((x) => x !== cd);
-  c.staff.push(hire(cd, cd.ask, uid(c)));
+  if (haggle) {
+    const offer = Math.round((cd.ask * 0.88) / 50) * 50, rand = stream(c);
+    if (rand() < Math.min(0.95, SKILLS[cd.skill].yes * (cd.keen ? 1.2 : 1))) wage = offer;
+    else {
+      const rival = pick<{ name: string }>(rand, c.rivals.length ? c.rivals : [{ name: 'a rival' }]).name;
+      note(c, { k: 'knockedBack', name: cd.name, offer });
+      return { k: 'walked', ask: cd.ask, offer, rival };
+    }
+  }
+  c.staff.push(hire(cd, wage, uid(c)));
   seatStaff(c as never);
   tcAdd(c as never, 'hired');
   tickets(c);
-  note(c, { k: 'hired', name: cd.name, role: cd.role, wage: cd.ask });
+  note(c, { k: 'hired', name: cd.name, role: cd.role, wage });
+  return { k: 'hired', wage };
+}
+
+/** Let someone go with a week's pay. Not while they're on a job. */
+export function letGo(c: Career, id: string): boolean {
+  const p = c.staff.find((x) => x.id === id);
+  if (!p || p.jobId) return false;
+  c.bank -= p.wage;
+  c.staff = c.staff.filter((x) => x !== p);
+  note(c, { k: 'letGo', name: p.name });
   return true;
+}
+
+/** Fix a patched-up part properly. The machine's in the workshop for 2 days. */
+export function fixProperly(c: Career, id: string): boolean {
+  const m = c.fleet.find((x) => x.id === id);
+  if (!m || !m.band || c.bank < m.band.fix) return false;
+  c.bank -= m.band.fix;
+  book(c.acc, 'workshop', m.band.fix);
+  note(c, { k: 'fixedProperly', part: m.band.part, type: m.type, cost: m.band.fix });
+  m.band = null;
+  if (m.down === 0) m.down = 2;
+  return true;
+}
+
+/** Fit GPS machine control to a grader: a better finish, and 7% faster. */
+export function fitGps(c: Career, id: string): boolean {
+  const m = c.fleet.find((x) => x.id === id);
+  if (!m || m.type !== 'grader' || m.gps || c.bank < GPS_COST) return false;
+  c.bank -= GPS_COST;
+  book(c.acc, 'capital', GPS_COST);
+  m.gps = true;
+  tcAdd(c as never, 'gps');
+  tickets(c);
+  note(c, { k: 'gps', m: mRef(m), cost: GPS_COST });
+  return true;
+}
+
+/** Step the safety system up a level. */
+export function upgradeSafety(c: Career): boolean {
+  if (!unlocked(c as never, 'swms')) return false;
+  return upgradeWhs(c as never, { swms: true, won: c.won, won2: c.won2 });
+}
+
+/** Toolbox talks every Monday, on or off. They unlock once you're ready to subcontract. */
+export function toggleTalks(c: Career): void {
+  if (c.won || c.whs.talks) c.whs.talks = !c.whs.talks;
+}
+
+// ---------- the branch depot ----------
+
+export function openBranchDepot(c: Career, k: BranchMgrKind): boolean {
+  return openBranch(stream(c), c as never, k);
+}
+export function hireBranchManager(c: Career, k: BranchMgrKind): void {
+  hireBrMgr(stream(c), c as never, k);
+}
+export function sendToBranch(c: Career, id: string): boolean {
+  return toBranch(c as never, id);
+}
+export function bringHome(c: Career, id: string): boolean {
+  return toHome(c as never, id, room(c));
+}
+export function closeBranchDepot(c: Career): void {
+  closeBranch(c as never);
 }
 
 export function hireManager(c: Career, role: MgrRole, id: string): boolean {

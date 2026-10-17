@@ -107,6 +107,7 @@ export function upgradeWhs(st: SafetyState, flags: { swms: boolean; won: boolean
   st.bank -= WHS_SYS[st.whs.sys + 1]!.cost;
   st.whs.sys++;
   st.whs.cult = Math.min(100, st.whs.cult + 5);
+  note(st, { k: 'whsSetUp', sys: st.whs.sys, cost: WHS_SYS[st.whs.sys]!.cost });
   return true;
 }
 

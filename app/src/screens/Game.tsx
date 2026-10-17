@@ -199,7 +199,7 @@ export function GameScreen({ c, act, onNew }: { c: Career; act: Act; onNew: () =
               <div className="small">You owe more than the business is worth. Get above water or it goes into administration.</div>
             </div>
           ) : null}
-          {tab === 'yard' && <YardTab c={c} act={act} />}
+          {tab === 'yard' && <YardTab c={c} act={act} go={setTab} />}
           {tab === 'work' && <WorkTab c={c} act={act} />}
           {tab === 'map' && <MapTab c={c} />}
           {tab === 'market' && <MarketTab c={c} act={act} />}

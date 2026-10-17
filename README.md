@@ -132,8 +132,8 @@ Still open:
 - [x] Market: this week's auction (bid, let the hammer fall) and machines for sale (buy, finance, a mechanic's check)
 - [x] Career: tickets wallet, contract tallies, track record, the ladder with each step's checklist, the district (market mood, rivals, approaching one to buy them out), selling up to retire, starting over
 - [x] Career: the site diary and "Lately" news
-- [ ] Yard still to come: fix a patched part properly, fit GPS, send gear to the branch and bring it home (the engine has no fixing properly or GPS yet)
-- [ ] Still to come: letting staff go, sound, seasons, save slots, tabs unlocking as you go
+- [x] Yard, second pass: workshop alerts, the branch depot (open, managers, send and bring home, close), a compact fleet list with filters, fix properly, GPS, the labour board with haggling, letting staff go, managers, safety and toolbox talks
+- [ ] Still to come: sound, seasons, save slots, tabs unlocking as you go
 - [x] Office: the dashboard (what's worth a look, cash, runway, work in hand, the 12-week cash forecast, trend charts, profit and loss, how the jobs went, the branch, head contractors, past years, the gear, safety, people, tenders, who owes what) and the bank page (borrowing against the fleet, paying the loan down, ringing around about selling)
 - [ ] The prototype's mentor tips (office, BAS, scoring, standing) aren't ported yet
 - [x] Map: the district roads by state, tap a road for its story, your roads

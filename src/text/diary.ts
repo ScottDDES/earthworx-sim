@@ -9,6 +9,7 @@ import { YARDS } from '../yards';
 import { ROLES } from '../staff';
 import { MGR } from '../managers';
 import { HC_WEEKS } from '../office';
+import { WHS_SYS } from '../overheads';
 import { TIER_NAME, councilTitle, jobTitle, pmOf, subTenderTitle } from './work';
 import { eventText } from './docket';
 import { SERIOUS_STORIES } from './safety';
@@ -124,6 +125,11 @@ export function diaryText(c: Career, e: any): string {
     case 'soldBusiness': return 'Sold ' + c.co + ' to ' + e.to + ' for ' + f(e.price) + '.';
     case 'retired': return 'Sold ' + c.co + ' to ' + (e.to ?? 'A contractor from the coast') + ' for ' + f(e.price) + ' and retired.';
     case 'callout': return 'Storm call-out for the council: ' + f(e.amt) + ' invoiced.';
+    case 'knockedBack': return e.name + ' knocked back ' + f(e.offer) + ' a week.';
+    case 'letGo': return 'Let ' + e.name + " go with a week's pay.";
+    case 'fixedProperly': return 'Fixed the ' + e.part + ' on the ' + short(e.type) + ' properly (' + f(e.cost) + ').';
+    case 'gps': return 'Fitted GPS machine control to the ' + label(e.m) + ' (' + f(e.cost) + ').';
+    case 'whsSetUp': return 'Set up ' + WHS_SYS[e.sys]!.n + ' (' + f(e.cost) + ').';
     // the bank
     case 'insolventWeek': return 'Trading insolvent, week ' + e.weeks + ' of ' + HC_WEEKS + '.';
     case 'administration': return 'Went into administration.';
