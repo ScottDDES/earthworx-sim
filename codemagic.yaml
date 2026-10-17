@@ -1,0 +1,42 @@
+# Codemagic builds the iPhone app on a rented Mac and sends it to TestFlight.
+# Set up once in Codemagic (codemagic.io), never in this file:
+#   - Team settings > Integrations > Developer Portal: an App Store Connect API key, named "Earthworx"
+#   - this app's numeric Apple ID (App Store Connect > the app > App Information) in APP_STORE_APPLE_ID below
+workflows:
+  ios-testflight:
+    name: iPhone app to TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Earthworx
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: biz.ddes.earthmoving
+      vars:
+        APP_STORE_APPLE_ID: 0 # fill in once the app exists in App Store Connect
+      node: 22
+      xcode: latest
+    triggering:
+      events: [] # built by hand from Codemagic, not on every push
+    scripts:
+      - name: Install the game's packages
+        script: cd app && npm ci
+      - name: Build the game
+        script: cd app && npm run build
+      - name: Copy it into the iPhone project
+        script: cd app && npx cap sync ios
+      - name: Signing
+        script: xcode-project use-profiles
+      - name: Number this build one past the last on TestFlight
+        script: |
+          LAST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)
+          cd app/ios/App && agvtool new-version -all $((LAST + 1))
+      - name: Build the app
+        script: xcode-project build-ipa --project "app/ios/App/App.xcodeproj" --scheme "App"
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
