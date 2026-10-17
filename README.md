@@ -31,11 +31,13 @@ npm run check      # type-check, then test: run this before every commit
 | `src/managers.ts` | The six kinds of manager, their applicants, and the workshop's fitter cover. Builds the workshop details machines need. |
 | `src/workshop.ts` | The workshop week: fitters' servicing, the workshop manager's dealer bookings, faults found, turnover calls. Returns events, not words. |
 | `src/overheads.ts` | Weekly running costs: insurance (base, plant, workers' comp, your record), drawings, rent, wages, safety system, toolbox talks. |
+| `src/market.ts` | The plant market: the mood (boom to bust, driven by last year's rain), listings, distress sales, the auction lot, finance, buying, inspecting, bidding, selling. |
 | `src/index.ts` | The front door. Screens import from here only. |
 | `test/parity.test.ts` | Runs the prototype and this engine side by side and fails if they ever disagree. |
 | `test/machines.test.ts` | The same for machines, yards and difficulty. |
 | `test/staff.test.ts` | The same for staff, managers and workshop cover. |
 | `test/workshop.test.ts` | The same for the workshop week and running costs. |
+| `test/market.test.ts` | The same for the market. |
 | `test/prototype.ts` | Loads the prototype for the tests (from `../game-prototype`, or set `PROTOTYPE`). |
 
 ## Rules for the code
@@ -53,7 +55,7 @@ npm run check      # type-check, then test: run this before every commit
 - [x] The workshop week: fitters' servicing, the workshop manager's dealer bookings and turnover calls
 - [x] Running costs: insurance, safety system levels, drawings, rent, toolbox talks
 - [ ] Safety: incidents, crew culture, the insurance loading going up
-- [ ] The market: auctions, dealers, private sales
+- [x] The market: mood, listings, auctions, finance, buying and selling
 - [ ] Hire work
 - [ ] Tenders and rivals
 - [ ] Running contracts

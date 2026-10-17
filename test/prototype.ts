@@ -21,6 +21,8 @@ const EXPORTS = [
   'genCands', 'hireCand', 'fillRoles', 'mgrWeek', 'wages', 'fitPer', 'fitters', 'freeStaff', 'mgrUnlocked',
   'UI', 'NAMES', 'ROLES', 'SKILLS', 'MGR',
   'wsmWeek', 'overheads', 'premium', 'premParts', 'fleetValue', 'talksCost', 'rainCrews', 'odLimit', 'WHS_SYS',
+  'genMarket', 'marketWeek', 'fundIdx', 'fmul', 'buy', 'inspect', 'bid', 'hammer', 'sell', 'canFinance', 'lendCap',
+  'finDeposit', 'MOODS', 'CLIENTS', 'fk',
 ];
 
 export interface Proto {
@@ -52,4 +54,21 @@ export function prototypeBankStep(): (S: any, odLimit: number) => { rep: any; BK
   const body = js.slice(start, stop) + '  }'; // close the if(L.bal>0) block the cut leaves open
   const fn = new Function('S', 'odLimit', 'f', 'log', `var rep = { costs:0, events:[] }, BK = { lc:0, li:0 };\n${body}\nreturn { rep: rep, BK: BK };`);
   return (S, od) => fn(S, () => od, (n: number) => String(n), () => {});
+}
+
+/** The prototype's end-of-week sales step (auctions settle, private listings count down), cut out word for word. */
+export function prototypeSalesStep(): (S: any, r: () => number) => { rep: any } {
+  const start = js.indexOf('  // sales\n  S.fleet.slice().forEach(');
+  const stop = js.indexOf('  // people', start);
+  if (start < 0 || stop < 0) throw new Error("Couldn't find the sales step in the prototype.");
+  const body = js.slice(start, stop);
+  const P = loadPrototype();
+  const fn = new Function('P', 'S', 'r', `var rep = { costs:0, events:[] }, value = P.value, mood = function(){ return S.mkt ? S.mkt.mood : 'steady'; }, MOODS = P.MOODS,
+    book = function(k, amt){ S.acc[k] = (S.acc[k]||0) + amt; }, f = String, log = function(){}, machineLabel = function(){ return ''; }, TYPES = P.TYPES;
+    ${body}
+    return { rep: rep };`);
+  return (S, r) => {
+    P.setS(S);
+    return fn(P, S, r);
+  };
 }

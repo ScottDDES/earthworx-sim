@@ -13,3 +13,4 @@ export * from './staff';
 export * from './managers';
 export * from './overheads';
 export * from './workshop';
+export * from './market';
