@@ -39,6 +39,8 @@ const EXPORTS = [
   'closeBooks', 'taxWeek', 'yearEnd', 'hardcoreWeek', 'netWorth', 'workInHand', 'debtors', 'taxMode', 'gstInBank', 'gst',
   'claimFinance', 'plOf', 'utilOf', 'rvWorth', 'acc', 'tbs',
   'start', 'endWeek', 'choose', 'hireCand', 'submitBid', 'tPrice', 'rung', 'checkWin', 'unlockWeek',
+  'shockWeek', 'meStretched', 'sellBuyer', 'sellUpWeek', 'askSellUp', 'sellPrice', 'walkAway', 'sellBest', 'rvYard', 'buyOutPay',
+  'canBuyOut', 'branchWeek', 'openBranch', 'toBranch', 'toHome', 'closeBranch', 'brCrews', 'canBranch', 'room',
 ];
 
 export interface Proto {

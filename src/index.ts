@@ -24,3 +24,5 @@ export * from './planning';
 export * from './council';
 export * from './contracts';
 export * from './office';
+export * from './shocks';
+export * from './branch';
