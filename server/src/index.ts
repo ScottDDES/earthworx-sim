@@ -85,8 +85,8 @@ async function post(req: Request, env: Env) {
        at    = CASE WHEN excluded.score > scores.score OR scores.v <> excluded.v THEN excluded.at ELSE scores.at END,
        v = excluded.v`,
   ).bind(p.season, player, p.name, p.co, rep.score, rep.week, SIM_VER, p.moves.length, now).run();
-  // tidy the rate-limit log now and then
-  if (Math.random() < 0.02) await env.DB.prepare('DELETE FROM posts WHERE at < ?').bind(now - 86400_000).run();
+  // the rate-limit log only needs the last hour; nothing in it is kept past a day (the privacy page promises this)
+  await env.DB.prepare('DELETE FROM posts WHERE at < ?').bind(now - 86400_000).run();
 
   const res = await board(req, env, p.season, p.player);
   const b = (await res.json()) as { me: unknown };

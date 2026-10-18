@@ -18,6 +18,9 @@ export interface Board {
   me: (BoardRow & { rank: number }) | null;
 }
 
+/** The privacy policy, on the web version (app/public/privacy.html). */
+export const PRIVACY_URL = 'https://earthworx-sim.scott-6da.workers.dev/privacy';
+
 const PLAYER_KEY = 'earthworx-player', NAME_KEY = 'earthworx-nickname';
 
 /** This device's player id: random, made once, kept on the device. The board only ever sees a hash of it. */

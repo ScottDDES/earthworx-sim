@@ -9,6 +9,7 @@ import { sfx } from '../sound';
 import { f, fk } from '../format';
 import { SlotsBar, SlotsCard, type Saves } from '../Slots';
 import { SeasonCard, SeasonPicker } from '../Seasons';
+import { PRIVACY_URL } from '../board';
 
 type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
@@ -231,6 +232,7 @@ export function CareerTab({ c, act, onNew, saves }: { c: Career; act: Act; onNew
           <span className="grow"><b className="small">Sound</b><br /><span className="tiny muted">A stamp for wins and tickets, a diesel turn-over each week.</span></span>
           <button type="button" className={'btn' + (c.sound ? ' dark' : '')} aria-pressed={!!c.sound} onClick={() => act((x) => { x.sound = !x.sound; sfx('win', x.sound); })}>{c.sound ? 'On' : 'Off'}</button>
         </div>
+        <div className="tiny muted"><a href={PRIVACY_URL} target="_blank" rel="noopener">Privacy policy</a></div>
       </div>
       {c.won && c.phase === 'play' && (
         <div className="card">
