@@ -10,12 +10,8 @@ workflows:
     integrations:
       app_store_connect: Earthworx
     environment:
-      ios_signing:
-        # named directly (Team settings > codemagic.yaml settings > Code signing identities)
-        provisioning_profiles:
-          - earthworx_appstore
-        certificates:
-          - earthworx_dist
+      groups:
+        - ios_signing # CERTIFICATE_PRIVATE_KEY, kept secret in Codemagic (Environment variables)
       vars:
         APP_STORE_APPLE_ID: 6824078099 # Earthworx Sim in App Store Connect
       node: 22
@@ -29,8 +25,12 @@ workflows:
         script: cd app && npm run build
       - name: Copy it into the iPhone project
         script: cd app && npx cap sync ios
-      - name: Signing
-        script: xcode-project use-profiles
+      - name: Signing (fetched from Apple each build)
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "biz.ddes.earthmoving" --type IOS_APP_STORE --certificate-key=@env:CERTIFICATE_PRIVATE_KEY --create
+          keychain add-certificates
+          xcode-project use-profiles
       - name: Number this build one past the last on TestFlight
         script: |
           LAST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)
