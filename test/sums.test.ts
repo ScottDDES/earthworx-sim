@@ -1,7 +1,10 @@
 // The sums against Scott's spreadsheet ("Sums for earthmovers"): every answer on it, from the same inputs.
 
 import { describe, expect, it } from 'vitest';
-import { bankSection, checkHeight, damMeasured, damVolume, designGrade, gradePct, laserSetup, levelAfter, naturalRl } from '../src/sums';
+import {
+  bankSection, checkHeight, compactorRate, cutForFill, damMeasured, damVolume, daysOnJob, designGrade, gradePct, laserSetup, levelAfter, naturalRl,
+  pushedSpread, pusherCycle, scraperCycle, scraperRate, scrapersPerPusher, waterCartRate, waterNeeded,
+} from '../src/sums';
 
 const near = (a: number, b: number) => expect(a).toBeCloseTo(b, 6);
 
@@ -71,5 +74,37 @@ describe('sums for earthmovers, as the spreadsheet has them', () => {
 
   it('a dam dug with no batters is just a box', () => {
     near(damVolume({ topLength: 10, topWidth: 5, depth: 2, sideBatter: 0, endBatter: 0 }).total, 100);
+  });
+});
+
+describe('days on the job: the spread and its slowest part', () => {
+  it('a scraper cycle over 400 m', () => {
+    // 0.7 load + 400 m at 20 km/h (1.2) + 0.8 spread and turn + 400 m at 30 km/h (0.8)
+    near(scraperCycle({ load: 0.7, haul: 400, loadedKmh: 20, emptyKmh: 30, spreadTurn: 0.8 }), 3.5);
+  });
+
+  it('one scraper carrying 18 bank m³ on a 3.5 minute cycle, 50-minute hour', () => near(scraperRate(3.5, 18), 257.142857142857));
+
+  it('a push dozer serves 3.5 / (1.4 × 0.7 + 0.25) scrapers', () => {
+    near(pusherCycle(0.7), 1.23);
+    near(scrapersPerPusher(3.5, 0.7), 2.845528455284553);
+  });
+
+  it('four scrapers on one pusher are held up by the pusher; two are not', () => {
+    near(pushedSpread(2, 1, 3.5, 0.7, 18), 2 * 257.142857142857);
+    near(pushedSpread(4, 1, 3.5, 0.7, 18), (60 / 1.23) * (50 / 60) * 18);
+  });
+
+  it('a compactor, the shrink and the water', () => {
+    near(compactorRate(2.4, 8, 0.2, 6), 533.3333333333334);
+    near(cutForFill(900, 0.1), 1000);
+    near(waterNeeded(1000, 3), 51000);
+    near(waterCartRate(15000, 25), 30000);
+  });
+
+  it('the slowest part sets the days', () => {
+    const d = daysOnJob(18408, 10, { scrapers: 700, compactor: 533, water: 588 });
+    expect(d.slowest).toBe('compactor');
+    near(d.days, 18408 / 5330);
   });
 });

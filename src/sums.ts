@@ -79,3 +79,64 @@ export function damMeasured(topLength: number, topWidth: number, depth: number, 
   const sideBatter = (topWidth - floorWidth) / (2 * depth), endBatter = (topLength - floorLength) / (2 * depth);
   return { ...damVolume({ topLength, topWidth, depth, sideBatter, endBatter }), sideBatter, endBatter };
 }
+
+// ---- Production: how long the spread takes. Not on the spreadsheet; the usual earthmoving rules of thumb. ----
+// Volumes are bank m³ (in the ground) unless named otherwise. Times are minutes, speeds km/h, haul distances metres.
+
+/** A scraper's round trip: load, haul out loaded, spread and turn, come back empty. */
+export function scraperCycle(c: { load: number; haul: number; loadedKmh: number; emptyKmh: number; spreadTurn: number }): number {
+  const leg = (kmh: number) => (kmh > 0 ? (c.haul / 1000 / kmh) * 60 : 0);
+  return c.load + leg(c.loadedKmh) + c.spreadTurn + leg(c.emptyKmh);
+}
+
+/** Bank m³ an hour from one scraper. eff is the working fraction of the hour (a 50-minute hour is 50/60). */
+export function scraperRate(cycleMin: number, bankPerLoad: number, eff = 50 / 60): number {
+  return cycleMin > 0 ? (60 / cycleMin) * eff * bankPerLoad : 0;
+}
+
+/** A push dozer's cycle per scraper it loads: the usual rule is 1.4 times the load time plus a quarter minute to get back. */
+export function pusherCycle(loadMin: number): number {
+  return 1.4 * loadMin + 0.25;
+}
+
+/** How many scrapers one push dozer keeps busy without them queueing. */
+export function scrapersPerPusher(scraperCycleMin: number, loadMin: number): number {
+  return scraperCycleMin / pusherCycle(loadMin);
+}
+
+/** A pushed spread: the scrapers' output, capped by how many loads the push dozers can give them. */
+export function pushedSpread(scrapers: number, pushers: number, cycleMin: number, loadMin: number, bankPerLoad: number, eff = 50 / 60): number {
+  const fromScrapers = scrapers * scraperRate(cycleMin, bankPerLoad, eff);
+  const fromPushers = pushers * (60 / pusherCycle(loadMin)) * eff * bankPerLoad;
+  return Math.min(fromScrapers, fromPushers);
+}
+
+/** Compacted m³ an hour from a compactor: width × speed × lift ÷ passes. */
+export function compactorRate(widthM: number, kmh: number, liftM: number, passes: number, eff = 50 / 60): number {
+  return passes > 0 ? (widthM * kmh * 1000 * liftM * eff) / passes : 0;
+}
+
+/** Bank m³ that ends up as one compacted m³. Clay in a wall takes up less room than it did in the ground. */
+export function cutForFill(compactedM3: number, shrink: number): number {
+  return compactedM3 / (1 - shrink);
+}
+
+/** Litres of water to lift compacted fill by addPct moisture (dry density in t/m³). */
+export function waterNeeded(compactedM3: number, addPct: number, dryDensity = 1.7): number {
+  return compactedM3 * dryDensity * (addPct / 100) * 1000;
+}
+
+/** Litres an hour a water cart lays down: one tank per fill-drive-spray-return trip. */
+export function waterCartRate(tankL: number, tripMin: number, eff = 50 / 60): number {
+  return tripMin > 0 ? (tankL * 60 * eff) / tripMin : 0;
+}
+
+/**
+ * Days on the job for a dirt job. Each part of the spread gives what it can do in bank m³ an hour; the slowest part
+ * sets the pace. Returns the days and which part held it up.
+ */
+export function daysOnJob(bankM3: number, hoursPerDay: number, rates: Record<string, number>): { perHour: number; days: number; slowest: string } {
+  let slowest = '', perHour = Infinity;
+  for (const [k, r] of Object.entries(rates)) if (r < perHour) { perHour = r; slowest = k; }
+  return { perHour, days: perHour > 0 && hoursPerDay > 0 ? bankM3 / (perHour * hoursPerDay) : Infinity, slowest };
+}
