@@ -11,7 +11,7 @@ workflows:
       app_store_connect: Earthworx
     environment:
       groups:
-        - ios_signing # CERTIFICATE_PRIVATE_KEY, kept secret in Codemagic (Environment variables)
+        - ios_signing # CERTIFICATE_PRIVATE_KEY (base64 of the .pem), kept secret in Codemagic (Environment variables)
       vars:
         APP_STORE_APPLE_ID: 6824078099 # Earthworx Sim in App Store Connect
       node: 22
@@ -27,8 +27,11 @@ workflows:
         script: cd app && npx cap sync ios
       - name: Signing (fetched from Apple each build)
         script: |
+          set -e
+          # the key is kept in Codemagic as one line of base64, so pasting can't mangle it
+          export CERT_KEY="$(printf '%s' "$CERTIFICATE_PRIVATE_KEY" | tr -d '[:space:]' | base64 --decode)"
           keychain initialize
-          app-store-connect fetch-signing-files "biz.ddes.earthmoving" --type IOS_APP_STORE --certificate-key=@env:CERTIFICATE_PRIVATE_KEY --create
+          app-store-connect fetch-signing-files "biz.ddes.earthmoving" --type IOS_APP_STORE --certificate-key=@env:CERT_KEY --create
           keychain add-certificates
           xcode-project use-profiles --project "app/ios/App/App.xcodeproj"
       - name: Number this build one past the last on TestFlight
