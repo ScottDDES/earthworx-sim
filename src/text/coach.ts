@@ -3,7 +3,7 @@
 import type { Career } from '../game';
 import { TICKETS, checks, checks2, checks3, checks4, rung } from '../career';
 import { ownedCounts } from '../planning';
-import { coachStep, type CoachStep, type MentorNote, type RunStop, type TabId } from '../coach';
+import { coachStep, type CoachStep, type Handled, type MentorNote, type RunStop, type TabId } from '../coach';
 import { TICKET_TEXT, checkWords } from './career';
 
 export const COACH_TEXT: Record<CoachStep, { t: string; d: string }> = {
@@ -24,7 +24,7 @@ export const MENTOR: Record<MentorNote, string> = {
   bas: 'The GST was never yours. Put it aside every week and the BAS is just paperwork. Spend it and the tax office becomes your biggest creditor.',
   year: 'Read it the way the bank will. Margin and net worth tell you more than turnover. A big year at 3% is a lot of work for nothing.',
   rel: 'The project managers talk. Every job you finish on time is a reference, and every one you finish late is a story that gets around. Look after the two or three who send you the most work.',
-  runon: 'Quiet stretch? Run on plays up to four weeks and stops the moment something needs you: a tender, a breakdown, a result, a bill.',
+  runon: 'Quiet stretch? Run on plays up to four weeks. It makes the small calls for you, like rain days and slow payers, and stops the moment something bigger needs you: a breakdown, a new tender, a win, the bank.',
 };
 
 /** The line above End week: the coach's step while it's on, then the next thing on the ladder, then the next ticket. */
@@ -52,3 +52,18 @@ export const RUN_STOP: Record<RunStop, string> = {
   bank: 'Run on stopped here: the bank needs a look.',
   machine: 'Run on stopped here: a machine is in a bad way.',
 };
+
+/** One line for a card Run on answered for you. */
+export function handledLine(h: Handled): string {
+  const who = h.who || 'A crew member';
+  const t: Record<string, string> = {
+    rainday: 'Rain forecast: stood the crews down',
+    late: 'Late payment: waited it out',
+    quiet: who + ' was quiet: took them for a feed and a yarn',
+    nearmiss: 'Near miss: reported it and talked it through',
+    early: 'Early payment offer: waited for the full amount',
+    tresult: 'Lost a tender',
+    cresult: 'Lost a council tender',
+  };
+  return 'Wk ' + h.w + ' · ' + (t[h.k] ?? 'Handled a card');
+}

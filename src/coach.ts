@@ -7,6 +7,8 @@ import { endWeek } from './game';
 import { tc } from './career';
 import { whyNot } from './hire';
 import { machineAlerts } from './books';
+import { choose, drawCard } from './choose';
+import { compat } from './compat';
 
 export type CoachStep = 'earn' | 'end' | 'late' | 'health' | 'goal';
 export type TabId = 'yard' | 'work' | 'map' | 'market' | 'bank' | 'career';
@@ -172,24 +174,64 @@ function quietStop(c: Career, before: Before, r: Report | null): RunStop | null 
 }
 
 /**
- * Play up to four weeks, stopping the moment something needs you: a card, a new tender, work for an idle
- * machine, a stamp or a ticket, the bank, or a machine in a bad way. Returns the last week's report, with a
- * summary of the run when it was more than one week.
+ * Cards Run on answers for you, with the safe answer, instead of stopping: the small day-to-day calls. Bigger ones
+ * (results you won, the bank, breakdowns, injuries, money decisions) still stop it. Lost tender results only say
+ * "Carry on", so they don't stop it either.
  */
-export function runOn(c: Career): (Report & { run?: RunSummary; stop?: RunStop | null }) | null {
+export const RUN_ANSWERS: Record<string, string> = { rainday: 'standDown', late: 'wait', quiet: 'yarn', nearmiss: 'report', early: 'wait' };
+const NEWS_ONLY = new Set(['tresult', 'cresult']);
+
+/** A card Run on answered for you, for the summary. */
+export interface Handled {
+  w: number;
+  k: string;
+  id: string;
+  who?: string;
+}
+
+/** Answer the small cards at the front of the queue. Returns the tickets earned doing it. */
+function answerSmall(c: Career, w: number, handled: Handled[]): string[] {
+  const tix: string[] = [];
+  while (c.queue.length) {
+    const q = c.queue[0]!, d = drawCard(c, q);
+    if (!d) {
+      choose(c, 0); // no longer applies: it just goes
+      continue;
+    }
+    const want = RUN_ANSWERS[q.k], i = want ? d.opts.findIndex((o) => o.id === want) : NEWS_ONLY.has(q.k) && d.opts.length === 1 ? 0 : -1;
+    if (i < 0) break;
+    const a = choose(c, i);
+    if (!a) continue;
+    handled.push({ w, k: q.k, id: a.id, ...(d.data.person?.name ? { who: d.data.person.name as string } : {}) });
+    tix.push(...a.tix);
+  }
+  return tix;
+}
+
+/**
+ * Play up to four weeks, stopping the moment something needs you: a card, a new tender, work for an idle
+ * machine, a stamp or a ticket, the bank, or a machine in a bad way. Small cards get the safe answer and the run
+ * goes on (not in the prototype, which stops at every card). Returns the last week's report, with a summary of
+ * the run when it was more than one week, why it stopped, and the cards it answered.
+ */
+export function runOn(c: Career): (Report & { run?: RunSummary; stop?: RunStop | null; handled?: Handled[] }) | null {
   if (!canRunOn(c)) return null;
-  const w0 = c.week, sum = { invoiced: 0, paid: 0, costs: 0, rain: 0, worked: 0 };
-  let n = 0, last: (Report & { run?: RunSummary; stop?: RunStop | null }) | null = null, stop: RunStop | null = null;
+  const w0 = c.week, sum = { invoiced: 0, paid: 0, costs: 0, rain: 0, worked: 0 }, handled: Handled[] = [];
+  let n = 0, last: (Report & { run?: RunSummary; stop?: RunStop | null; handled?: Handled[] }) | null = null, stop: RunStop | null = null;
   while (n < 4) {
     const before = snapshot(c);
     last = endWeek(c);
     n++;
     if (last) for (const k of Object.keys(sum) as (keyof typeof sum)[]) sum[k] += last[k] || 0;
     if (!last) break;
-    stop = quietStop(c, before, last);
+    const tix = compat.prototype ? [] : answerSmall(c, last.week, handled);
+    stop = tix.length ? 'stamp' : quietStop(c, before, last);
     if (stop) break;
   }
-  if (last) last.stop = stop;
+  if (last) {
+    last.stop = stop;
+    if (handled.length) last.handled = handled;
+  }
   if (last && n > 1) last.run = { n, from: w0, to: w0 + n - 1, ...sum };
   return last;
 }

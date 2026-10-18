@@ -3,10 +3,10 @@
 
 import { useEffect, useState } from 'react';
 import { cardView, resultText, type CardView } from '@engine/text/cardView';
-import { MOODS, TOWNS, alertMachines, canRunOn, coachOff, coachOk, coachOn, coachStep, runOn, tabIsNew, tabSeen, tabShown, whyNot, type RunStop, type RunSummary, choose, dayOffset, drawCard, forecast, gstInBank, monthIdx, recordDate, yearOf, game, play } from '@engine';
+import { MOODS, TOWNS, alertMachines, canRunOn, coachOff, coachOk, coachOn, coachStep, runOn, tabIsNew, tabSeen, tabShown, whyNot, type Handled, type RunStop, type RunSummary, choose, dayOffset, drawCard, forecast, gstInBank, monthIdx, recordDate, yearOf, game, play } from '@engine';
 import { docketLines, docketStamps } from '@engine/text/docket';
 import { TICKET_TEXT } from '@engine/text/career';
-import { COACH_TEXT, RUN_STOP, nextGoal } from '@engine/text/coach';
+import { COACH_TEXT, RUN_STOP, handledLine, nextGoal } from '@engine/text/coach';
 import { COACH } from '@engine';
 import { Mentor } from '../Mentor';
 import { Icon, WeatherIcon } from '../Icon';
@@ -142,7 +142,7 @@ function ResultSheet({ r, onClose }: { r: Outcome; onClose: () => void }) {
 }
 
 /** The week's docket: what got done, what it came to, the rain day by day, and everything that happened. */
-function Docket({ c, r, onClose }: { c: Career; r: game.Report & { run?: RunSummary; stop?: RunStop | null }; onClose: () => void }) {
+function Docket({ c, r, onClose }: { c: Career; r: game.Report & { run?: RunSummary; stop?: RunStop | null; handled?: Handled[] }; onClose: () => void }) {
   const R = r.run, net = Math.round(R ? R.paid - R.costs : r.paid - r.costs), lines = docketLines(c, r), stamps = docketStamps(c, r);
   const wx = { town: c.town, wxStart: c.wxStart }, held = c.gst && gstInBank(game.tax(c)) ? c.gst.held : 0;
   return (
@@ -151,6 +151,12 @@ function Docket({ c, r, onClose }: { c: Career; r: game.Report & { run?: RunSumm
         <div className="row docket-head"><span className="sub grow">Docket {('000' + r.week).slice(-4)} · {c.co}</span><span className="sub">Week {r.week}</span></div>
         <h2>{R ? R.n + ' weeks run: weeks ' + R.from + ' to ' + R.to : r.worked ? r.worked + ' machine-day' + (r.worked > 1 ? 's' : '') + ' worked' : r.rain >= 4 ? 'Rained out' : 'A quiet week'}</h2>
         {R && <div className="small muted">{R.worked} machine-days worked, {R.rain} days rained off, {f(R.invoiced)} invoiced.{R.n >= 4 && ' Stopped after four quiet weeks.'} The details below are from the last week.</div>}
+        {r.handled && r.handled.length > 0 && (
+          <div className="card">
+            <div className="sub">Handled for you</div>
+            {r.handled.map((h, i) => <div key={i} className="small">{handledLine(h)}</div>)}
+          </div>
+        )}
         {r.stop && <div className="small" style={{ fontWeight: 700 }}>{RUN_STOP[r.stop]}</div>}
         <div className="docket-net" style={{ color: net >= 0 ? 'var(--teal)' : 'var(--rust)' }}>{net >= 0 ? '+' : '−'}{f(Math.abs(net))} <span className="small muted">{R ? 'cash over ' + R.n + ' weeks' : 'cash this week'}</span></div>
         {stamps.length > 0 && <div className="stamps">{stamps.map((t, i) => <span key={i} className="stamp">{t}</span>)}</div>}
@@ -269,7 +275,7 @@ export function GameScreen({ c, act, onNew, saves, saveFailed, demo }: { c: Care
           <div className="endrow">
             <button type="button" className="big" disabled={c.queue.length > 0} onClick={endWeek}>End week {c.week}<Icon k="go" /></button>
             {!coachOn(c) && (
-              <button type="button" className="runon" disabled={!canRunOn(c)} onClick={runWeeks} aria-label="Run quiet weeks, up to four, and stop when something happens"><b>Run on</b><span>up to 4 wks</span></button>
+              <button type="button" className="runon" disabled={!canRunOn(c)} onClick={runWeeks} aria-label="Run up to four weeks, making the small calls for you and stopping when something bigger needs you"><b>Run on</b><span>up to 4 wks</span></button>
             )}
           </div>
           <nav className="tabs" aria-label="Sections" style={{ gridTemplateColumns: `repeat(${shown.length},minmax(0,1fr))` }}>

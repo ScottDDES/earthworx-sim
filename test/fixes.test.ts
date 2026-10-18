@@ -1,7 +1,7 @@
 // The fixes after the port: where the real game does better than the prototype.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { choose, compat, game, genOffers, seedRand, shuffled } from '../src';
+import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, game, genOffers, runOn, seedRand, shuffled, whyNot } from '../src';
 
 describe('a fair shuffle', () => {
   beforeAll(() => { compat.prototype = false; });
@@ -69,5 +69,47 @@ describe('a career replays from its seed alone', () => {
       if (offers(true) !== offers(false)) differs++;
     }
     expect(differs).toBeGreaterThan(10);
+  });
+});
+
+describe('Run on answers the small cards itself', () => {
+  beforeAll(() => { compat.prototype = false; });
+  afterAll(() => { compat.prototype = true; });
+
+  // a plain bot: a grader, take the work going, price the tenders, answer cards with the first option, run on
+  const play = (proto: boolean) => {
+    compat.prototype = proto;
+    const lengths: number[] = [], answered: string[] = [], stops: Record<string, number> = {};
+    for (let seed = 1; seed <= 12; seed++) {
+      const c = game.newCareer({ co: 'Run On Test', loan: 150000, town: 'gdi' }, seed);
+      const g = c.market!.listings.filter((m) => m.type === 'grader').sort((a, b) => a.price - b.price)[0]!;
+      game.buy(c, g.id);
+      game.open(c);
+      coachOff(c);
+      for (let k = 0; k < 40 && c.phase === 'play'; k++) {
+        for (let j = 0; c.queue.length && j < 20; j++) choose(c, 0);
+        for (const o of c.offers.slice()) if (!whyNot(c as never, o)) game.accept(c, o.id);
+        for (const t of (c.tenders || []).slice()) if (!t.bid) game.submitBid(c, t.id);
+        if (!canRunOn(c)) continue;
+        const r = runOn(c);
+        if (!r) break;
+        lengths.push(r.run?.n ?? 1);
+        const why = r.stop === 'needsYou' ? 'card:' + (c.queue[0]?.k ?? c.phase) : r.stop ?? 'ran 4';
+        stops[why] = (stops[why] || 0) + 1;
+        for (const h of r.handled || []) answered.push(h.k + ':' + h.id);
+      }
+    }
+    compat.prototype = false;
+    return { lengths, answered, avg: lengths.reduce((a, b) => a + b, 0) / lengths.length };
+  };
+
+  it('runs go longer than the prototype, and only the small cards get answered, with the safe answer', () => {
+    const now = play(false), before = play(true);
+    console.log(`run on: prototype ${before.avg.toFixed(2)} weeks a run, now ${now.avg.toFixed(2)}; answered ${now.answered.length} cards`);
+    expect(now.avg).toBeGreaterThan(before.avg + 0.2);
+    expect(before.answered.length).toBe(0);
+    expect(now.answered.length).toBeGreaterThan(0);
+    const safe = new Set([...Object.entries(RUN_ANSWERS).map(([k, id]) => k + ':' + id), 'tresult:ok', 'cresult:ok']);
+    for (const a of now.answered) expect(safe.has(a)).toBe(true);
   });
 });
