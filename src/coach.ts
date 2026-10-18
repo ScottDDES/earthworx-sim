@@ -155,16 +155,20 @@ function snapshot(c: Career): Before {
 }
 
 /** Did the week turn up something that needs you? */
-function quietStop(c: Career, before: Before, r: Report | null): boolean {
-  if (c.phase !== 'play' || c.queue.length) return true;
+/** Why a run of quiet weeks stopped, or null to keep going. */
+export type RunStop = 'needsYou' | 'stamp' | 'finished' | 'tender' | 'idleWork' | 'bank' | 'machine';
+
+function quietStop(c: Career, before: Before, r: Report | null): RunStop | null {
+  if (c.phase !== 'play' || c.queue.length) return 'needsYou';
   const ev = (r?.events || []) as { k: string; kind?: string }[];
-  if (r && (r.tix.length || ev.some((e) => (e.k === 'finished' && e.kind === 'sub') || e.k === 'ownFinished' || e.k === 'unlocked'))) return true;
+  if (r && r.tix.length) return 'stamp';
+  if (r && ev.some((e) => (e.k === 'finished' && e.kind === 'sub') || e.k === 'ownFinished' || e.k === 'unlocked')) return 'finished';
   const now = snapshot(c);
-  if (now.t > before.t || now.c > before.c) return true;
-  if (now.idleOffer && !before.idleOffer) return true;
-  if (c.odOver || c.loan.missed || (c.hardcore && c.under)) return true;
-  if (now.bad && !before.bad) return true;
-  return false;
+  if (now.t > before.t || now.c > before.c) return 'tender';
+  if (now.idleOffer && !before.idleOffer) return 'idleWork';
+  if (c.odOver || c.loan.missed || (c.hardcore && c.under)) return 'bank';
+  if (now.bad && !before.bad) return 'machine';
+  return null;
 }
 
 /**
@@ -172,17 +176,20 @@ function quietStop(c: Career, before: Before, r: Report | null): boolean {
  * machine, a stamp or a ticket, the bank, or a machine in a bad way. Returns the last week's report, with a
  * summary of the run when it was more than one week.
  */
-export function runOn(c: Career): (Report & { run?: RunSummary }) | null {
+export function runOn(c: Career): (Report & { run?: RunSummary; stop?: RunStop | null }) | null {
   if (!canRunOn(c)) return null;
   const w0 = c.week, sum = { invoiced: 0, paid: 0, costs: 0, rain: 0, worked: 0 };
-  let n = 0, last: (Report & { run?: RunSummary }) | null = null;
+  let n = 0, last: (Report & { run?: RunSummary; stop?: RunStop | null }) | null = null, stop: RunStop | null = null;
   while (n < 4) {
     const before = snapshot(c);
     last = endWeek(c);
     n++;
     if (last) for (const k of Object.keys(sum) as (keyof typeof sum)[]) sum[k] += last[k] || 0;
-    if (!last || quietStop(c, before, last)) break;
+    if (!last) break;
+    stop = quietStop(c, before, last);
+    if (stop) break;
   }
+  if (last) last.stop = stop;
   if (last && n > 1) last.run = { n, from: w0, to: w0 + n - 1, ...sum };
   return last;
 }

@@ -171,6 +171,7 @@ function sideBySide(seed: number, setup: { loan: number; town: 'gdi' | 'ct'; hc:
           if (!r || !PR) throw new Error('run on: engine ' + !!r + ', prototype ' + !!PR);
           same(`week ${W} run`, JSON.stringify(r.run ?? null), JSON.stringify(PR.run ? { n: PR.run.n, from: PR.run.from, to: PR.run.to, invoiced: PR.run.invoiced, paid: PR.run.paid, costs: PR.run.costs, rain: PR.run.rain, worked: PR.run.worked } : null));
           RUNS.push(r.run?.n ?? 1);
+          { const key = r.stop === 'needsYou' ? 'card:' + (c.queue[0]?.k ?? c.phase) : r.stop ?? 'ran 4'; STOPS[key] = (STOPS[key] || 0) + 1; }
         });
         S = P.getS();
         continue;
@@ -227,6 +228,7 @@ let FLAGS = 0;
 const GOALS = new Set<string>();
 /** How many weeks each run-on went. */
 const RUNS: number[] = [];
+const STOPS: Record<string, number> = {};
 /** The kinds of diary and news entry that were checked. */
 const KINDS = new Set<string>();
 /** The road states whose words were checked. */
@@ -247,6 +249,7 @@ describe('whole careers', () => {
     console.log('cards worded: ' + [...SEEN].sort().join(', '));
     console.log('docket lines: ' + [...EVENTS].sort().join(', '));
     console.log('goal lines: ' + [...GOALS].sort().join(', '));
+    console.log('run on stops: ' + JSON.stringify(STOPS));
     console.log('run on: ' + RUNS.length + ' runs, lengths ' + [1, 2, 3, 4].map((n) => n + ':' + RUNS.filter((x) => x === n).length).join(' '));
     expect(new Set(RUNS).size).toBeGreaterThanOrEqual(3);
     console.log('diary kinds: ' + [...KINDS].sort().join(', '));

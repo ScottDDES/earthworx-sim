@@ -3,7 +3,7 @@
 import type { Career } from '../game';
 import { TICKETS, checks, checks2, checks3, checks4, rung } from '../career';
 import { ownedCounts } from '../planning';
-import { coachStep, type CoachStep, type MentorNote, type TabId } from '../coach';
+import { coachStep, type CoachStep, type MentorNote, type RunStop, type TabId } from '../coach';
 import { TICKET_TEXT, checkWords } from './career';
 
 export const COACH_TEXT: Record<CoachStep, { t: string; d: string }> = {
@@ -41,3 +41,14 @@ export function nextGoal(c: Career): { tip: boolean; t: string; tab: TabId } | n
   const t = TICKETS.find((x) => !(c.tix && c.tix[x.id]));
   return t ? { tip: false, t: 'Next ticket: ' + TICKET_TEXT[t.id]!.n + ' (' + TICKET_TEXT[t.id]!.d.replace(/\.$/, '').toLowerCase() + ')', tab: 'career' } : null;
 }
+
+/** Why Run on stopped, shown on the docket so a one-week run doesn't look like nothing happened. */
+export const RUN_STOP: Record<RunStop, string> = {
+  needsYou: 'Run on stopped here: something needs your answer.',
+  stamp: 'Run on stopped here: you earned a stamp.',
+  finished: 'Run on stopped here: a job finished.',
+  tender: 'Run on stopped here: a new tender is out.',
+  idleWork: 'Run on stopped here: there is work for an idle machine.',
+  bank: 'Run on stopped here: the bank needs a look.',
+  machine: 'Run on stopped here: a machine is in a bad way.',
+};
