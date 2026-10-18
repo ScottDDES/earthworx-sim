@@ -1,7 +1,7 @@
 // The Office tab: the dashboard (what's worth a look, the numbers, the next 12 weeks, profit and loss, how
 // the jobs went, and the rest of the business folded away), and the bank page (loans, the overdraft, who owes what).
 
-import { useState, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import {
   CLIENTS, CLIENT_PM, ROLES, TOWNS, WHS_SYS, alertMachines, brCrews, brProfit, claimFinance, debtors, fleetValue, gstInBank, hsum, lastInc,
   lendCap, meStretched, plOf, recentInc, relOf, relTier, talksCost, trackAllow, utilOf, wages, whsNp, workInHand, YARDS, game,
@@ -191,11 +191,11 @@ function Dashboard({ c, act, go, toBank }: { c: Career; act: Act; go: Go; toBank
         <div className="pl" style={{ marginTop: 4 }}>
           <span className="ph">Week</span><span className="ph">In</span><span className="ph">Out</span>
           {FC.slice(0, 6).map((x) => (
-            <span key={x.w} style={{ display: 'contents' }}>
+            <Fragment key={x.w}>
               <span>{x.w}{x.bas && <> <span className="tiny" style={{ color: 'var(--warn)', fontWeight: 700 }}>BAS</span></>}</span>
               <span style={{ color: 'var(--teal)' }}>{fk(x.inn)}</span>
               <span style={{ color: 'var(--rust)' }}>−{fk(x.o)}</span>
-            </span>
+            </Fragment>
           ))}
         </div>
         <div className="kv"><span>Lowest point</span><span className="num" style={{ color: low.bal < -od ? 'var(--rust)' : 'inherit' }}>{fks(low.bal)} in week {low.w}</span></div>
@@ -263,9 +263,9 @@ function Dashboard({ c, act, go, toBank }: { c: Career; act: Act; go: Go; toBank
             <div className="pl">
               <span className="ph">Week</span><span className="ph">Invoiced</span><span className="ph">Costs</span>
               {BRh.slice(-6).reverse().map((x) => (
-                <span key={x.w} style={{ display: 'contents' }}>
+                <Fragment key={x.w}>
                   <span>{x.w} <span className="tiny muted">{x.days} crew-days</span></span><span style={{ color: 'var(--teal)' }}>{fk(x.rev)}</span><span style={{ color: 'var(--rust)' }}>−{fk(x.cost)}</span>
-                </span>
+                </Fragment>
               ))}
             </div>
             <button type="button" className="btn full" onClick={() => go('yard')}>Manage the branch in the Yard</button>

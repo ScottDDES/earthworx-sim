@@ -1,0 +1,13 @@
+/* Fixes for the app on a real phone, on top of the prototype's look (prototype.css is generated; don't edit it). */
+
+/* no browser margin round the page, so the header runs edge to edge */
+body{margin:0}
+
+/* the header fills the strip under the status bar, so nothing scrolls through behind the clock */
+.top{top:0;padding-top:env(safe-area-inset-top,0px)}
+
+/* in a sheet that scrolls, cards keep their full height instead of squashing their text */
+.sheet>*{flex-shrink:0}
+
+/* the start and end screens have no header, so keep them clear of the clock */
+.setup{padding-top:calc(28px + env(safe-area-inset-top,0px))}
