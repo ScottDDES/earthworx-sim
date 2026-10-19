@@ -2,10 +2,11 @@
 # Set up once in Codemagic (codemagic.io), never in this file:
 #   - Team settings > Integrations > Developer Portal: an App Store Connect API key, named "Earthworx"
 #   - this app's numeric Apple ID (App Store Connect > the app > App Information) in APP_STORE_APPLE_ID below
+# What testers see under "What to Test" in TestFlight comes from TESTFLIGHT_NOTES.txt.
 workflows:
   ios-testflight:
     name: iPhone app to TestFlight
-    max_build_duration: 60
+    max_build_duration: 90
     instance_type: mac_mini_m2
     integrations:
       app_store_connect: Earthworx
@@ -40,9 +41,12 @@ workflows:
           cd app/ios/App && agvtool new-version -all $((LAST + 1))
       - name: Build the app
         script: xcode-project build-ipa --project "app/ios/App/App.xcodeproj" --scheme "App"
+      - name: Send it to TestFlight, with the notes for testers
+        # uploads the app, waits for Apple to process it, then fills in TestFlight's "What to Test" from
+        # TESTFLIGHT_NOTES.txt (edit that file for each round of changes; 4,000 characters at most).
+        # No --testflight: your own team gets it without Apple's beta review; add it once outside testers are in.
+        script: |
+          set -e
+          app-store-connect publish --path "build/ios/ipa/*.ipa" --whats-new @file:TESTFLIGHT_NOTES.txt --max-build-processing-wait 40
     artifacts:
       - build/ios/ipa/*.ipa
-    publishing:
-      app_store_connect:
-        auth: integration
-        submit_to_testflight: false # your own team gets it without Apple review; true only once outside testers are added
