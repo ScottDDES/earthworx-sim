@@ -1,6 +1,7 @@
 // Words for the week's docket: each event the week reported, as the prototype wrote it, and the stamps
 // across the top. Events that only went in the prototype's log (not the docket) give null here.
 
+import { bulkLine } from './bulk';
 import type { Career, Report } from '../game';
 import type { Job } from '../hire';
 import { TYPES } from '../machines';
@@ -32,6 +33,7 @@ export function eventText(c: Career, r: Report, e: any): string | null {
     case 'touchUp': return 'Worked through ' + e.mm + ' mm on ' + DAYS[e.d] + '. The day\'s in, with ' + f(e.cost) + ' of touch-up passes.';
     case 'missedUs': return 'The rain missed you on ' + DAYS[e.d] + ' (' + e.mm + ' mm). A full day in.';
     // jobs and contracts
+    case 'damWon': case 'damLost': case 'damLapsed': case 'damStarted': case 'damDone': case 'damGone': return bulkLine(e, e.jobId ? title(e.jobId) : undefined);
     case 'breakdown': return 'Your ' + TYPES[e.type as keyof typeof TYPES].short + ' broke down.';
     case 'terminated': return e.client + ' terminated ' + title(e.jobId) + ': you never started it. Track record −3, and they won\'t use you for six months.';
     case 'subPulled': return e.name + ' pulled their crew off ' + title(e.jobId) + ' for a week to finish a private job.';
@@ -113,6 +115,7 @@ export function docketStamps(c: Career, r: Report): string[] {
     const j = e.jobId ? r.jobs?.[e.jobId] ?? c.jobs.find((x) => x.id === e.jobId) : undefined;
     if (e.k === 'finished' && e.kind === 'sub' && j) out.push('Finished · ' + jobTitle(j));
     if (e.k === 'ownFinished' && j) out.push((e.major ? 'Program delivered · ' : 'Contract finished · ') + jobTitle(j));
+    if (e.k === 'damDone' && j) out.push('Dam finished · ' + jobTitle(j));
     if (e.k === 'unlocked') out.push('Unlocked');
   }
   return out;

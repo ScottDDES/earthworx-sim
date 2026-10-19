@@ -15,11 +15,12 @@ import { YARDS, type YardId } from './yards';
 import { TOWNS, type TownId } from './towns';
 import { pickStart, rainMm, wetDay } from './weather';
 import { dayOffset, shutWeek } from './calendar';
-import { SKILLS, genCandidates, hire, wages, type Candidate, type Person } from './staff';
+import { SKILLS, genBulkCandidate, genCandidates, hire, wages, type Candidate, type Person } from './staff';
 import { genMgrApplicants, hireMgr as hireMgrPerson, mgrIs, mgrOf, mgrTraitsWeek, mgrUnlocked, workshopCtx, type MgrRole, type MgrApplicant } from './managers';
 import { afterService, fitterWeek, wsmWeek, type WorkshopEvent } from './workshop';
 import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium as premiumOf } from './overheads';
 import { compat } from './compat';
+import { bulkStart, bulkWeek, damDay, sendQuote, setRate, survey, type BulkEvent, type FarmEnquiry } from './bulk';
 import { ERP_SETUP, PRICE_CHECK_FEE, erpOk, priceBand } from './advisory';
 import { BID_ODDS, rvOHFor } from './rivals';
 import { accept as acceptOffer, askWait as askWaitHire, barred, coverOff, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
@@ -69,6 +70,8 @@ export interface Career {
   erp?: boolean;
   /** Expansion packs switched on. Bulk and Ag is behind a test switch until it's sold as a pack. */
   packs?: { bulk?: boolean };
+  /** The Bulk and Ag pack's farm enquiries. */
+  bulk?: { enq: FarmEnquiry[] };
   youJob: string | null;
   rep: number;
   ins: number;
@@ -307,6 +310,17 @@ export function setPack(c: Career, pack: 'bulk', on: boolean): boolean {
   if (on && !was) bulkMarket(c);
   if (!on && c.market) c.market.listings = c.market.listings.filter((m) => !isBulk(m.type));
   return true;
+}
+
+/** Bulk and Ag: pay a surveyor, move your rate per m³, send the price. (Not recorded: the pack is never in a season.) */
+export function damSurvey(c: Career, id: string): boolean {
+  return survey(c as never, id);
+}
+export function damRate(c: Career, id: string, d: number): void {
+  setRate(c as never, id, d);
+}
+export function damQuote(c: Career, id: string): boolean {
+  return sendQuote(c as never, id);
 }
 
 /** Open for business: the first week's work, market and tenders. */
@@ -614,7 +628,7 @@ export function endWeek(c: Career): Report | null {
   if (c.phase !== 'play' || c.queue.length) return null;
   const rand = stream(c), d = diff(c), wx = { town: c.town, wxStart: c.wxStart };
   const rep: Report = { week: c.week, rain: 0, mm: 0, worked: 0, lost: 0, invoiced: 0, paid: 0, costs: 0, events: [], tix: [], days: [] };
-  const ev = rep.events as (ContractEvent | WorkshopEvent | SafetyEvent | RainCallEvent | BankCallEvent | ShockEvent | HardcoreEvent | SaleEvent | RivalEvent | MapEvent | CloseEvent | CouncilEvent | BranchEvent | TaxEvent | HireEvent | WeekEvent)[];
+  const ev = rep.events as (ContractEvent | WorkshopEvent | SafetyEvent | RainCallEvent | BankCallEvent | ShockEvent | HardcoreEvent | SaleEvent | RivalEvent | MapEvent | CloseEvent | CouncilEvent | BranchEvent | TaxEvent | HireEvent | WeekEvent | BulkEvent)[];
   const BK = { pays: 0, odi: 0, lc: 0, li: 0 };
   Object.defineProperty(rep, 'jobs', { value: Object.fromEntries(c.jobs.map((j) => [j.id, j])), enumerable: false });
 
@@ -625,6 +639,7 @@ export function endWeek(c: Career): Report | null {
   const downDays: Record<string, number> = {};
   startWeek(c);
   if (!compat.prototype) coverOff(c as never);
+  if (c.packs?.bulk) bulkStart(c as never, ev as BulkEvent[]);
   // Christmas: the whole district knocks off for two weeks, and contract deadlines move with it
   const shut = !compat.prototype && shutWeek(c.week);
   if (shut) {
@@ -647,11 +662,15 @@ export function endWeek(c: Career): Report | null {
     rep.mm += rainMm(wx, dayOffset(c.week, day));
     rep.days.push({ wet, mm: rainMm(wx, dayOffset(c.week, day)) });
     const w = wctx(c);
-    for (const j of c.jobs) jobDay(rand, c as never, j, day, wet, w, rep, downDays, ev as ContractEvent[]);
+    for (const j of c.jobs) {
+      if (j.kind === 'dam') damDay(rand, c as never, j, wet, w, rep, ev as BulkEvent[]);
+      else jobDay(rand, c as never, j, day, wet, w, rep, downDays, ev as ContractEvent[]);
+    }
     endOfDay(c as never, day, ev as ContractEvent[]);
   }
   const oldhand = mgrIs(c.staff, 'oldhand');
   for (const j of c.jobs.slice()) {
+    if (j.kind === 'dam') continue;
     const before = ev.length;
     settleJob(rand, c as never, j, rep, downDays, oldhand, ev as ContractEvent[]);
     for (const e of ev.slice(before) as ContractEvent[]) {
@@ -700,6 +719,10 @@ export function endWeek(c: Career): Report | null {
   salesWeek(rand, c as never, mood(c), ev as SaleEvent[]);
   for (const p of c.staff) if (p.off > 0) p.off--;
   c.cands = genCandidates(worldRand(c, 'cands'), { taken: c.staff.map((p) => p.name), ownContract: c.won2, workshop: YARDS[c.yard].svc < 1 }, () => uid(c));
+  if (c.packs?.bulk) {
+    const bc = genBulkCandidate(worldRand(c, 'bulk-cands'), c.staff.map((p) => p.name).concat(c.cands.map((x) => x.name)), () => uid(c));
+    if (bc) c.cands.push(bc);
+  }
   if (c.opCover > 0) c.opCover--;
   if (c.youBlocked > 0) c.youBlocked--;
   swmsWeek(c as never, hasCrew(c), stars(c.rep));
@@ -746,6 +769,7 @@ export function endWeek(c: Career): Report | null {
   c.offers = genOffers(wr, c as never, fmul(c), c.won, c.won2);
   c.market = genMarket(wr, { week: c.week, won: c.won, mood: mood(c), rivSell: c.rivSell, clear: c.clear }, () => uid(c));
   bulkMarket(c);
+  if (c.packs?.bulk) bulkWeek(worldRand(c, 'bulk-enq'), c as never, fmul(c), ev as BulkEvent[]);
   genTenders(wr, c as never, canTender((t) => owns(c, t), c.rep, c.whs.sys), mood(c), fmul(c));
   if (compat.prototype || !barred(c as never, TOWNS[c.town].council)) {
     genCouncil(wr, c as never, planCtx(c), fmul(c));

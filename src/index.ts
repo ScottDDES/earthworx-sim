@@ -28,6 +28,8 @@ export * from './shocks';
 export * from './branch';
 export * from './cards';
 export * from './advisory';
+export * from './bulk';
+export * from './sums';
 export * from './career';
 // The whole game, as one namespace: game.newCareer, game.endWeek, game.buy, ...
 export * as game from './game';

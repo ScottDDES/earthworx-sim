@@ -2,7 +2,7 @@
 // A business that's run its own contract, with a fleet, a few hands, and a council package and a flood
 // recovery program out to tender. ?demo=bulk is the same business with the Bulk and Ag pack on and some of its gear.
 
-import { genCouncil, genMajor, newAccounts, newMachine, seedRand, uid, game, type MachineType } from '@engine';
+import { genCouncil, genEnquiry, genMajor, newAccounts, newMachine, seedRand, uid, game, type MachineType } from '@engine';
 
 export function demoCareer(kind: string): game.Career | null {
   if (kind !== 'council' && kind !== 'bulk') return null;
@@ -33,6 +33,8 @@ export function demoCareer(kind: string): game.Career | null {
   if (kind === 'bulk') {
     for (const k of ['d8', 'd9', 's631', 's631', 'c825', 'moxycart'] as MachineType[]) c.fleet.push(newMachine(rand, uid(c), k, 2015, 78, 11000));
     game.setPack(c, 'bulk', true);
+    c.bulk = { enq: [genEnquiry(seedRand(31), c as never, 1), genEnquiry(seedRand(44), c as never, 1)] };
+    c.bulk.enq[1]!.surveyed = true;
   }
   return c;
 }

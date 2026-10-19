@@ -9,7 +9,8 @@ import {
 import { loadPrototype } from './prototype';
 
 const P = loadPrototype();
-const ROLE_IDS = Object.keys(ROLES) as Role[];
+const BULK_ROLES = ['dozer', 'scraper', 'plant'];
+const ROLE_IDS = (Object.keys(ROLES) as Role[]).filter((r) => !BULK_ROLES.includes(r));
 const TRAITS = Object.keys(MGR) as Trait[];
 const LOAN_FOR: Record<Difficulty, number> = { easy: 350000, normal: 180000, hard: 80000, hc: 80000 };
 
@@ -36,7 +37,8 @@ function randomStaff(R: () => number): Person[] {
 
 describe('tables', () => {
   it('roles, skills, names and managers are the same', () => {
-    expect(ROLES).toEqual(P.ROLES);
+    // the road trades are the prototype's; dozer, scraper and plant operators are the Bulk and Ag pack's own
+    expect(Object.fromEntries(Object.entries(ROLES).filter(([k]) => !BULK_ROLES.includes(k)))).toEqual(P.ROLES);
     expect(SKILLS).toEqual(P.SKILLS);
     expect([...NAMES]).toEqual(P.NAMES);
     expect(MGR).toEqual(P.MGR);

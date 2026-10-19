@@ -1,7 +1,7 @@
 // The fixes after the port: where the real game does better than the prototype.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, coverOff, drawCard, game, genOffers, isBulk, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot } from '../src';
+import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, coverOff, drawCard, game, genEnquiry, genOffers, isBulk, pricingVol, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot } from '../src';
 
 describe('a fair shuffle', () => {
   beforeAll(() => { compat.prototype = false; });
@@ -334,5 +334,63 @@ describe('Bulk and Ag pack, step 1: the machines', () => {
     (c as { season?: unknown }).season = { id: 'wet2010', weeks: 26, v: 4, nw0: 0 };
     expect(game.setPack(c, 'bulk', true)).toBe(false);
     expect(c.packs?.bulk).toBeFalsy();
+  });
+});
+
+describe('Bulk and Ag pack, step 2: farm dams', () => {
+  beforeAll(() => { compat.prototype = false; });
+  afterAll(() => { compat.prototype = true; });
+
+  const outfit = (seed: number, gear: string[]) => {
+    const c = game.newCareer({ co: 'Dam Earthmoving', loan: 900000, town: 'gdi' }, seed);
+    c.phase = 'play';
+    c.yard = 'regional';
+    c.bank = 400000;
+    for (const [i, type] of gear.entries()) c.fleet.push({ id: 'b' + i, type, year: 2016, cond: 85, hours: 8000, svcAt: 8000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null } as never);
+    game.setPack(c, 'bulk', true);
+    return c;
+  };
+
+  it('the dam sum prices it, the spread builds it at the slowest machine\'s pace, and the farmer pays', () => {
+    let done = 0, profit = 0, n = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      const c = outfit(seed, ['s631', 's631', 'd9', 'c825', 'moxycart']);
+      for (let w = 0; w < 60; w++) {
+        for (const e of c.bulk?.enq ?? []) if (!e.quoted && !c.jobs.some((j) => j.kind === 'dam' && !j.finished)) { game.damSurvey(c, e.id); game.damQuote(c, e.id); }
+        for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0);
+        game.endWeek(c);
+      }
+      for (const j of c.jobs.filter((x) => x.kind === 'dam' && x.finished)) {
+        done++;
+        profit += (j.fixed as number) - (j.spent || 0);
+        expect(j.m3 as number).toBeGreaterThanOrEqual(j.truth as number);
+        expect(c.fleet.filter((m) => m.jobId === j.id).length).toBe(0);
+      }
+      n++;
+    }
+    expect(done).toBeGreaterThan(5);
+    // a decent spread at $4.20 a m³ on surveyed volumes makes money on the day costs
+    expect(profit).toBeGreaterThan(0);
+  });
+
+  it('the spread is only as fast as its slowest part: no push dozer, no open-bowl scrapers', () => {
+    const fast = spreadRate([{ type: 's631' }, { type: 's631' }, { type: 'd9' }], 250), none = spreadRate([{ type: 's631' }, { type: 's631' }], 250);
+    expect(fast.perHour).toBeGreaterThan(400);
+    expect(none.perHour).toBe(0);
+    // push-pull and elevating scrapers load themselves
+    expect(spreadRate([{ type: 's637' }, { type: 's637' }], 250).perHour).toBeGreaterThan(300);
+    // a compactor slower than the scrapers sets the pace
+    const capped = spreadRate([{ type: 's657' }, { type: 's657' }, { type: 's657' }, { type: 'padfoot' }], 150);
+    expect(capped.slowest).toBe('compactor');
+  });
+
+  it('eyeballing a dam that is bigger than the plans loses money a survey would have caught', () => {
+    const c = outfit(3, ['d9']);
+    const e = genEnquiry(seedRand(5), c as never, 1);
+    e.truth = Math.round(e.vol * 1.2);
+    e.survey = Math.round(e.truth * 1.01);
+    expect(pricingVol(e)).toBe(e.vol);
+    e.surveyed = true;
+    expect(pricingVol(e)).toBeGreaterThan(e.vol * 1.15);
   });
 });

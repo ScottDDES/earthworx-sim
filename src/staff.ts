@@ -4,7 +4,7 @@
 import { isRoad, type MachineType, type RoadType } from './machines';
 import { pick, type Rand } from './rng';
 
-export type Role = 'grader' | 'roller' | 'cart' | 'truck' | 'super' | 'ops' | 'fitter' | 'wsm';
+export type Role = 'grader' | 'roller' | 'cart' | 'truck' | 'super' | 'ops' | 'fitter' | 'wsm' | 'dozer' | 'scraper' | 'plant';
 
 export interface RoleSpec {
   name: string;
@@ -25,6 +25,10 @@ export const ROLES: Record<Role, RoleSpec> = {
   super:  { name: 'Site supervisor', wage: 2700, casual: 0, drives: [], note: 'Runs a council contract for you, so you can have more than one going.' },
   ops:    { name: 'Operations manager', wage: 3000, casual: 0, drives: [], note: 'Lets you run more than two contracts at once, and can run one themselves like a site supervisor. Puts your own gear onto contracts in place of hire-ins without asking.' },
   fitter: { name: 'Fitter', wage: 1600, casual: 0, drives: [], note: 'Works in your workshop and looks after up to 6 machines: services them when due for a quarter of the dealer price, fixes patched-up jobs on idle gear, and cuts breakdowns.' },
+  // the Bulk and Ag pack's trades
+  dozer:   { name: 'Dozer operator', wage: 2200, casual: 650, drives: ['d6', 'd8', 'd9', 'd10', 'padfoot'], note: 'Any dozer, D6 to D10, and the padfoot.' },
+  scraper: { name: 'Scraper operator', wage: 2150, casual: 650, drives: ['pull', 's623', 's631', 's637', 's651', 's657', 'padfoot', 'c815', 'c825'], note: 'Any scraper, and the compactors.' },
+  plant:   { name: 'Plant operator', wage: 1900, casual: 600, drives: ['excavator', 'moxy', 'moxycart', 'c815', 'c825', 'padfoot'], note: 'Excavator, moxies and the compactors.' },
   wsm:    { name: 'Workshop manager', wage: 3200, casual: 0, drives: [], note: 'Runs the workshop and does a fitter\'s work too: every service and repair, and tells you when gear is due to be turned over. Past 12 machines, a fleet without one breaks down a quarter more often.' },
 };
 
@@ -104,6 +108,14 @@ export function genCandidates(rand: Rand, mkt: LabourMarket, nextId: () => strin
     out.push(c);
   }
   return out;
+}
+
+/** With the Bulk and Ag pack on: one more face at the gate each week, from the bulk trades. */
+export function genBulkCandidate(rand: Rand, taken: readonly string[], nextId: () => string): Candidate | null {
+  const left = NAMES.filter((n) => !taken.includes(n));
+  if (!left.length) return null;
+  const role = pick(rand, ['dozer', 'dozer', 'scraper', 'scraper', 'plant'] as const), skill = pick(rand, ['green', 'solid', 'solid', 'gun'] as const);
+  return { id: nextId(), name: pick(rand, left), role, skill, ask: round(ROLES[role].wage * SKILLS[skill].pay * (0.95 + rand() * 0.1), 50) };
 }
 
 /** Haggling offers 12% under their ask. */

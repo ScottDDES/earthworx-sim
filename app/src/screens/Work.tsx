@@ -10,6 +10,7 @@ import { KIND_CHIP, KIND_LABEL, councilTitle, jobTitle, offerCatch, offerDetail,
 import { Mentor } from '../Mentor';
 import { f, fk } from '../format';
 import { AdviceRow, CouncilCard, MarginRow, PlanSheet } from './Plan';
+import { DamJobCard, EnquiryCard } from './Bulk';
 
 type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
@@ -100,6 +101,7 @@ function SubOffers({ c, j, act }: { c: Career; j: Job; act: Act }) {
 }
 
 function JobCard({ c, j, act }: { c: Career; j: Job; act: Act }) {
+  if (j.kind === 'dam') return <DamJobCard c={c} j={j} />;
   const due = j.due as number, late = c.week > due;
   if (j.state === 'subbed') {
     const q = j.sub as { name: string; crews: number; pace: number; rate?: number }, ldw = j.kind === 'own' ? ((j.ld as number) ?? LD_OWN) : LD_WEEK;
@@ -296,6 +298,13 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
       <div className="sub">On the go</div>
       {!c.jobs.length && <div className="card"><b>Nothing on.</b><div className="small muted">Idle machines still cost you repayments. Take some work below.</div></div>}
       {c.jobs.map((j) => <JobCard key={j.id} c={c} j={j} act={act} />)}
+      {c.packs?.bulk && (
+        <>
+          <div className="sub">Farmers ringing</div>
+          {(c.bulk?.enq ?? []).length ? c.bulk!.enq.map((e) => <EnquiryCard key={e.id} c={c} e={e} act={act} />)
+            : <div className="card"><div className="small muted">No farmers on the phone this week. They ring about dams most weeks.</div></div>}
+        </>
+      )}
       <div className="sub">Work on offer this week</div>
       {!c.offers.length && <div className="card"><div className="small muted">Nothing else this week. New work comes up every Monday.</div></div>}
       {c.offers.map((o) => <OfferCard key={o.id} c={c} o={o} act={act} onMsg={setMsg} />)}
