@@ -177,6 +177,8 @@ export interface Plan {
 
 export interface CouncilTender {
   id: string;
+  /** DDES Advisory's read on the sharpest rival price. */
+  adv?: { lo: number; hi: number };
   roads: PlanRoad[];
   q: Quantities & { lfg: number };
   km: number;

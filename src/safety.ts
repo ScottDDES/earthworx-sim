@@ -7,6 +7,7 @@ import { DIFFICULTY, type Difficulty } from './difficulty';
 import { WHS_SYS } from './overheads';
 import { int, pick, type Rand } from './rng';
 import { ROLES, type Person } from './staff';
+import { WELLBEING_ADVISORY, nearMissAdvisoryCost, seriousAdvisoryCost } from './advisory';
 
 export type Severity = 'serious' | 'lti' | 'medical' | 'first aid' | 'near miss';
 
@@ -213,23 +214,20 @@ export function seriousNotify(st: SafetyState, c: SeriousCard): void {
   record(st.whs, { w: st.week, sev: 'serious', who: c.who ?? '', story: { k: 'serious', i: c.story } });
 }
 
-/** DDES Advisory's fee to handle a serious incident start to finish. */
-export const ADVISORY_FEE = 4500;
-
 /**
- * Ring DDES Advisory: they deal with the regulator, run the investigation and do the paperwork. Their fee, and a
- * fine half the size; insurance +15%, track record −1, and the crew sees it handled. Returns the fine.
+ * Ring DDES Advisory: they deal with the regulator, run the investigation and do the paperwork. All up it costs
+ * less than the fine alone (advisory.ts); insurance +10%, track record −1, and the crew sees it handled. Returns the cost.
  */
 export function seriousAdvisory(st: SafetyState, c: SeriousCard): number {
   if (c.who) hurtOff(st, c.who, 16);
-  const fine = round(c.fine * 0.5, 500);
-  st.bank -= ADVISORY_FEE + fine;
-  st.ins += 0.15;
+  const cost = seriousAdvisoryCost(c.fine);
+  st.bank -= cost;
+  st.ins += 0.1;
   st.rep = Math.max(0, st.rep - 1);
   st.whs.cult = Math.min(100, st.whs.cult + 8);
   st.whs.hz = 0;
   record(st.whs, { w: st.week, sev: 'serious', who: c.who ?? '', story: { k: 'serious', i: c.story } });
-  return fine;
+  return cost;
 }
 
 export type HideResult = { found: false } | { found: true; fine: number };
@@ -273,6 +271,17 @@ export function nearMissReport(st: SafetyState, c: NearMissCard): void {
   record(st.whs, { w: st.week, sev: 'near miss', who: '', story: { k: 'nearmiss', i: c.story } });
 }
 
+/** DDES Advisory investigates it and updates the SWMS: cheaper than stopping the crew, and a better fix. Returns the cost. */
+export function nearMissAdvisory(st: SafetyState, c: NearMissCard): number {
+  const cost = nearMissAdvisoryCost(c.cost);
+  st.bank -= cost;
+  st.whs.nm++;
+  st.whs.hz = Math.max(0, st.whs.hz - 0.2);
+  st.whs.cult = Math.min(100, st.whs.cult + 6);
+  record(st.whs, { w: st.week, sev: 'near miss', who: '', story: { k: 'nearmiss', i: c.story } });
+  return cost;
+}
+
 /** Have a word and move on. */
 export function nearMissShrug(st: SafetyState): void {
   st.whs.hz += 0.15;
@@ -285,6 +294,13 @@ export function quietYarn(rand: Rand, st: SafetyState, p: Person): number {
   p.yarn = st.week;
   st.whs.cult = Math.min(100, st.whs.cult + 5);
   return int(rand, 0, 2);
+}
+
+/** DDES Advisory runs a wellbeing check-in for the whole crew: counts as a yarn with everyone. */
+export function quietAdvisory(st: SafetyState): void {
+  st.bank -= WELLBEING_ADVISORY;
+  for (const p of st.staff) p.yarn = st.week;
+  st.whs.cult = Math.min(100, st.whs.cult + 8);
 }
 
 /** A few days off, paid. */

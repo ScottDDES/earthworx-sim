@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import {
-  BR_FLOAT, BR_MGR, BR_RENT, BR_SETUP, BR_SLOTS, GPS_COST, MGR, ROLES, SKILLS, TOWNS, WHS_SYS, YARDS, YARD_ORDER,
+  ERP_SETUP, ERP_WEEK, erpOk, BR_FLOAT, BR_MGR, BR_RENT, BR_SETUP, BR_SLOTS, GPS_COST, MGR, ROLES, SKILLS, TOWNS, WHS_SYS, YARDS, YARD_ORDER,
   bigNoWsm, brCrews, brMachines, brProfit, brTown, canBranch, fitPer, fitters, forecast, lastInc, machineAlerts, machineName,
   mgrOf, mgrUnlocked, monthIdx, nextWhs, odLimit, premParts, recentInc, riskMult, svcCost, unlocked, value, whsNp, fleetValue, wages,
   game, type Machine, type MachineType, type YardId, play,
@@ -442,12 +442,20 @@ function Safety({ c, act }: { c: Career; act: Act }) {
             <div className="row"><b className="grow">Next: {nx.n}</b><span className="num small">{f(nx.cost)}</span></div>
             <div className="small muted">{nx.d}</div>
             <div className="small">{nx.wk ? f(nx.wk) + ' a week to keep up. ' : ''}Incident risk {Math.round(nx.risk * 100)}% of nothing written down{nx.np ? ', council non-price +' + nx.np : ''}.</div>
-            <button type="button" className="btn dark" disabled={st !== 'ok'} onClick={() => act((x) => play.upgradeSafety(x))}>Set it up</button>
+            <button type="button" className="btn dark" disabled={st !== 'ok'} onClick={() => act((x) => play.upgradeSafety(x))}>Ring DDES Advisory to set it up</button>
             {st === 'locked' && <div className="why">{nx.need === 'won' ? 'Unlocks at Ready to subcontract.' : 'Unlocks once you tender for council work.'}</div>}
           </div>
         )}
         <div className="kv"><span>Insurance</span><span className="num">{f(prem)} a week</span></div>
         <div className="tiny muted">Public liability {f(P0.base)}, plant cover {f(P0.plant)}, workers' comp {f(P0.comp)}{Math.abs(c.ins - 1) > 0.005 ? ', with your claims record loading it ' + (c.ins > 1 ? '+' : '') + Math.round((c.ins - 1) * 100) + '%' : ''}{W.sys >= 3 ? ', less 10% for certification' : ''}. Loadings ease back over a year without claims.</div>
+        {erpOk(c.yard) || c.erp ? (
+          <div className="ycard">
+            <div className="row"><b className="grow">DDES ERP</b>{c.erp ? <span className="chip c-job">RUNNING</span> : <span className="num small">{f(ERP_SETUP)}</span>}</div>
+            <div className="small muted">One system for the whole outfit: prestarts, inductions, SWMS, incidents, timesheets and servicing, all in one place. Takes the grind out of WHS and compliance.</div>
+            <div className="small">{c.erp ? 'Saving' : 'Would save'} about {f(game.erpSaving(c))} a week, after its own {f(ERP_WEEK)} a week: half the safety-system upkeep, a quarter off toolbox talks, 5% off insurance and 3% off your overheads.</div>
+            {!c.erp && <button type="button" className="btn dark" disabled={c.bank < ERP_SETUP} onClick={() => act((x) => play.buyErp(x))}>Put it in</button>}
+          </div>
+        ) : YARD_ORDER.indexOf(c.yard) >= YARD_ORDER.indexOf('depot') ? <div className="tiny muted">The DDES ERP, which cuts WHS and compliance costs, comes with a regional depot.</div> : null}
       </div>
     </>
   );

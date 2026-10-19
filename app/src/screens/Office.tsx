@@ -448,7 +448,7 @@ function Bank({ c, act, go }: { c: Career; act: Act; go: Go }) {
         {(c.odOver ?? 0) > 0 && <div className="why">Over your limit {c.odOver} of 3 weeks. Get back under it or the bank takes a machine.</div>}
         {L.arrears > 0 && <div className="kv" style={{ color: 'var(--rust)', fontWeight: 600 }}><span>Missed so far</span><span className="num">{f(L.arrears)}</span></div>}
         <div className="kv"><span>Running costs each week</span><span className="num">{f(game.overheads(c))}</span></div>
-        <div className="tiny muted">Insurance {f(game.premiumNow(c))}, your drawings $800{Wk.wk ? ', safety system ' + f(Wk.wk) : ''}{tk ? ', toolbox talks ' + f(tk) : ''}{rent ? ', yard rent ' + f(rent) : ''}{wg ? ', wages ' + f(wg) : ''}.</div>
+        <div className="tiny muted">Insurance {f(game.premiumNow(c))}, your drawings $800{Wk.wk ? ', safety system ' + f(Wk.wk) : ''}{tk ? ', toolbox talks ' + f(tk) : ''}{rent ? ', yard rent ' + f(rent) : ''}{wg ? ', wages ' + f(wg) : ''}{c.erp ? ', less what the DDES ERP saves (' + f(game.erpSaving(c)) + ')' : ''}.</div>
         {pays.length > 0 && <>
           <div className="sub" style={{ marginTop: 6 }}>You owe subbies</div>
           {pays.map((x, i) => <div key={i} className="kv"><span>{x.to} <span className="tiny muted">due week {x.due}</span></span><span className="num">{f(x.amt)}</span></div>)}

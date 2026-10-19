@@ -20,15 +20,17 @@ import { genMgrApplicants, hireMgr as hireMgrPerson, mgrIs, mgrOf, mgrTraitsWeek
 import { afterService, fitterWeek, wsmWeek, type WorkshopEvent } from './workshop';
 import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium as premiumOf } from './overheads';
 import { compat } from './compat';
+import { ERP_SETUP, PRICE_CHECK_FEE, erpOk, priceBand } from './advisory';
+import { BID_ODDS, rvOHFor } from './rivals';
 import { accept as acceptOffer, askWait as askWaitHire, barred, coverOff, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
 import { relWeek } from './relations';
 import { seasonWeek } from './seasons';
 import { coachTick, tabsWeek, type CoachState } from './coach';
 import { mRef, note, noteNews, type DiaryEntry } from './diary';
 import { dmap, mapWeek, type DistrictMap, type MapEvent } from './map';
-import { canTender, closeTender, crewDayCost, genTenders, otherContracts, setMk, subPrice, submitBid as submitBidT, withdrawBid as withdrawBidT, tbs, type CloseEvent, type Standing, type SubTender } from './tenders';
+import { STD_CREW_DAY, tCost as tCostOf, subWks as subWksOf, canTender, closeTender, crewDayCost, genTenders, otherContracts, setMk, subPrice, submitBid as submitBidT, withdrawBid as withdrawBidT, tbs, type CloseEvent, type Standing, type SubTender } from './tenders';
 import { closeCouncil, councilPrice, genMajor, genCouncil, canPrestige, progAct as progActC, setCmk, setHm as setHmC, setOh, setPlan as setPlanC, submitCouncil as submitCouncilT, type CouncilEvent, type ProgOp } from './council';
-import { autoPlan, planEval, type CouncilTender, type PlanCtx } from './planning';
+import { autoPlan, planEval, stdPlan, type CouncilTender, type PlanCtx } from './planning';
 import { endOfDay, jobDay, settleJob, staffOwn, staffSubs, seatStaff, subOut as subOutC, subQuotes, takeBack as takeBackC, terminateWeek, type ContractEvent, type SubQuote } from './contracts';
 import { bankCalls, closeBooks, gstInBank, hardcoreWeek, netWorth, newGst, odLimit, payablesWeek, taxMode, taxWeek, yearEnd, type BankCallEvent, type GstState, type HardcoreEvent, type TaxEvent, type TaxMode, type WeekRow, type YearReview, type Payable } from './office';
 import { borrow, borrowRoom, cashForecast, fixedWeek, payDown, runway, type ForecastWeek } from './books';
@@ -63,6 +65,8 @@ export interface Career {
   opCover: number;
   coverFor: string | null;
   youBlocked: number;
+  /** Running the DDES ERP. */
+  erp?: boolean;
   youJob: string | null;
   rep: number;
   ins: number;
@@ -168,7 +172,55 @@ export function hasCrew(c: Career): boolean {
 }
 export function overheads(c: Career): number {
   const prem = premiumOf(premParts(fleetValue(c.fleet, c.week), wages(c.staff)), c, c.whs.sys, c.week);
-  return overheadsOf({ premium: prem, rent: YARDS[c.yard].rent, wages: wages(c.staff), whsSys: c.whs.sys, talks: c.whs.talks, crews: rainCrews(c.jobs), costIdx: costIdx(c) });
+  return overheadsOf({ premium: prem, rent: YARDS[c.yard].rent, wages: wages(c.staff), whsSys: c.whs.sys, talks: c.whs.talks, crews: rainCrews(c.jobs), costIdx: costIdx(c), erp: !!c.erp });
+}
+
+/** What the DDES ERP saves (or would save) a week, after its own fee. */
+export function erpSaving(c: Career): number {
+  const was = c.erp;
+  c.erp = false;
+  const off = overheads(c);
+  c.erp = true;
+  const on = overheads(c);
+  c.erp = was;
+  return off - on;
+}
+
+/** Put in the DDES ERP: a regional depot or bigger, once. */
+export function buyErp(c: Career): boolean {
+  if (c.erp || !erpOk(c.yard) || c.bank < ERP_SETUP) return false;
+  c.bank -= ERP_SETUP;
+  c.erp = true;
+  return true;
+}
+
+/**
+ * Ask DDES Advisory to check a tender price: for a fee, a band for the sharpest price a rival will put in, from
+ * who's in town, their costs and their margins. The luck on the day isn't in it, and nor is the non-price score.
+ */
+export function priceCheck(c: Career, id: string): boolean {
+  const t = c.tenders.find((x) => x.id === id);
+  if (t) {
+    if (t.adv || t.direct || c.bank < PRICE_CHECK_FEE.sub) return false;
+    const std = tCostOf(t, STD_CREW_DAY);
+    const band = priceBand(c.rivals.filter((x) => BID_ODDS.sub[x.tier] > 0).map((x) => (std * x.eff + rvOHFor(x, subWksOf(t))) * (1 + x.margin)), 100);
+    if (!band) return false;
+    c.bank -= PRICE_CHECK_FEE.sub;
+    t.adv = band;
+    return true;
+  }
+  const ct = c.ctenders.find((x) => x.id === id);
+  if (!ct || ct.adv) return false;
+  const fee = ct.major ? PRICE_CHECK_FEE.major : PRICE_CHECK_FEE.council, kind = ct.major ? 'major' : 'council';
+  if (c.bank < fee) return false;
+  const sp = stdPlan(planCtx(c), ct), ef = DIFFICULTY[diff(c)].ef;
+  let who = c.rivals.filter((x) => BID_ODDS[kind][x.tier] > 0);
+  if (ct.prestige && c.rivals.some((x) => x.tier === 'big')) who = c.rivals.filter((x) => x.tier === 'big');
+  const band = priceBand(who.map((x) => (sp.e.cost * Math.max(ef || 0.95, x.eff) + rvOHFor(x, sp.e.wks)) * (1 + x.margin + (ct.prestige ? 0.06 : 0))), 500);
+  if (!band) return false;
+  c.bank -= fee;
+  ct.adv = band;
+  return true;
 }
 export function capFull(c: Career): boolean {
   return !c.staff.some((p) => p.role === 'ops' && p.off === 0) && c.jobs.filter((j) => (j.kind === 'sub' || j.kind === 'own') && !j.finished).length >= 2;

@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import {
-  COUNCIL_TERMS, FLOAT_KM, FLOAT_MOVE, LD_OWN, TRUCK_DAY, TYPES, awayCounts, cartEff, hm, npOf, odLimit, planCounts, roadUnits, stars, subRate, truckM3, weeksFor, game,
+  COUNCIL_TERMS, PRICE_CHECK_FEE, FLOAT_KM, FLOAT_MOVE, LD_OWN, TRUCK_DAY, TYPES, awayCounts, cartEff, hm, npOf, odLimit, planCounts, roadUnits, stars, subRate, truckM3, weeksFor, game,
   type CouncilTender, type PlanEval, type ProgOp, play,
 } from '@engine';
 import { CREW_COL, bottText, issueText } from '@engine/text/plan';
@@ -15,6 +15,17 @@ type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
 const L = (i: number) => String.fromCharCode(65 + i);
 const starTxt = (n: number) => '★★★'.slice(0, n) + '☆☆☆'.slice(0, 3 - n);
+
+/** Ask DDES Advisory for a second look at the price: a band for the sharpest rival price, once paid for. */
+export function AdviceRow({ c, t, kind, act }: { c: Career; t: { id: string; adv?: { lo: number; hi: number } }; kind: 'sub' | 'council' | 'major'; act: Act }) {
+  const fee = PRICE_CHECK_FEE[kind];
+  if (t.adv) return (
+    <div className="tiny" style={{ background: 'var(--soft)', borderRadius: 10, padding: '10px 12px' }}>
+      <b>DDES Advisory's read:</b> the sharpest price out there will likely land between {f(t.adv.lo)} and {f(t.adv.hi)}. Safety, track record and method are scored too, so the lowest price doesn't always win.
+    </div>
+  );
+  return <button type="button" className="btn full" disabled={c.bank < fee} onClick={() => act((x) => play.priceCheck(x, t.id))}>Ask DDES Advisory to check your price · {f(fee)}</button>;
+}
 
 /** Profit margin: ±5% steps, or tap the number and type your own (−10% to 60%). */
 export function MarginRow({ mk, id, act }: { mk: number; id: string; act: Act }) {
@@ -109,6 +120,7 @@ function Price({ c, t, act }: { c: Career; t: CouncilTender; act: Act }) {
         <div className="kv"><span>Cost all up</span><span className="num">{f(e.cost + CP.oh)}</span></div>
         <MarginRow mk={t.mk} id={t.id} act={act} />
         <div className="kv"><b>Your tender price</b><b className="num" style={{ fontSize: 18 }}>{f(price)}</b></div>
+        <AdviceRow c={c} t={t} kind={t.major ? 'major' : 'council'} act={act} />
         <div className="tiny muted">Profit if the plan holds, after overheads: {f(price - e.cost - CP.oh)}. Cash to carry it until the first claim is paid: about {f(Math.round((e.cost / Math.max(1, e.wks)) * Math.min(e.wks, COUNCIL_TERMS + 1) / 1000) * 1000)}. You have {f(c.bank)} plus a {f(odLimit(c))} overdraft.</div>
         <button type="button" className="btn full" onClick={() => setLines(!lines)}>{lines ? 'Hide the cost lines' : 'Show the cost lines'}</button>
       </div>

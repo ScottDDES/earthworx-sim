@@ -10,7 +10,7 @@ import { REWORK_HEAVY, REWORK_LIGHT, RAIN_HEAVY } from '../cards';
 import { LD_OWN } from '../council';
 import { TRUCK_DAY } from '../planning';
 import { WHS_SYS } from '../overheads';
-import { ADVISORY_FEE } from '../safety';
+import { HURT_ADVISORY, WELLBEING_ADVISORY, nearMissAdvisoryCost, seriousAdvisoryCost } from '../advisory';
 import { compat } from '../compat';
 import { yearOf } from '../calendar';
 import { councilTitle, jobTitle, pmOf, subTenderTitle } from './work';
@@ -92,18 +92,20 @@ export function cardView(c: Career, q: Career['queue'][number], d: DrawnCard): C
       put('notify', 'Notify the regulator and cooperate', 'The site stands down for a week while they investigate. ' + (D.sys >= 2 ? 'Your system shows you did what you could, so a fine is unlikely.' : 'With ' + (D.sys ? 'only SWMS' : 'nothing written down') + ', expect a fine of ' + fk(D.fineLo) + ' to ' + fk(D.fineHi) + '.') + ' Insurance up 25%, track record −2.');
       put('hide', 'Keep it quiet and get the job going', 'No stand-down today. If it comes out, and these things do, it\'s a much bigger fine and the council won\'t touch you for six months.');
       if (compat.prototype) return out('Serious incident', nm + ' is in hospital', nm + ' ' + what + '. They\'re in hospital and will be off for months. It\'s a notifiable incident: the safety regulator must be told, and the site preserved.' + (D.job ? ' It happened on ' + jt(D.job) + '.' : ''));
-      put('advisory', 'Ring DDES Advisory · ' + f(ADVISORY_FEE), 'They deal with the regulator, run the investigation and do the paperwork. The site still stands down for a week. ' + (D.sys >= 2 ? 'A fine is unlikely.' : 'Expect about half the fine: ' + fk(D.fineLo / 2) + ' to ' + fk(D.fineHi / 2) + '.') + ' Insurance up 15%, track record −1.');
+      put('advisory', 'Ring DDES Advisory · ' + (D.sys >= 2 ? f(seriousAdvisoryCost(0)) : fk(seriousAdvisoryCost(D.fineLo)) + ' to ' + fk(seriousAdvisoryCost(D.fineHi))) + ' all up', 'They deal with the regulator, run the investigation and do the paperwork, and any fine is in that price. Cheaper than going it alone. The site still stands down for a week. Insurance up 10%, track record −1.');
       return out('Serious incident', nm + ' is in hospital', (D.job ? 'On ' + jt(D.job) + ', ' : '') + (nm === 'You' ? 'you' : nm) + ' ' + what + '. ' + (nm === 'You' ? 'You\'re' : 'They\'re') + ' off for months. The law says you must tell the safety regulator and leave the site as it is until they\'ve looked at it.');
     }
     case 'nearmiss':
       put('report', 'Report it and talk it through · ' + f(D.card.cost), 'Stop the crew for an hour, change the SWMS, log it. The hazard gets fixed and the crew sees you mean it.');
       put('shrug', 'Have a word and move on', 'No time lost. The hazard\'s still there, and the crew learns near misses don\'t matter.');
+      if (!compat.prototype) put('advisory', 'Ring DDES Advisory · ' + f(nearMissAdvisoryCost(D.card.cost)), 'They look into it, update your SWMS and run the talk. The crew barely stops, and the fix is a proper one.');
       return out('Near miss', 'That was close', NEAR_MISS_STORIES[D.card.story] + ' Nobody was hurt.' + (D.job ? ' On ' + jt(D.job) + '.' : ''));
     case 'quiet': {
       const n = D.person.name;
       put('yarn', 'Take ' + n + ' for a feed and a yarn', '$80 and an hour of your time. Just ask how they\'re going, and listen.');
       put('daysOff', 'Give ' + n + ' a few days off, paid', 'Their wage for nothing back this week, and their seat goes to a casual.');
       put('leave', 'Leave it, they\'ll be right', 'None of your business. Probably.');
+      if (!compat.prototype) put('advisory', 'Ring DDES Advisory · ' + f(WELLBEING_ADVISORY), 'They run a wellbeing check-in for the whole crew and leave a support line number in the smoko room.');
       return out('Crew', n + '\'s been quiet lately', n + ' hasn\'t been themselves for a couple of weeks: short with the others, last to the ute, first to leave. Things might be tough at home.');
     }
     case 'turnover': {
@@ -202,6 +204,7 @@ export function cardView(c: Career, q: Career['queue'][number], d: DrawnCard): C
       else put('home', 'Send ' + n + ' home to get it checked', 'Their job stops for 2 weeks, and the client may not wait. ' + n + ' knows you look after your crew.');
       put('cover', 'Jump on the machine yourself', 'Their job keeps going. Yours stops for a week.');
       put('keepGoing', 'Let ' + n + ' keep going', 'No lost time. A real risk of a WHS incident.');
+      if (!compat.prototype) put('advisory', 'Ring DDES Advisory · ' + f(HURT_ADVISORY), 'They manage the injury: the right doctor this week and a return-to-work plan. ' + n + ' is back in a week, not two.');
       return out('Crew', n + '\'s back has gone', n + ' says a week of rough tracks has done their back in, but wants to keep going.');
     }
     case 'xmas':
@@ -311,15 +314,16 @@ function line(c: Career, k: string, id: string, D: Record<string, any>, R: any):
     case 'swms': return id === 'pay' ? (compat.prototype ? 'SWMS, WHS plan and induction pack in the ute.' : 'DDES Advisory dropped off your SWMS, WHS plan and induction pack.') : 'Late nights, but they\'re done. You\'re catching up on sleep next week.';
     case 'serious': {
       const nm = whoName(c, D.who);
-      if (id === 'advisory') return 'DDES Advisory handled it start to finish.' + (R ? ' The fine: ' + f(R) + '.' : ' No fine.') + ' ' + nm + (nm === 'You' ? ' are' : ' is') + ' off for months.';
+      if (id === 'advisory') return 'DDES Advisory handled it start to finish: ' + f(R) + ' all up.' + ' ' + nm + (nm === 'You' ? ' are' : ' is') + ' off for months.';
       if (id === 'notify') return 'The inspectors have been and gone.' + (R ? ' The fine: ' + f(R) + '.' : ' No fine: your records showed the controls were in place.') + ' ' + nm + ' is off for months.';
       return R.found ? 'The hospital reported it. The regulator fined you ' + f(R.fine) + ', insurance is up 40%, track record −5, and the council has suspended you for six months.' : 'Nobody asked. The crew know what happened, though, and they\'re not happy.';
     }
-    case 'nearmiss': return id === 'report' ? 'Logged and fixed. The crew noticed.' : 'Back to work.';
+    case 'nearmiss': return id === 'report' ? 'Logged and fixed. The crew noticed.' : id === 'advisory' ? 'DDES Advisory sorted it: SWMS updated, crew briefed, logged.' : 'Back to work.';
     case 'quiet': {
       const n = D.person.name;
       if (id === 'yarn') return QUIET_REPLIES[R as number]!(n);
       if (id === 'daysOff') return n + ' took the days. They came back looking better.';
+      if (id === 'advisory') return 'The whole crew had a yarn with someone who knows what to ask. ' + n + ' stayed back to talk afterwards.';
       return R === 'nearThing' ? n + ' had a near thing on the machine later in the week: their head\'s not on the job.' : R === 'offWork' ? n + ' didn\'t turn up Monday, or the week after. When they came back they said they\'d hit a wall.' : 'Nothing came of it this time.';
     }
     case 'turnover': return id === 'auction' ? 'In the auction. Have a look in the Market for a replacement.' : id === 'list' ? 'Listed.' : 'Kept. ' + D.by + ' isn\'t happy about it.';
@@ -366,6 +370,7 @@ function line(c: Career, k: string, id: string, D: Record<string, any>, R: any):
       const n = D.person.name;
       if (id === 'home') return D.sub ? n + ' is off for two weeks. ' + D.sub + ' is on their machine from Monday.' : n + ' is off for two weeks and back fit. Their job sits idle meanwhile.';
       if (id === 'cover') return 'You\'re on ' + n + '\'s machine this week. Your own job waits.';
+      if (id === 'advisory') return n + ' saw a physio on Tuesday and is back on Monday with light duties sorted.';
       return R ? n + ' finished the week, then was off for 6 weeks. Insurance claim lodged and your premium is up.' : n + ' got through it. You got lucky this time.';
     }
     case 'xmas': return id === 'party' ? 'Great night. A few sore heads on Saturday, and the crew is still talking about it.' : id === 'bbq' ? 'Good arvo. Everyone heads off for the break in good spirits.' : 'Everyone just knocked off on Friday. Nobody said much.';

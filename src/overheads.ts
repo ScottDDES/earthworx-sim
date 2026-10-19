@@ -1,6 +1,7 @@
 // Running costs: what the business costs every week whether it works or not.
 // Insurance, your drawings, yard rent, wages, the safety system, toolbox talks. All rise with inflation.
 
+import { ERP_EFFECT, ERP_WEEK } from './advisory';
 import { value, type Machine } from './machines';
 
 /** What you pay yourself each week. */
@@ -72,6 +73,8 @@ export function easeLoading(st: InsuranceState): void {
 }
 
 export interface OverheadInputs {
+  /** Running the DDES ERP (advisory.ts). */
+  erp?: boolean;
   premium: number;
   rent: number;
   wages: number;
@@ -90,5 +93,7 @@ export function talksCost(talks: boolean, crews: number): number {
 /** The weekly running costs. */
 export function overheads(o: OverheadInputs): number {
   const whsWk = WHS_SYS[o.whsSys]?.wk ?? 0;
-  return Math.round((o.premium + DRAWINGS + o.rent + o.wages + whsWk + talksCost(o.talks, o.crews)) * o.costIdx);
+  if (!o.erp) return Math.round((o.premium + DRAWINGS + o.rent + o.wages + whsWk + talksCost(o.talks, o.crews)) * o.costIdx);
+  const E = ERP_EFFECT;
+  return Math.round((o.premium * E.premium + DRAWINGS + o.rent + o.wages + whsWk * E.whs + talksCost(o.talks, o.crews) * E.talks) * o.costIdx * E.all + ERP_WEEK);
 }

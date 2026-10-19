@@ -15,9 +15,9 @@ import { mgrIs } from './managers';
 import { TYPES, overdue, value } from './machines';
 import { lendCap } from './market';
 import { fleetValue } from './overheads';
-import { nearMissCard, nearMissReport, nearMissShrug, quietDaysOff, quietLeave, quietYarn, seriousAdvisory, seriousCard, seriousHide, seriousNotify, swmsPay, swmsSelf } from './safety';
+import { nearMissAdvisory, nearMissCard, nearMissReport, nearMissShrug, quietAdvisory, quietDaysOff, quietLeave, quietYarn, seriousAdvisory, seriousCard, seriousHide, seriousNotify, swmsPay, swmsSelf } from './safety';
 import { dryDamBore, dryDamFar, dryDamFarMore, gravelArgue, gravelCart, gravelCartCost, gravelWork, ownFlow, pitFar, pitFarmer, staffOwn, staffSubs, swapCardKeep, swapIn, variationFree, variationLodge, variationValue, variationWriting } from './contracts';
-import { breakCard, breakFix, breakinCamera, breakinClaim, breakinWithout, callGrader, calloutPull, callWork, clearingBorrow, clearingCash, xmasCost, xmasParty, earlyClient, earlyTake, extraAgree, extraAsk, extraFree, hurtCover, hurtHome, hurtKeepGoing, rainCrews, rainDecide, svcFindDays, svcFix, svcPatch, turnoverKeep, turnoverSell } from './cards';
+import { breakCard, breakFix, breakinCamera, breakinClaim, breakinWithout, callGrader, calloutPull, callWork, clearingBorrow, clearingCash, xmasCost, xmasParty, earlyClient, earlyTake, extraAgree, extraAsk, extraFree, hurtAdvisory, hurtCover, hurtHome, hurtKeepGoing, rainCrews, rainDecide, svcFindDays, svcFix, svcPatch, turnoverKeep, turnoverSell } from './cards';
 import { bankMoreTime, basInterest, basPay, basPlan, basPlanOk, gstInBank, odLimit, repoPick, repossess } from './office';
 import { weeklyRepay } from './bank';
 import { askSellUp, buyOutAll, buyOutBest, buyOutOffer, buyOutPay, canBuyOut, collapseCard, collapseClaim, collapseSell, insureBroker, sellAll, sellBest, sellBuyer, sellGear, sellPrice, sellTwo, walkAway } from './shocks';
@@ -82,18 +82,18 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
           return res;
         }),
         ...(compat.prototype ? [] : [o('advisory', () => {
-          const nm = whoName(c, q.who), fine = seriousAdvisory(st, card);
+          const nm = whoName(c, q.who), cost = seriousAdvisory(st, card);
           if (sj0) sj0.stood = 1;
-          note(c, { k: 'seriousNotified', name: nm, story: card.story, fine });
+          note(c, { k: 'seriousNotified', name: nm, story: card.story, fine: 0 });
           news(c, { k: 'regulator', co: c.co });
-          return fine;
+          return cost;
         })]),
       ];
     }
     case 'nearmiss': {
       const card = nearMissCard(cr, rainCrews(c.jobs));
       Object.assign(data, { card, job: c.jobs.find((j) => j.state === 'running' && !j.finished && (j.kind === 'sub' || j.kind === 'own')) });
-      return [o('report', () => nearMissReport(st, card)), o('shrug', () => nearMissShrug(st))];
+      return [o('report', () => nearMissReport(st, card)), o('shrug', () => nearMissShrug(st)), ...(compat.prototype ? [] : [o('advisory', () => nearMissAdvisory(st, card))])];
     }
     case 'quiet': {
       const p = c.staff.find((x) => x.id === q.id);
@@ -103,6 +103,7 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
         o('yarn', () => { tcAdd(st, 'yarn'); return quietYarn(r(), st, p); }),
         o('daysOff', () => { tcAdd(st, 'yarn'); quietDaysOff(st, p); }),
         o('leave', () => quietLeave(r(), st, p)),
+        ...(compat.prototype ? [] : [o('advisory', () => { tcAdd(st, 'yarn'); quietAdvisory(st); })]),
       ];
     }
     case 'turnover': {
@@ -212,7 +213,7 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       const hj = jobOf(c, p.jobId);
       data.sub = compat.prototype || !hj || !['wet', 'council', 'private'].includes(hj.kind) ? null
         : c.staff.find((x) => x !== p && !x.jobId && x.off === 0 && ROLES[x.role].drives.includes(hj.type))?.name ?? null;
-      return [o('home', () => hurtHome(p)), o('cover', () => hurtCover(st, p)), o('keepGoing', () => { const hurt = hurtKeepGoing(r(), st, p); if (hurt) note(c, { k: 'badBack', name: p.name }); return hurt; })];
+      return [o('home', () => hurtHome(p)), o('cover', () => hurtCover(st, p)), o('keepGoing', () => { const hurt = hurtKeepGoing(r(), st, p); if (hurt) note(c, { k: 'badBack', name: p.name }); return hurt; }), ...(compat.prototype ? [] : [o('advisory', () => hurtAdvisory(st, p))])];
     }
     case 'xmas': {
       Object.assign(data, { cost: xmasCost(c.staff.length), staff: c.staff.length });

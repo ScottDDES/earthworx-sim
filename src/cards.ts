@@ -14,6 +14,7 @@ import { int, pick, type Rand } from './rng';
 import { ROLES } from './staff';
 import { TOWNS } from './towns';
 import { compat } from './compat';
+import { HURT_ADVISORY } from './advisory';
 import { forecast, rainMm, type WeatherCtx } from './weather';
 import { record, type Whs } from './safety';
 
@@ -219,6 +220,12 @@ export function hurtCover(b: CardState & { opCover: number; coverFor: string | n
   b.opCover = 1;
   b.coverFor = p.id;
   b.youBlocked = 1;
+}
+/** DDES Advisory manages the injury: the right doctor this week, back in one week instead of two. */
+export function hurtAdvisory(b: CardState, p: { off: number }): void {
+  b.bank -= HURT_ADVISORY;
+  p.off = 1;
+  b.whs.cult = Math.min(100, b.whs.cult + 4);
 }
 export function hurtKeepGoing(rand: Rand, b: CardState, p: { id: string; off: number }): boolean {
   b.whs.cult = Math.max(0, b.whs.cult - 8);

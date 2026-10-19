@@ -9,7 +9,7 @@ import {
 import { KIND_CHIP, KIND_LABEL, councilTitle, jobTitle, offerCatch, offerDetail, offerPay, offerTitle, pmOf, subTenderTitle } from '@engine/text/work';
 import { Mentor } from '../Mentor';
 import { f, fk } from '../format';
-import { CouncilCard, MarginRow, PlanSheet } from './Plan';
+import { AdviceRow, CouncilCard, MarginRow, PlanSheet } from './Plan';
 
 type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
@@ -230,6 +230,7 @@ function PriceSheet({ c, t, act, onClose }: { c: Career; t: SubTender; act: Act;
           <div className="kv"><span>Cost all up</span><span className="num">{f(cost + SP.oh)}</span></div>
           <MarginRow mk={t.mk} id={t.id} act={act} />
           <div className="kv"><b>Your price</b><b className="num" style={{ fontSize: 18 }}>{f(price)}</b></div>
+          {!t.direct && <AdviceRow c={c} t={t} kind="sub" act={act} />}
           <div className="tiny muted">Profit if it all goes to plan, after overheads: {f(price - cost - SP.oh)}. Expect about {wetDays} wet days in {t.weeks} weeks, and your crew sits idle on each one.</div>
           <button type="button" className="btn full" onClick={() => setWorkings(!workings)}>{workings ? 'Hide the workings' : 'Show the workings'}</button>
         </div>

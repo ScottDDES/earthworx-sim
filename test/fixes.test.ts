@@ -1,7 +1,7 @@
 // The fixes after the port: where the real game does better than the prototype.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, coverOff, drawCard, game, genOffers, runOn, seedRand, shutWeek, shuffled, whyNot } from '../src';
+import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, coverOff, drawCard, game, genOffers, nearMissAdvisoryCost, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot } from '../src';
 
 describe('a fair shuffle', () => {
   beforeAll(() => { compat.prototype = false; });
@@ -204,5 +204,78 @@ describe('playtest fixes, 19 October 2026', () => {
     const y = c.years![0]!;
     expect(y.weeks).toBeLessThan(26);
     expect(y.first).toBe(true);
+  });
+});
+
+describe('DDES Advisory and the DDES ERP', () => {
+  beforeAll(() => { compat.prototype = false; });
+  afterAll(() => { compat.prototype = true; });
+
+  const career = (seed: number) => {
+    const c = game.newCareer({ co: 'Advisory Earthmoving', loan: 350000, town: 'gdi' }, seed);
+    c.fleet.push({ id: 'm0', type: 'grader', year: 2015, cond: 80, hours: 9000, svcAt: 9000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null });
+    c.staff.push({ id: 'p1', name: 'Shaz', role: 'grader', skill: 'solid', wage: 1500, off: 0, jobId: null } as never);
+    c.phase = 'play';
+    return c;
+  };
+
+  it('every WHS card offers DDES Advisory, and it is the cheaper way out of a serious incident', () => {
+    for (const k of ['serious', 'nearmiss', 'hurt', 'quiet', 'swms']) {
+      const c = career(11);
+      const q = (k === 'hurt' || k === 'quiet' ? { k, id: 'p1' } : k === 'serious' ? { k, who: 'p1' } : { k }) as never;
+      const d = drawCard(c, q)!;
+      expect(d, k).toBeTruthy();
+      const ids = d.opts.map((o) => o.id);
+      expect(k === 'swms' ? ids.includes('pay') : ids.includes('advisory'), k).toBe(true);
+    }
+    for (let fine = 0; fine <= 60000; fine += 1000) {
+      if (fine >= 3000) expect(seriousAdvisoryCost(fine)).toBeLessThan(fine);
+    }
+    // a near miss handled by them costs less than stopping the crew
+    for (const crews of [1, 2, 4]) expect(nearMissAdvisoryCost(450 * crews)).toBeLessThan(450 * crews);
+  });
+
+  it('a price check gives a band the sharpest rival usually lands in', () => {
+    let inBand = 0, n = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const c = career(seed);
+      Object.assign(c, { won: true, rep: 8 });
+      c.whs.sys = 1;
+      for (const [i, type] of (['roller', 'cart'] as const).entries()) c.fleet.push({ id: 'n' + i, type, year: 2015, cond: 80, hours: 9000, svcAt: 9000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null });
+      for (let w = 0; w < 30 && !c.tenders.some((t) => !t.direct); w++) { for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0); game.endWeek(c); }
+      const t = c.tenders.find((x) => !x.direct);
+      if (!t) continue;
+      const bank = c.bank;
+      expect(game.priceCheck(c, t.id)).toBe(true);
+      expect(c.bank).toBe(bank - 900);
+      expect(game.priceCheck(c, t.id)).toBe(false);
+      const band = t.adv!;
+      // close it with no bid of ours and see where the sharpest rival landed
+      t.close = c.week;
+      game.endWeek(c);
+      for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0);
+      const res = (t as { result?: { price: number }[] }).result;
+      if (!res?.length) continue;
+      const low = Math.min(...res.map((e) => e.price));
+      n++;
+      if (low >= band.lo * 0.97 && low <= band.hi * 1.03) inBand++;
+    }
+    expect(n).toBeGreaterThan(5);
+    expect(inBand / n).toBeGreaterThan(0.6);
+  });
+
+  it('the ERP comes with a regional depot, and cuts the overheads', () => {
+    const c = career(12);
+    c.bank = 200000;
+    expect(game.buyErp(c)).toBe(false);
+    c.yard = 'regional';
+    c.whs.sys = 3;
+    c.whs.talks = true;
+    for (let i = 0; i < 6; i++) c.staff.push({ id: 'x' + i, name: 'N' + i, role: 'roller', skill: 'solid', wage: 1400, off: 0, jobId: null } as never);
+    const before = game.overheads(c);
+    expect(game.erpSaving(c)).toBeGreaterThan(0);
+    expect(game.buyErp(c)).toBe(true);
+    expect(game.overheads(c)).toBeLessThan(before);
+    expect(game.buyErp(c)).toBe(false);
   });
 });

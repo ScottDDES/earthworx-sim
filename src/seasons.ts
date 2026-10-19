@@ -23,7 +23,7 @@ import { coachOff, coachOk, runOn } from './coach';
 import { note } from './diary';
 
 /** Bump whenever the simulation changes, so older scores aren't checked against new rules. */
-export const SIM_VER = 3; // 2: Run on answers small cards itself. 3: playtest fixes (council bans, cover, Christmas)
+export const SIM_VER = 4; // 2: Run on answers small cards itself. 3: playtest fixes (council bans, cover, Christmas). 4: DDES Advisory on WHS and tenders, the DDES ERP
 
 export type SeasonId = 'wet2010' | 'dry2019' | 'prog2022';
 
@@ -146,9 +146,9 @@ export function seasonWeek(c: Career): boolean {
 
 /** The moves the game itself offers (game.ts), by name. */
 const GAME_MOVES = [
-  'accept', 'approachRival', 'askWait', 'bid', 'borrowAgainstFleet', 'bringHome', 'buy', 'closeBranchDepot', 'endWeek', 'fitGps',
+  'accept', 'approachRival', 'askWait', 'bid', 'borrowAgainstFleet', 'bringHome', 'buy', 'buyErp', 'closeBranchDepot', 'endWeek', 'fitGps',
   'fixProperly', 'hammer', 'handOnNow', 'hireBranchManager', 'hireCand', 'hireManager', 'inspectListing', 'letGo', 'moveYard', 'open',
-  'openBranchDepot', 'openProgram', 'payLoanDown', 'programAct', 'retireNow', 'ringAround', 'sellMachine', 'sendToBranch', 'service',
+  'openBranchDepot', 'openProgram', 'payLoanDown', 'priceCheck', 'programAct', 'retireNow', 'ringAround', 'sellMachine', 'sendToBranch', 'service',
   'setHireMode', 'setMargin', 'setOverheadShare', 'setPlan', 'subOut', 'submitBid', 'submitCouncil', 'takeBack', 'toggleTalks',
   'unlistMachine', 'upgradeSafety', 'withdrawBid',
 ] as const;

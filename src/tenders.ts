@@ -46,6 +46,8 @@ export function gradeDays(q: Quantities): number {
 
 export interface SubTender {
   id: string;
+  /** DDES Advisory's read on the sharpest rival price. */
+  adv?: { lo: number; hi: number };
   place: string;
   /** The head contractor. */
   hc: string;
