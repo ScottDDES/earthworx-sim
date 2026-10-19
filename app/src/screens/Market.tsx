@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { TYPES, YARDS, game, play } from '@engine';
 import { hammerText, lotFrom, lotGuide } from '@engine/text/market';
 import { MachineIcon } from '../Icon';
+import { Attachments } from './Bulk';
 import { f } from '../format';
 import { ListingCard } from './Shop';
 
@@ -58,6 +59,7 @@ export function MarketTab({ c, act }: { c: Career; act: Act }) {
           <div className="small muted">New listings every week. To sell a machine, open it in the Yard.</div>
           {!L.length && <div className="card small muted">Nothing left this week.</div>}
           {L.map((m) => <ListingCard key={m.id} c={c} m={m} act={act} />)}
+          {c.packs?.bulk && <Attachments c={c} act={act} />}
         </>
       )}
     </>

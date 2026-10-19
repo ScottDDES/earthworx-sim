@@ -33,7 +33,7 @@ export function eventText(c: Career, r: Report, e: any): string | null {
     case 'touchUp': return 'Worked through ' + e.mm + ' mm on ' + DAYS[e.d] + '. The day\'s in, with ' + f(e.cost) + ' of touch-up passes.';
     case 'missedUs': return 'The rain missed you on ' + DAYS[e.d] + ' (' + e.mm + ' mm). A full day in.';
     // jobs and contracts
-    case 'damWon': case 'damLost': case 'damLapsed': case 'damStarted': case 'damDone': case 'damGone': case 'damPassed': case 'damFailed': case 'redzoneFound': return bulkLine(e, e.jobId ? title(e.jobId) : undefined);
+    case 'damWon': case 'damLost': case 'damLapsed': case 'damStarted': case 'damDone': case 'damGone': case 'damPassed': case 'damFailed': case 'redzoneFound': case 'burnWait': case 'burnt': case 'devClaim': case 'devBust': return bulkLine(e, e.jobId ? title(e.jobId) : undefined);
     case 'breakdown': return 'Your ' + TYPES[e.type as keyof typeof TYPES].short + ' broke down.';
     case 'terminated': return e.client + ' terminated ' + title(e.jobId) + ': you never started it. Track record −3, and they won\'t use you for six months.';
     case 'subPulled': return e.name + ' pulled their crew off ' + title(e.jobId) + ' for a week to finish a private job.';

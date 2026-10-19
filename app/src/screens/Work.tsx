@@ -101,7 +101,7 @@ function SubOffers({ c, j, act }: { c: Career; j: Job; act: Act }) {
 }
 
 function JobCard({ c, j, act }: { c: Career; j: Job; act: Act }) {
-  if (j.kind === 'dam') return <DamJobCard c={c} j={j} act={act} />;
+  if (j.kind === 'bulk') return <DamJobCard c={c} j={j} act={act} />;
   const due = j.due as number, late = c.week > due;
   if (j.state === 'subbed') {
     const q = j.sub as { name: string; crews: number; pace: number; rate?: number }, ldw = j.kind === 'own' ? ((j.ld as number) ?? LD_OWN) : LD_WEEK;
@@ -300,9 +300,9 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
       {c.jobs.map((j) => <JobCard key={j.id} c={c} j={j} act={act} />)}
       {c.packs?.bulk && (
         <>
-          <div className="sub">Farmers ringing</div>
+          <div className="sub">Bulk and Ag: who's ringing</div>
           {(c.bulk?.enq ?? []).length ? c.bulk!.enq.map((e) => <EnquiryCard key={e.id} c={c} e={e} act={act} />)
-            : <div className="card"><div className="small muted">No farmers on the phone this week. They ring about dams most weeks.</div></div>}
+            : <div className="card"><div className="small muted">Nobody's rung this week. Farmers and developers ring most weeks.</div></div>}
         </>
       )}
       <div className="sub">Work on offer this week</div>

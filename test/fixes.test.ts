@@ -1,7 +1,7 @@
 // The fixes after the port: where the real game does better than the prototype.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, coverOff, dayQuality, drawCard, game, genEnquiry, genOffers, isBulk, leakOdds, passOdds, pricingVol, REDZONE_CASH, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot } from '../src';
+import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, ATTACH, coverOff, dayQuality, drawCard, game, genEnquiry, genOffers, isBulk, leakOdds, passOdds, pricingVol, REDZONE_CASH, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot } from '../src';
 
 describe('a fair shuffle', () => {
   beforeAll(() => { compat.prototype = false; });
@@ -356,11 +356,11 @@ describe('Bulk and Ag pack, step 2: farm dams', () => {
     for (let seed = 1; seed <= 12; seed++) {
       const c = outfit(seed, ['s631', 's631', 'd9', 'c825', 'moxycart']);
       for (let w = 0; w < 60; w++) {
-        for (const e of c.bulk?.enq ?? []) if (!e.quoted && !c.jobs.some((j) => j.kind === 'dam' && !j.finished)) { game.damSurvey(c, e.id); game.damQuote(c, e.id); }
+        for (const e of c.bulk?.enq ?? []) if (!e.quoted && !c.jobs.some((j) => j.kind === 'bulk' && !j.finished)) { game.damSurvey(c, e.id); game.damQuote(c, e.id); }
         for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0);
         game.endWeek(c);
       }
-      for (const j of c.jobs.filter((x) => x.kind === 'dam' && x.finished)) {
+      for (const j of c.jobs.filter((x) => x.kind === 'bulk' && x.finished)) {
         done++;
         profit += (j.fixed as number) - (j.spent || 0);
         expect(j.m3 as number).toBeGreaterThanOrEqual(j.truth as number);
@@ -386,7 +386,7 @@ describe('Bulk and Ag pack, step 2: farm dams', () => {
 
   it('eyeballing a dam that is bigger than the plans loses money a survey would have caught', () => {
     const c = outfit(3, ['d9']);
-    const e = genEnquiry(seedRand(5), c as never, 1);
+    const e = genEnquiry(seedRand(5), c as never, 1, 'turkeyNest');
     e.truth = Math.round(e.vol * 1.2);
     e.survey = Math.round(e.truth * 1.01);
     expect(pricingVol(e)).toBe(e.vol);
@@ -416,14 +416,14 @@ describe('Bulk and Ag pack, step 3: what goes wrong', () => {
       for (let w = 0; w < 70; w++) {
         for (const e of c.bulk?.enq ?? []) {
           if (opts.tested != null) e.tested = opts.tested;
-          if (!e.quoted && !c.jobs.some((j) => j.kind === 'dam' && !j.finished)) { e.rate = 2; game.damQuote(c, e.id); }
+          if (!e.quoted && !c.jobs.some((j) => j.kind === 'bulk' && !j.finished)) { e.rate = 2; game.damQuote(c, e.id); }
         }
-        for (const j of c.jobs) if (j.kind === 'dam' && opts.precon) game.damPrecon(c, j.id, true);
+        for (const j of c.jobs) if (j.kind === 'bulk' && opts.precon) game.damPrecon(c, j.id, true);
         for (let k = 0; c.queue.length && k < 20; k++) { const q = c.queue[0]!; cards[q.k] = (cards[q.k] || 0) + 1; choose(c, opts.answer ? opts.answer(q.k) : 0); }
         const r = game.endWeek(c);
         for (const e of (r?.events ?? []) as { k: string }[]) { if (e.k === 'damPassed') { passed++; tested++; } if (e.k === 'damFailed') tested++; }
       }
-      walls += c.jobs.filter((j) => j.kind === 'dam' && j.finished).length;
+      walls += c.jobs.filter((j) => j.kind === 'bulk' && j.finished).length;
     }
     return { walls, passed, tested, cards };
   };
@@ -474,5 +474,105 @@ describe('Bulk and Ag pack, step 3: what goes wrong', () => {
     }
     expect(found).toBeGreaterThan(5);
     expect(found).toBeLessThan(40);
+  });
+});
+
+describe('Bulk and Ag pack, step 4: the rest of the work', () => {
+  beforeAll(() => { compat.prototype = false; });
+  afterAll(() => { compat.prototype = true; });
+
+  const outfit = (seed: number, gear: string[], att: string[] = []) => {
+    const c = game.newCareer({ co: 'Ag Earthmoving', loan: 900000, town: 'gdi' }, seed);
+    c.phase = 'play';
+    c.yard = 'hub';
+    c.bank = 3000000;
+    c.won2 = true;
+    for (const [i, type] of gear.entries()) c.fleet.push({ id: 'b' + i, type, year: 2016, cond: 85, hours: 8000, svcAt: 8000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null } as never);
+    game.setPack(c, 'bulk', true);
+    c.bulk ??= { enq: [] };
+    for (const a of att) game.buyAttach(c, a as never);
+    c.bank = 3000000;
+    return c;
+  };
+  /** Only enquiries of one kind, priced low so they're won; plays until one finishes. */
+  const one = (kind: string, gear: string[], att: string[] = [], seed = 1, weeks = 60) => {
+    const c = outfit(seed, gear, att);
+    const evs: { k: string }[] = [];
+    for (let w = 0; w < weeks; w++) {
+      c.bulk!.enq = c.bulk!.enq.filter((e) => e.kind === kind || e.quoted);
+      if (!c.bulk!.enq.some((e) => e.kind === kind) && !c.jobs.some((j) => j.kind === 'bulk')) c.bulk!.enq.push(genEnquiry(seedRand(seed * 100 + w), c as never, 1, kind as never));
+      for (const e of c.bulk!.enq) if (!e.quoted && !c.jobs.some((j) => j.kind === 'bulk' && !j.finished)) { e.rate = e.rate * 0.5; game.damQuote(c, e.id); }
+      for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0);
+      const r = game.endWeek(c);
+      evs.push(...((r?.events ?? []) as { k: string }[]));
+      if (c.jobs.some((j) => j.kind === 'bulk' && j.finished)) break;
+    }
+    return { c, evs, job: c.jobs.find((j) => j.kind === 'bulk') };
+  };
+
+  it('each kind of work gets done with the right gear', () => {
+    const cases: [string, string[], string[]][] = [
+      ['laser', ['pull', 'pull', 'grader'], ['laser']],
+      ['channel', ['excavator', 'd6'], []],
+      ['contour', ['d6'], []],
+      ['pad', ['excavator', 'moxy', 'moxy', 'padfoot', 'cart', 'grader'], []],
+      ['rake', ['d8'], ['rake']],
+      ['cutter', ['d9'], ['cutter']],
+      ['dev', ['s637', 's637', 's637', 'c825', 'moxycart', 'moxycart'], []],
+    ];
+    for (const [kind, gear, att] of cases) {
+      const { job } = one(kind, gear, att, 2, 120);
+      expect(job, kind).toBeTruthy();
+      expect(job!.finished, kind + ' finished').toBe(true);
+      expect((job!.m3 as number) >= (job!.truth as number) || job!.cut, kind).toBe(true);
+    }
+  });
+
+  it('no attachment, no start: laser levelling, raking and cutter barring wait for their gear', () => {
+    for (const [kind, gear] of [['laser', ['pull', 'grader']], ['rake', ['d8']], ['cutter', ['d9']]] as const) {
+      const { job } = one(kind, [...gear], [], 3, 5);
+      expect(job?.state ?? 'waiting', kind).toBe('waiting');
+    }
+    const c = outfit(4, [], []);
+    const bank = c.bank;
+    expect(game.buyAttach(c, 'rake')).toBe(true);
+    expect(c.bank).toBe(bank - ATTACH.rake);
+    expect(game.buyAttach(c, 'rake')).toBe(false);
+  });
+
+  it('a cutter bar is harder on a dozer than a stick rake', () => {
+    const cut = one('cutter', ['d9'], ['cutter'], 5, 40), rake = one('rake', ['d9'], ['rake'], 5, 40);
+    const wearOf = (r: typeof cut) => { const m = r.c.fleet.find((x) => x.type === 'd9')!; return (85 - m.cond) / Math.max(1, (m.hours - 8000) / 9); };
+    expect(wearOf(cut)).toBeGreaterThan(wearOf(rake) * 1.4);
+  });
+
+  it('windrows finished in fire season wait for October to be burnt, and paid', () => {
+    const c = outfit(6, ['d8'], ['rake']);
+    // start in late July, on a big block
+    c.week = 17;
+    c.bulk!.enq = [genEnquiry(seedRand(9), c as never, 1, 'rake')];
+    const e = c.bulk!.enq[0]!;
+    e.vol = e.truth = e.survey = 60;
+    e.rate = 1;
+    game.damQuote(c, e.id);
+    let burnWait = 0, burnt = 0;
+    for (let w = 0; w < 14; w++) {
+      c.bulk!.enq = c.bulk!.enq.filter((x) => x.quoted);
+      for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0);
+      const r = game.endWeek(c);
+      for (const ev of (r?.events ?? []) as { k: string }[]) { if (ev.k === 'burnWait') burnWait = c.week; if (ev.k === 'burnt') burnt = c.week; }
+    }
+    expect(burnWait).toBeGreaterThan(0);
+    expect(burnt).toBeGreaterThan(burnWait);
+  });
+
+  it('developers pay monthly claims less retention, and some go under owing you', () => {
+    const { c, evs } = one('dev', ['s637', 's637', 's637', 'c825', 'moxycart', 'moxycart'], [], 7, 120);
+    expect(evs.filter((e) => e.k === 'devClaim').length).toBeGreaterThan(0);
+    expect(c.jobs.find((j) => j.kind === 'bulk')!.retained as number).toBeGreaterThan(0);
+    let busts = 0;
+    for (let seed = 1; seed <= 30; seed++) if (one('dev', ['s637', 's637', 'c825', 'moxycart'], [], seed, 120).evs.some((e) => e.k === 'devBust')) busts++;
+    expect(busts).toBeGreaterThan(0);
+    expect(busts).toBeLessThan(15);
   });
 });

@@ -12,7 +12,7 @@ import { TRUCK_DAY } from '../planning';
 import { WHS_SYS } from '../overheads';
 import { HURT_ADVISORY, WELLBEING_ADVISORY, nearMissAdvisoryCost, seriousAdvisoryCost } from '../advisory';
 import { compat } from '../compat';
-import { DAM_KIND } from './bulk';
+import { DAM_KIND, comeback } from './bulk';
 import { yearOf } from '../calendar';
 import { councilTitle, jobTitle, pmOf, subTenderTitle } from './work';
 import { NEAR_MISS_STORIES, QUIET_REPLIES, SERIOUS_STORIES } from './safety';
@@ -215,10 +215,10 @@ export function cardView(c: Career, q: Career['queue'][number], d: DrawnCard): C
       return out('Bulk and Ag', 'The clay\'s wet', D.mm + ' mm last week. The clay in the pit on ' + D.job.client + '\'s ' + t + ' near ' + D.job.place + ' is too wet to roll down.');
     }
     case 'leak': {
-      const t = (DAM_KIND[D.dk as keyof typeof DAM_KIND] ?? 'dam').toLowerCase();
-      put('fix', 'Go back and fix it · ' + f(D.fix), 'Float a spread back out, cut out the soft section and rebuild it properly.');
-      put('argue', 'Tell them it\'s their clay', 'Free today. ' + D.farm + ' will tell everyone at the field day. Track record −2.');
-      return out('Bulk and Ag', D.farm + '\'s dam is leaking', D.farm + ' rang: the ' + t + ' you built near ' + D.place + ' is dropping faster than evaporation, and there\'s a wet patch at the toe of the wall.');
+      const cb = comeback(D.dk);
+      put('fix', 'Go back and fix it · ' + f(D.fix), 'Float a spread back out and put it right properly this time.');
+      put('argue', cb.argue, 'Free today. ' + D.farm + ' will tell everyone at the field day. Track record −2.');
+      return out('Bulk and Ag', cb.title(D.farm), cb.body(D.farm, D.place));
     }
     case 'redzone':
       put('no', 'Say no', 'It\'s not allowed to be cleared, and the fine would land on you as well as them. They might ring someone else for their next dam.');

@@ -20,7 +20,7 @@ import { genMgrApplicants, hireMgr as hireMgrPerson, mgrIs, mgrOf, mgrTraitsWeek
 import { afterService, fitterWeek, wsmWeek, type WorkshopEvent } from './workshop';
 import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium as premiumOf } from './overheads';
 import { compat } from './compat';
-import { bulkStart, bulkWeek, damDay, sendQuote, setPrecon, setRate, survey, type BulkBook, type BulkEvent } from './bulk';
+import { buyAttachment, bulkStart, bulkWeek, damDay, sendQuote, setPrecon, type Attachment, setRate, survey, type BulkBook, type BulkEvent } from './bulk';
 import { ERP_SETUP, PRICE_CHECK_FEE, erpOk, priceBand } from './advisory';
 import { BID_ODDS, rvOHFor } from './rivals';
 import { accept as acceptOffer, askWait as askWaitHire, barred, coverOff, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
@@ -324,6 +324,9 @@ export function damQuote(c: Career, id: string): boolean {
 }
 export function damPrecon(c: Career, id: string, on: boolean): boolean {
   return setPrecon(c as never, id, on);
+}
+export function buyAttach(c: Career, a: Attachment): boolean {
+  return buyAttachment(c as never, a);
 }
 
 /** Open for business: the first week's work, market and tenders. */
@@ -666,14 +669,14 @@ export function endWeek(c: Career): Report | null {
     rep.days.push({ wet, mm: rainMm(wx, dayOffset(c.week, day)) });
     const w = wctx(c);
     for (const j of c.jobs) {
-      if (j.kind === 'dam') damDay(rand, c as never, j, wet, w, rep, ev as BulkEvent[]);
+      if (j.kind === 'bulk') damDay(rand, c as never, j, wet, w, rep, ev as BulkEvent[]);
       else jobDay(rand, c as never, j, day, wet, w, rep, downDays, ev as ContractEvent[]);
     }
     endOfDay(c as never, day, ev as ContractEvent[]);
   }
   const oldhand = mgrIs(c.staff, 'oldhand');
   for (const j of c.jobs.slice()) {
-    if (j.kind === 'dam') continue;
+    if (j.kind === 'bulk') continue;
     const before = ev.length;
     settleJob(rand, c as never, j, rep, downDays, oldhand, ev as ContractEvent[]);
     for (const e of ev.slice(before) as ContractEvent[]) {

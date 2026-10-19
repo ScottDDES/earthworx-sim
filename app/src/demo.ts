@@ -33,7 +33,7 @@ export function demoCareer(kind: string): game.Career | null {
   if (kind === 'bulk') {
     for (const k of ['d8', 'd9', 's631', 's631', 'c825', 'moxycart'] as MachineType[]) c.fleet.push(newMachine(rand, uid(c), k, 2015, 78, 11000));
     game.setPack(c, 'bulk', true);
-    c.bulk = { enq: [genEnquiry(seedRand(31), c as never, 1), genEnquiry(seedRand(44), c as never, 1)] };
+    c.bulk = { enq: [genEnquiry(seedRand(31), c as never, 1, 'turkeyNest'), genEnquiry(seedRand(44), c as never, 1, 'channel'), genEnquiry(seedRand(52), c as never, 1, 'laser')], att: { rake: true } };
     c.bulk.enq[1]!.surveyed = true;
   }
   return c;

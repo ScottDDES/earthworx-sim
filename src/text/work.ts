@@ -10,8 +10,8 @@ import type { CouncilTender } from '../planning';
 
 const money = (n: number) => (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-AU');
 
-export const KIND_LABEL: Record<string, string> = { wet: 'WET HIRE', dry: 'DRY HIRE', council: 'COUNCIL', private: 'PRIVATE', sub: 'SUBCONTRACT', own: 'COUNCIL CONTRACT', dam: 'FARM DAM' };
-export const KIND_CHIP: Record<string, string> = { wet: 'c-dark', council: 'c-rain', dry: 'c-idle', private: 'c-job', sub: 'c-dark', own: 'c-rain', dam: 'c-job' };
+export const KIND_LABEL: Record<string, string> = { wet: 'WET HIRE', dry: 'DRY HIRE', council: 'COUNCIL', private: 'PRIVATE', sub: 'SUBCONTRACT', own: 'COUNCIL CONTRACT', bulk: 'BULK AND AG' };
+export const KIND_CHIP: Record<string, string> = { wet: 'c-dark', council: 'c-rain', dry: 'c-idle', private: 'c-job', sub: 'c-dark', own: 'c-rain', bulk: 'c-job' };
 
 /** A private client is "Shed pad, Talwood": the job, then the place. */
 function privateParts(client: string): [string, string] {
@@ -61,7 +61,7 @@ export function councilTitle(t: CouncilTender): string {
 /** What a job's called on screen. */
 export function jobTitle(j: Job): string {
   const n = j.nm;
-  if (j.kind === 'dam') return damTitle(j as never);
+  if (j.kind === 'bulk') return damTitle(j as never);
   if (j.kind === 'sub') return j.place + ' Road' + (n?.L != null ? ', ' + n.L + ' km' : '') + ' for ' + j.client;
   if (j.kind === 'own') {
     if (!n) return (j.major ? 'Flood recovery program' : 'Flood works package') + ' from ' + j.place;
