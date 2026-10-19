@@ -1,7 +1,7 @@
 // The fixes after the port: where the real game does better than the prototype.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, game, genOffers, runOn, seedRand, shuffled, whyNot } from '../src';
+import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, coverOff, drawCard, game, genOffers, runOn, seedRand, shutWeek, shuffled, whyNot } from '../src';
 
 describe('a fair shuffle', () => {
   beforeAll(() => { compat.prototype = false; });
@@ -111,5 +111,98 @@ describe('Run on answers the small cards itself', () => {
     expect(now.answered.length).toBeGreaterThan(0);
     const safe = new Set([...Object.entries(RUN_ANSWERS).map(([k, id]) => k + ':' + id), 'tresult:ok', 'cresult:ok']);
     for (const a of now.answered) expect(safe.has(a)).toBe(true);
+  });
+});
+
+describe('playtest fixes, 19 October 2026', () => {
+  beforeAll(() => { compat.prototype = false; });
+  afterAll(() => { compat.prototype = true; });
+
+  const career = (seed: number) => {
+    const c = game.newCareer({ co: 'Playtest Earthmoving', loan: 350000, town: 'gdi' }, seed);
+    for (const [i, type] of (['grader', 'grader', 'roller', 'cart'] as const).entries()) {
+      c.fleet.push({ id: 'm' + i, type, year: 2015, cond: 80, hours: 9000, svcAt: 9000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null });
+    }
+    c.phase = 'play';
+    return c;
+  };
+
+  it('a council suspension means no council work: no day labour, no tenders, no price looked at', () => {
+    const c = career(5);
+    c.blocked['Goondiwindi council'] = c.week + 26;
+    let council = 0;
+    for (let seed = 1; seed <= 200; seed++) council += genOffers(seedRand(seed), JSON.parse(JSON.stringify(c)), 1, true, true).filter((o) => o.kind === 'council').length;
+    expect(council).toBe(0);
+    for (let w = 0; w < 20; w++) {
+      for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0);
+      game.endWeek(c);
+      expect(c.offers.some((o) => o.kind === 'council')).toBe(false);
+      expect(c.ctenders.filter((t) => t.close > c.week - 1).length).toBe(0);
+    }
+    // and once it's over, the council rings again
+    delete c.blocked['Goondiwindi council'];
+    let back = 0;
+    for (let seed = 1; seed <= 50; seed++) back += genOffers(seedRand(seed), JSON.parse(JSON.stringify(c)), 1, true, true).filter((o) => o.kind === 'council').length;
+    expect(back).toBeGreaterThan(0);
+  });
+
+  it('a driver off hurt: someone free who drives that machine takes the seat', () => {
+    const c = career(6);
+    c.staff.push({ id: 'p1', name: 'Shaz', role: 'grader', skill: 'solid', wage: 1500, off: 0, jobId: null } as never);
+    c.staff.push({ id: 'p2', name: 'Robbo', role: 'grader', skill: 'solid', wage: 1500, off: 0, jobId: null } as never);
+    c.offers = [{ id: 'o1', kind: 'wet', type: 'grader', place: 'Talwood', client: 'Dry Creek Civil', days: 15, rate: 1500, terms: 4, fuelPaid: false }];
+    expect(game.accept(c, 'o1')).toBe(true);
+    const j = c.jobs.at(-1)!;
+    expect(j.who).toBe('p1');
+    c.staff[0]!.off = 16;
+    expect(coverOff(c as never)).toEqual([{ jobId: j.id, from: 'p1', to: 'p2' }]);
+    expect(j.who).toBe('p2');
+    expect(c.staff[0]!.jobId).toBeNull();
+    // nobody free: the job waits, as before
+    c.staff[1]!.off = 3;
+    expect(coverOff(c as never)).toEqual([]);
+  });
+
+  it('Christmas: a card the week before, then two weeks where nobody works and deadlines move', () => {
+    const c = career(7);
+    c.staff.push({ id: 'p1', name: 'Shaz', role: 'grader', skill: 'solid', wage: 1500, off: 0, jobId: null } as never);
+    let card = 0, shutWorked = 0;
+    while (c.week < 42) {
+      for (let k = 0; c.queue.length && k < 20; k++) {
+        if (c.queue[0]!.k === 'xmas') { card = c.week; expect(drawCard(c, c.queue[0]!)!.opts.map((o) => o.id)).toEqual(['party', 'bbq', 'skip']); }
+        choose(c, 0);
+      }
+      for (const o of c.offers.slice()) game.accept(c, o.id);
+      for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0);
+      const r = game.endWeek(c)!;
+      if (r && shutWeek(r.week)) { expect(r.shut).toBe(true); shutWorked += r.worked; }
+    }
+    expect(card).toBe(38);
+    expect(shutWorked).toBe(0);
+  });
+
+  it('the best-two offer only comes up when it is not their whole yard', () => {
+    const c = career(8);
+    Object.assign(c, { won: true, won2: true });
+    const x = c.rivals[0]!;
+    x.fleet = 2;
+    c.queue = [{ k: 'buyout', name: x.name }];
+    expect(drawCard(c, c.queue[0]!)!.opts.map((o) => o.id)).not.toContain('best');
+    x.fleet = 4;
+    (x as { yard?: unknown }).yard = undefined;
+    c.queue = [{ k: 'buyout', name: x.name }];
+    const d = drawCard(c, c.queue[0]!)!;
+    if (d.data.pb.ok) expect(d.opts.map((o) => o.id)).toContain('best');
+  });
+
+  it('a short first year gets its own review instead of rolling into a 66-week one', () => {
+    const c = career(9);
+    for (let w = 0; w < 70 && !(c.years || []).length; w++) {
+      for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0);
+      game.endWeek(c);
+    }
+    const y = c.years![0]!;
+    expect(y.weeks).toBeLessThan(26);
+    expect(y.first).toBe(true);
   });
 });

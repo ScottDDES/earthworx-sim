@@ -213,6 +213,25 @@ export function seriousNotify(st: SafetyState, c: SeriousCard): void {
   record(st.whs, { w: st.week, sev: 'serious', who: c.who ?? '', story: { k: 'serious', i: c.story } });
 }
 
+/** DDES Advisory's fee to handle a serious incident start to finish. */
+export const ADVISORY_FEE = 4500;
+
+/**
+ * Ring DDES Advisory: they deal with the regulator, run the investigation and do the paperwork. Their fee, and a
+ * fine half the size; insurance +15%, track record −1, and the crew sees it handled. Returns the fine.
+ */
+export function seriousAdvisory(st: SafetyState, c: SeriousCard): number {
+  if (c.who) hurtOff(st, c.who, 16);
+  const fine = round(c.fine * 0.5, 500);
+  st.bank -= ADVISORY_FEE + fine;
+  st.ins += 0.15;
+  st.rep = Math.max(0, st.rep - 1);
+  st.whs.cult = Math.min(100, st.whs.cult + 8);
+  st.whs.hz = 0;
+  record(st.whs, { w: st.week, sev: 'serious', who: c.who ?? '', story: { k: 'serious', i: c.story } });
+  return fine;
+}
+
 export type HideResult = { found: false } | { found: true; fine: number };
 
 /**

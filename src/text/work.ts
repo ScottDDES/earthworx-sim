@@ -2,6 +2,7 @@
 
 import { CLIENTS, type Job, type Offer } from '../hire';
 import { TYPES } from '../machines';
+import { compat } from '../compat';
 import { CLIENT_PM } from '../relations';
 import type { SubTender } from '../tenders';
 import type { CouncilTender } from '../planning';
@@ -36,7 +37,8 @@ export function offerDetail(o: Offer): string {
 export function offerCatch(o: Offer): string {
   if (o.kind === 'wet') return o.client + ' pays at ' + o.terms * 7 + ' days.' + ((CLIENTS[o.client]?.late ?? 0) > 0.3 ? ' Known for paying late.' : '');
   if (o.kind === 'dry') return 'Their operator, your wear: about twice the usual. Paid at ' + o.terms * 7 + ' days.';
-  if (o.kind === 'council') return 'Pays in 14 days. You supply fuel. Counts double toward your track record.';
+  if (o.kind === 'council') return compat.prototype ? 'Pays in 14 days. You supply fuel. Counts double toward your track record.'
+    : 'Pays in 14 days. You supply fuel, about ' + money(TYPES[o.type].fuel) + ' a day, so ' + money(o.rate! - TYPES[o.type].fuel) + ' a day after fuel. Counts double toward your track record.';
   return 'Fixed price: rain days are on you.' + (o.needsRoller ? ' Needs a roller too: ' + money(TYPES.roller.dry) + ' a week to hire one if you don\'t own one.' : '');
 }
 

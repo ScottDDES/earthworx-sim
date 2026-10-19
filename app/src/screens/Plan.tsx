@@ -16,6 +16,31 @@ type Act = (fn: (c: Career) => unknown) => void;
 const L = (i: number) => String.fromCharCode(65 + i);
 const starTxt = (n: number) => '★★★'.slice(0, n) + '☆☆☆'.slice(0, 3 - n);
 
+/** Profit margin: ±5% steps, or tap the number and type your own (−10% to 60%). */
+export function MarginRow({ mk, id, act }: { mk: number; id: string; act: Act }) {
+  const now = Math.round(mk * 1000) / 10;
+  const [txt, setTxt] = useState<string | null>(null);
+  const commit = () => {
+    if (txt == null) return;
+    const v = parseFloat(txt.replace(/[%\s]/g, ''));
+    setTxt(null);
+    if (Number.isFinite(v)) {
+      const to = Math.max(-10, Math.min(60, Math.round(v * 10) / 10));
+      if (to !== now) act((x) => play.setMargin(x, id, Math.round((to - now) * 10) / 1000));
+    }
+  };
+  return (
+    <div className="row" style={{ padding: '6px 0' }}>
+      <span className="grow small">Profit margin</span>
+      <button type="button" className="btn" onClick={() => act((x) => play.setMargin(x, id, -0.05))}>−5%</button>
+      <input className="num mk" aria-label="Profit margin, per cent" inputMode="decimal" enterKeyHint="done" value={txt ?? now + '%'}
+        onFocus={(e) => { setTxt(String(now)); requestAnimationFrame(() => e.target.select()); }}
+        onChange={(e) => setTxt(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
+      <button type="button" className="btn" onClick={() => act((x) => play.setMargin(x, id, 0.05))}>+5%</button>
+    </div>
+  );
+}
+
 function Stepper({ label, sub, val, onDown, onUp }: { label: string; sub: string; val: number; onDown: () => void; onUp: () => void }) {
   return (
     <div className="row" style={{ padding: '4px 0' }}>
@@ -82,12 +107,7 @@ function Price({ c, t, act }: { c: Career; t: CouncilTender; act: Act }) {
           <button type="button" className="btn" disabled={!(CP.sh < 1)} onClick={() => act((x) => play.setOverheadShare(x, t.id, 0.25))}>+</button>
         </div>
         <div className="kv"><span>Cost all up</span><span className="num">{f(e.cost + CP.oh)}</span></div>
-        <div className="row" style={{ padding: '6px 0' }}>
-          <span className="grow small">Profit margin</span>
-          <button type="button" className="btn" onClick={() => act((x) => play.setMargin(x, t.id, -0.05))}>−5%</button>
-          <b className="num" style={{ minWidth: 56, textAlign: 'center' }}>{Math.round(t.mk * 1000) / 10}%</b>
-          <button type="button" className="btn" onClick={() => act((x) => play.setMargin(x, t.id, 0.05))}>+5%</button>
-        </div>
+        <MarginRow mk={t.mk} id={t.id} act={act} />
         <div className="kv"><b>Your tender price</b><b className="num" style={{ fontSize: 18 }}>{f(price)}</b></div>
         <div className="tiny muted">Profit if the plan holds, after overheads: {f(price - e.cost - CP.oh)}. Cash to carry it until the first claim is paid: about {f(Math.round((e.cost / Math.max(1, e.wks)) * Math.min(e.wks, COUNCIL_TERMS + 1) / 1000) * 1000)}. You have {f(c.bank)} plus a {f(odLimit(c))} overdraft.</div>
         <button type="button" className="btn full" onClick={() => setLines(!lines)}>{lines ? 'Hide the cost lines' : 'Show the cost lines'}</button>

@@ -9,7 +9,7 @@ import {
 import { KIND_CHIP, KIND_LABEL, councilTitle, jobTitle, offerCatch, offerDetail, offerPay, offerTitle, pmOf, subTenderTitle } from '@engine/text/work';
 import { Mentor } from '../Mentor';
 import { f, fk } from '../format';
-import { CouncilCard, PlanSheet } from './Plan';
+import { CouncilCard, MarginRow, PlanSheet } from './Plan';
 
 type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
@@ -164,7 +164,7 @@ function JobCard({ c, j, act }: { c: Career; j: Job; act: Act }) {
   const pct = Math.min(100, (j.done / j.days) * 100), unit = j.kind === 'dry' ? 'weeks' : 'days';
   return (
     <div className="card">
-      <div className="row"><span className={'chip ' + KIND_CHIP[j.kind]}>{KIND_LABEL[j.kind]}</span><span className="grow" /><span className="tiny muted">{j.kind === 'dry' ? 'Their operator' : who(c, j.who) + ' driving'}</span></div>
+      <div className="row"><span className={'chip ' + KIND_CHIP[j.kind]}>{KIND_LABEL[j.kind]}</span><span className="grow" /><span className="tiny muted">{j.kind === 'dry' ? 'Their operator' : driving(c, j)}</span></div>
       <b>{jobTitle(j)}</b>
       <div className="row tiny"><span className="grow">{j.done} of {j.days} {unit}</span><span className="num">{j.kind === 'private' ? 'Fixed ' + f((j.fixed || 0) + j.extra) : 'Earned ' + f(j.earned)}</span></div>
       <div className="bar"><i style={{ width: pct + '%', background: 'var(--teal)' }} /></div>
@@ -228,12 +228,7 @@ function PriceSheet({ c, t, act, onClose }: { c: Career; t: SubTender; act: Act;
             <button type="button" className="btn" disabled={!(SP.sh < 1)} onClick={() => act((x) => play.setOverheadShare(x, t.id, 0.25))}>+</button>
           </div>
           <div className="kv"><span>Cost all up</span><span className="num">{f(cost + SP.oh)}</span></div>
-          <div className="row" style={{ padding: '6px 0' }}>
-            <span className="grow small">Profit margin</span>
-            <button type="button" className="btn" onClick={() => act((x) => play.setMargin(x, t.id, -0.05))}>−5%</button>
-            <b className="num" style={{ minWidth: 56, textAlign: 'center' }}>{Math.round(t.mk * 1000) / 10}%</b>
-            <button type="button" className="btn" onClick={() => act((x) => play.setMargin(x, t.id, 0.05))}>+5%</button>
-          </div>
+          <MarginRow mk={t.mk} id={t.id} act={act} />
           <div className="kv"><b>Your price</b><b className="num" style={{ fontSize: 18 }}>{f(price)}</b></div>
           <div className="tiny muted">Profit if it all goes to plan, after overheads: {f(price - cost - SP.oh)}. Expect about {wetDays} wet days in {t.weeks} weeks, and your crew sits idle on each one.</div>
           <button type="button" className="btn full" onClick={() => setWorkings(!workings)}>{workings ? 'Hide the workings' : 'Show the workings'}</button>
@@ -264,6 +259,13 @@ function PriceSheet({ c, t, act, onClose }: { c: Career; t: SubTender; act: Act;
 }
 
 // ---------- the tab ----------
+
+/** Who's on the machine: "Shaz driving", "You, covering for Shaz", or "Shaz off, nobody driving". */
+function driving(c: Career, j: Job): string {
+  const p = j.who && j.who !== 'you' ? c.staff.find((x) => x.id === j.who) : null;
+  if (p && p.off > 0) return c.opCover > 0 && c.coverFor === p.id ? 'You, covering for ' + p.name : p.name + ' off, nobody driving';
+  return who(c, j.who) + ' driving';
+}
 
 export function WorkTab({ c, act }: { c: Career; act: Act }) {
   const [pricing, setPricing] = useState<string | null>(null);

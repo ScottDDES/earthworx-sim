@@ -11,3 +11,5 @@ body{margin:0}
 
 /* the start and end screens have no header, so keep them clear of the clock */
 .setup{padding-top:calc(28px + env(safe-area-inset-top,0px))}
+.mk{width:68px;text-align:center;font:inherit;font-weight:800;font-variant-numeric:tabular-nums;padding:8px 4px;border:1.5px solid var(--line,#DAD7CD);border-radius:8px;background:transparent;color:inherit}
+.mk:focus{outline:none;border-color:#FFC700}

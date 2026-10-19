@@ -10,6 +10,7 @@ import { uid, type Job, type JobLog, type Receivable } from './hire';
 import { RV_MACH, type Rival } from './rivals';
 import type { Whs } from './safety';
 import { TOWNS, type TownId } from './towns';
+import { compat } from './compat';
 
 const round = (n: number, to: number) => Math.round(n / to) * to;
 
@@ -309,12 +310,12 @@ export interface YearInputs {
 }
 
 /**
- * 30 June has passed: review the year (the weeks since the last review, up to week w). A short first year
- * (under 26 weeks) rolls into the next review. nw is your net worth now.
+ * 30 June has passed: review the year (the weeks since the last review, up to week w). A short first year gets
+ * its own review; the prototype rolls one under 26 weeks into the next (a 66-week 'year'). nw is your net worth now.
  */
 export function yearEnd(st: YearInputs, w: number, nw: number): YearReview | null {
   const H = st.hist || [], last = (st.years || []).length ? st.years![st.years!.length - 1]!.w : 0, Y = H.filter((x) => x.w > last && x.w <= w);
-  if (Y.length < 6 || (!last && Y.length < 26)) return null;
+  if (Y.length < 6 || (compat.prototype && !last && Y.length < 26)) return null;
   const P = plOf(Y);
   const J = (st.jlog || []).filter((j) => j.w > last && j.w <= w + 1 && !j.part && j.rev >= 5000).map((j) => ({ kind: j.kind, client: j.client, rev: j.rev, m: pct(j.rev - j.cost, j.rev) }));
   J.sort((a, b) => b.m - a.m);
@@ -322,7 +323,7 @@ export function yearEnd(st: YearInputs, w: number, nw: number): YearReview | nul
   const all = st.rivals.map(rvWorth).concat([nw]).sort((a, b) => b - a);
   const TB = st.tb || { s: [0, 0], c: [0, 0], since: 0 }, t0 = st.tbYear || { s: [0, 0], c: [0, 0] };
   const y: YearReview = {
-    w, first: Y.length > 56, weeks: Y.length, rev: P.rev, profit: P.profit, cost: P.cost, oh: P.oh, ws: P.ws, cap: P.cap, nw0: Y[0]!.nw, nw, util: utilOf(Y),
+    w, first: Y.length > 56 || (!last && Y.length < 26), weeks: Y.length, rev: P.rev, profit: P.profit, cost: P.cost, oh: P.oh, ws: P.ws, cap: P.cap, nw0: Y[0]!.nw, nw, util: utilOf(Y),
     best: J[0] || null, worst: J.length > 1 ? J[J.length - 1]! : null, jobs: J.length, ltis, inc: inc.filter((x) => x.sev !== 'near miss').length,
     ltifr: hrs >= 2000 ? Math.round((ltis * 1e7) / hrs) / 10 : null, rank: all.indexOf(nw) + 1, of: all.length,
     wonS: TB.s[1] - t0.s[1], bidS: TB.s[0] - t0.s[0], wonC: TB.c[1] - t0.c[1], bidC: TB.c[0] - t0.c[0], staff: st.staffN, fleet: st.fleetN,

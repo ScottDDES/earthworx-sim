@@ -9,13 +9,15 @@ import { stream, room, hasCrew, tax, tickets, mood, premiumNow, type Career } fr
 import { hashN, pick, seedRand, type Rand } from './rng';
 import { lateChase, lateFriendly, latePark, lateWait, release, stars, type Job } from './hire';
 import { TOWNS } from './towns';
+import { compat } from './compat';
+import { ROLES } from './staff';
 import { mgrIs } from './managers';
 import { TYPES, overdue, value } from './machines';
 import { lendCap } from './market';
 import { fleetValue } from './overheads';
-import { nearMissCard, nearMissReport, nearMissShrug, quietDaysOff, quietLeave, quietYarn, seriousCard, seriousHide, seriousNotify, swmsPay, swmsSelf } from './safety';
+import { nearMissCard, nearMissReport, nearMissShrug, quietDaysOff, quietLeave, quietYarn, seriousAdvisory, seriousCard, seriousHide, seriousNotify, swmsPay, swmsSelf } from './safety';
 import { dryDamBore, dryDamFar, dryDamFarMore, gravelArgue, gravelCart, gravelCartCost, gravelWork, ownFlow, pitFar, pitFarmer, staffOwn, staffSubs, swapCardKeep, swapIn, variationFree, variationLodge, variationValue, variationWriting } from './contracts';
-import { breakCard, breakFix, breakinCamera, breakinClaim, breakinWithout, callGrader, calloutPull, callWork, clearingBorrow, clearingCash, earlyClient, earlyTake, extraAgree, extraAsk, extraFree, hurtCover, hurtHome, hurtKeepGoing, rainCrews, rainDecide, svcFindDays, svcFix, svcPatch, turnoverKeep, turnoverSell } from './cards';
+import { breakCard, breakFix, breakinCamera, breakinClaim, breakinWithout, callGrader, calloutPull, callWork, clearingBorrow, clearingCash, xmasCost, xmasParty, earlyClient, earlyTake, extraAgree, extraAsk, extraFree, hurtCover, hurtHome, hurtKeepGoing, rainCrews, rainDecide, svcFindDays, svcFix, svcPatch, turnoverKeep, turnoverSell } from './cards';
 import { bankMoreTime, basInterest, basPay, basPlan, basPlanOk, gstInBank, odLimit, repoPick, repossess } from './office';
 import { weeklyRepay } from './bank';
 import { askSellUp, buyOutAll, buyOutBest, buyOutOffer, buyOutPay, canBuyOut, collapseCard, collapseClaim, collapseSell, insureBroker, sellAll, sellBest, sellBuyer, sellGear, sellPrice, sellTwo, walkAway } from './shocks';
@@ -56,8 +58,13 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
     case 'swms':
       return [o('pay', () => swmsPay(st)), o('self', () => swmsSelf(st))];
     case 'serious': {
-      const sj0 = c.jobs.find((j) => j.state === 'running' && !j.finished && (j.kind === 'sub' || j.kind === 'own')) || c.jobs.find((j) => !j.finished && !j.after);
+      // the job it happened on: the one they were working (the prototype takes any job, dry hire included)
+      const hj = compat.prototype ? undefined : jobOf(c, q.who === 'you' ? c.youJob : c.staff.find((p) => p.id === q.who)?.jobId);
+      const sj0 = (hj && hj.kind !== 'dry' && !hj.finished ? hj : undefined) || c.jobs.find((j) => j.state === 'running' && !j.finished && (j.kind === 'sub' || j.kind === 'own'))
+        || c.jobs.find((j) => !j.finished && !j.after && (compat.prototype || j.kind !== 'dry'));
       const card = seriousCard(cr, q.who ?? null, c.whs.sys, c.fleet.length, sj0 ? sj0.id : null);
+      // the story fits the machine they were on (the prototype rolls any of the four)
+      if (hj && hj === sj0) card.story = ({ cart: 0, grader: 1, truck: 2, roller: 3 } as Record<string, number>)[hj.type] ?? card.story;
       const fsz = Math.min(1, 0.25 + c.fleet.length / 10);
       Object.assign(data, { card, job: sj0, who: q.who ?? null, sys: c.whs.sys, fineLo: Math.round(20000 * fsz / 1000) * 1000, fineHi: Math.round(60000 * fsz / 1000) * 1000 });
       return [
@@ -74,6 +81,13 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
           if (res.found) news(c, { k: 'unreportedFine', co: c.co, fine: res.fine });
           return res;
         }),
+        ...(compat.prototype ? [] : [o('advisory', () => {
+          const nm = whoName(c, q.who), fine = seriousAdvisory(st, card);
+          if (sj0) sj0.stood = 1;
+          note(c, { k: 'seriousNotified', name: nm, story: card.story, fine });
+          news(c, { k: 'regulator', co: c.co });
+          return fine;
+        })]),
       ];
     }
     case 'nearmiss': {
@@ -194,7 +208,15 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       const p = c.staff.find((x) => x.id === q.id);
       if (!p) return null;
       data.person = p;
+      // who takes the seat if they go home: someone free who drives that machine (the real game swaps them in)
+      const hj = jobOf(c, p.jobId);
+      data.sub = compat.prototype || !hj || !['wet', 'council', 'private'].includes(hj.kind) ? null
+        : c.staff.find((x) => x !== p && !x.jobId && x.off === 0 && ROLES[x.role].drives.includes(hj.type))?.name ?? null;
       return [o('home', () => hurtHome(p)), o('cover', () => hurtCover(st, p)), o('keepGoing', () => { const hurt = hurtKeepGoing(r(), st, p); if (hurt) note(c, { k: 'badBack', name: p.name }); return hurt; })];
+    }
+    case 'xmas': {
+      Object.assign(data, { cost: xmasCost(c.staff.length), staff: c.staff.length });
+      return [o('party', () => xmasParty(st, 'party')), o('bbq', () => xmasParty(st, 'bbq')), o('skip', () => xmasParty(st, 'skip'))];
     }
     case 'breakin':
       data.home = c.yard === 'home';
@@ -288,7 +310,8 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       const rm = () => room(c);
       Object.assign(data, { x, offer: of, pa, pb, fit: Math.max(0, room(c)) });
       if (pa.ok) out.push(o('whole', () => buyOutAll(r(), st, x, of, pa, rm)));
-      if (pb.ok && of.best.length) out.push(o('best', () => buyOutBest(r(), st, x, of, pb, rm)));
+      // when their best two are their whole yard, the whole outfit is the same gear for less
+      if (pb.ok && of.best.length && (compat.prototype || of.best.length < of.yard.length)) out.push(o('best', () => buyOutBest(r(), st, x, of, pb, rm)));
       out.push(o('letGo', () => {}));
       return out;
     }

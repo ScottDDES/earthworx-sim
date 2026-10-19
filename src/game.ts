@@ -14,12 +14,13 @@ import { newWhs, safetyWeek, upgradeWhs, type SafetyEvent, type Whs } from './sa
 import { YARDS, type YardId } from './yards';
 import { TOWNS, type TownId } from './towns';
 import { pickStart, rainMm, wetDay } from './weather';
-import { dayOffset } from './calendar';
+import { dayOffset, shutWeek } from './calendar';
 import { SKILLS, genCandidates, hire, wages, type Candidate, type Person } from './staff';
 import { genMgrApplicants, hireMgr as hireMgrPerson, mgrIs, mgrOf, mgrTraitsWeek, mgrUnlocked, workshopCtx, type MgrRole, type MgrApplicant } from './managers';
 import { afterService, fitterWeek, wsmWeek, type WorkshopEvent } from './workshop';
 import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium as premiumOf } from './overheads';
-import { accept as acceptOffer, askWait as askWaitHire, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
+import { compat } from './compat';
+import { accept as acceptOffer, askWait as askWaitHire, barred, coverOff, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
 import { relWeek } from './relations';
 import { seasonWeek } from './seasons';
 import { coachTick, tabsWeek, type CoachState } from './coach';
@@ -524,6 +525,8 @@ export interface Report {
   tix: string[];
   /** Each day's rain, and whether it stopped work. */
   days: { wet: boolean; mm: number }[];
+  /** The Christmas shutdown: nobody worked. */
+  shut?: boolean;
   /** The jobs on the books when the week started, so the docket can name ones that finished. Not saved. */
   jobs?: Record<string, Job>;
 }
@@ -551,7 +554,18 @@ export function endWeek(c: Career): Report | null {
 
   const downDays: Record<string, number> = {};
   startWeek(c);
+  if (!compat.prototype) coverOff(c as never);
+  // Christmas: the whole district knocks off for two weeks, and contract deadlines move with it
+  const shut = !compat.prototype && shutWeek(c.week);
+  if (shut) {
+    rep.shut = true;
+    for (const j of c.jobs) if ((j.kind === 'sub' || j.kind === 'own') && !j.finished && j.due != null) j.due = (j.due as number) + 1;
+  }
   for (let day = 0; day < 5; day++) {
+    if (shut) {
+      rep.days.push({ wet: false, mm: rainMm(wx, dayOffset(c.week, day)) });
+      continue;
+    }
     let wet = wetDay(wx, c.week, day);
     const rcEv: RainCallEvent[] = [];
     wet = rainCallDay(c as never, wx, day, wet, rep, rcEv);
@@ -619,7 +633,9 @@ export function endWeek(c: Career): Report | null {
   if (c.opCover > 0) c.opCover--;
   if (c.youBlocked > 0) c.youBlocked--;
   swmsWeek(c as never, hasCrew(c), stars(c.rep));
-  curveWeek(rand, c as never, room(c), YARDS[c.yard].theft);
+  // a card the week before the Christmas shutdown, and no curve balls while everyone's away
+  if (!compat.prototype && c.staff.length && shutWeek(c.week + 2) && !shutWeek(c.week + 1)) c.queue.push({ k: 'xmas' });
+  if (compat.prototype || !shutWeek(c.week + 1)) curveWeek(rand, c as never, room(c), YARDS[c.yard].theft);
 
   for (const t of c.tenders.slice()) {
     if (t.close === c.week) {
@@ -629,6 +645,8 @@ export function endWeek(c: Career): Report | null {
   }
   for (const t of c.ctenders.slice()) {
     if (t.close === c.week) {
+      // suspended: the council doesn't look at your price
+      if (!compat.prototype && barred(c as never, TOWNS[c.town].council)) t.bid = null;
       closeCouncil(rand, c as never, planCtx(c), t, standing(c), c.co, mood(c), DIFFICULTY[d].ef, ev as CouncilEvent[]);
       c.ctenders = c.ctenders.filter((x) => x !== t);
     }
@@ -658,12 +676,14 @@ export function endWeek(c: Career): Report | null {
   c.offers = genOffers(wr, c as never, fmul(c), c.won, c.won2);
   c.market = genMarket(wr, { week: c.week, won: c.won, mood: mood(c), rivSell: c.rivSell, clear: c.clear }, () => uid(c));
   genTenders(wr, c as never, canTender((t) => owns(c, t), c.rep, c.whs.sys), mood(c), fmul(c));
-  genCouncil(wr, c as never, planCtx(c), fmul(c));
-  genMajor(wr, c as never, planCtx(c), fmul(c), canPrestige(c as never, c.whs.sys, c.yard));
+  if (compat.prototype || !barred(c as never, TOWNS[c.town].council)) {
+    genCouncil(wr, c as never, planCtx(c), fmul(c));
+    genMajor(wr, c as never, planCtx(c), fmul(c), canPrestige(c as never, c.whs.sys, c.yard));
+  }
   checkWin(c as never);
   for (const id of unlockWeek(c as never)) { ev.push({ k: 'unlocked', id }); note(c, { k: 'unlocked', id }); }
   mgrWeek(c, rand);
-  rainCallCheck(c as never, wx);
+  if (compat.prototype || !shutWeek(c.week)) rainCallCheck(c as never, wx);
   rep.tix = tickets(c);
   coachTick(c);
   tabsWeek(c);

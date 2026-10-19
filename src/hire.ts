@@ -13,7 +13,7 @@ import { HEAD_CONTRACTORS } from './market';
 import { mapDone, type DistrictMap } from './map';
 import { relAdd } from './relations';
 import { int, pick, type Rand } from './rng';
-import { shuffled } from './compat';
+import { compat, shuffled } from './compat';
 import { SKILLS, ROLES, type Person } from './staff';
 import { TOWNS, type TownId } from './towns';
 import { forecast, type WeatherCtx } from './weather';
@@ -190,6 +190,11 @@ export function seat(b: Pick<Biz, 'staff' | 'youJob'>, j: Job, who: string): voi
   }
 }
 
+/** A client that won't use you right now (a council suspension, a head contractor you chased). */
+export function barred(b: Pick<Biz, 'blocked' | 'week'>, client: string): boolean {
+  return (b.blocked[client] ?? 0) > b.week;
+}
+
 export function frozen(b: Pick<Biz, 'freeze' | 'week'>): boolean {
   return (b.freeze ?? 0) > b.week;
 }
@@ -205,6 +210,8 @@ export function genOffers(rand: Rand, b: Biz, fmul: number, won: boolean, won2: 
     const x = rand();
     let kind: HireKind = x < 0.35 ? 'wet' : x < 0.6 ? 'dry' : x < 0.75 ? 'council' : 'private';
     if ((kind === 'wet' || kind === 'dry') && !contractors.length) kind = 'council';
+    // suspended by the council: it rings someone else (the prototype keeps offering council work)
+    if (kind === 'council' && !compat.prototype && barred(b, T.council)) kind = 'private';
     const y = rand();
     const type: MachineType = kind === 'council' || kind === 'private' ? 'grader' : y < 0.6 ? 'grader' : y < 0.8 ? 'roller' : y < 0.95 || !owns(b, 'truck') ? 'cart' : 'truck';
     const place = pick(rand, T.places), id = uid(b), Ty = TYPES[type];
@@ -442,6 +449,25 @@ export function driverOff(b: Biz, j: Job): boolean {
   const p = person(b, j.who);
   if (!p) return true;
   return p.off > 0 && !(b.opCover > 0 && b.coverFor === p.id);
+}
+
+/**
+ * A driver off hurt or sick, with nobody covering: anyone free who drives that machine takes the seat, so the
+ * job keeps going. You only cover if you choose to on the card. Returns who swapped in.
+ */
+export function coverOff(b: Biz): { jobId: string; from: string; to: string }[] {
+  const out: { jobId: string; from: string; to: string }[] = [];
+  for (const j of b.jobs) {
+    if (j.finished || j.after || !DAYJOB[j.kind] || !j.who || j.who === 'you' || !driverOff(b, j)) continue;
+    const p = b.staff.find((x) => !x.jobId && x.off === 0 && ROLES[x.role].drives.includes(j.type));
+    if (!p) continue;
+    const old = person(b, j.who);
+    if (old) old.jobId = null;
+    p.jobId = j.id;
+    out.push({ jobId: j.id, from: j.who, to: p.id });
+    j.who = p.id;
+  }
+  return out;
 }
 
 export interface WeekReport {

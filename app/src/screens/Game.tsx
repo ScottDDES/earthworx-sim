@@ -161,7 +161,7 @@ function Docket({ c, r, onClose }: { c: Career; r: game.Report & { run?: RunSumm
         <div className="docket-net" style={{ color: net >= 0 ? 'var(--teal)' : 'var(--rust)' }}>{net >= 0 ? '+' : '−'}{f(Math.abs(net))} <span className="small muted">{R ? 'cash over ' + R.n + ' weeks' : 'cash this week'}</span></div>
         {stamps.length > 0 && <div className="stamps">{stamps.map((t, i) => <span key={i} className="stamp">{t}</span>)}</div>}
         <div className="card">
-          <div className="kv"><span>Rained off</span><span className="num">{r.rain} of 5 days</span></div>
+          {r.shut ? <div className="kv"><b>Christmas shutdown</b><span>Nobody working</span></div> : <div className="kv"><span>Rained off</span><span className="num">{r.rain} of 5 days</span></div>}
           <div className="fc">
             {r.days.map((x, d) => (
               <div key={d} className={'fcd' + (x.wet ? ' wet' : '')}>

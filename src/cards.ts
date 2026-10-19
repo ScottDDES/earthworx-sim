@@ -13,6 +13,7 @@ import { CLIENTS, freeDriver, invoice, uid, type Biz, type Job, type WeekReport 
 import { int, pick, type Rand } from './rng';
 import { ROLES } from './staff';
 import { TOWNS } from './towns';
+import { compat } from './compat';
 import { forecast, rainMm, type WeatherCtx } from './weather';
 import { record, type Whs } from './safety';
 
@@ -76,7 +77,7 @@ export function curveWeek(rand: Rand, b: CardState, room: number, theft: number)
   if (b.fleet.length && rand() < theft * (b.camera ? 0.5 : 1)) pool.push('breakin');
   const pj = b.jobs.find((j) => j.kind === 'private' && !j.extraAsked && !j.after);
   if (pj) pool.push('extra');
-  if (callGrader(b)) pool.push('callout', 'callout');
+  if (callGrader(b) && (compat.prototype || !((b.blocked[TOWNS[b.town].council] ?? 0) > b.week))) pool.push('callout', 'callout');
   if (rainCrews(b.jobs)) {
     pool.push('nearmiss');
     if (b.whs.hz > 0.2) pool.push('nearmiss');
@@ -189,6 +190,24 @@ export function clearingCash(rand: Rand, b: CardState): boolean {
     return true;
   }
   return false;
+}
+
+/** Christmas party costs: a night at the pub, or a barbie in the yard. Per head, crew plus you. */
+export function xmasCost(staff: number): { party: number; bbq: number } {
+  return { party: 180 * (staff + 1) + 800, bbq: 40 * (staff + 1) + 200 };
+}
+
+/** Send the crew off for Christmas: the party lifts culture and counts as a yarn with everyone; skipping it costs. */
+export function xmasParty(b: CardState, how: 'party' | 'bbq' | 'skip'): void {
+  const c = xmasCost(b.staff.length);
+  if (how === 'party') {
+    b.bank -= c.party;
+    b.whs.cult = Math.min(100, b.whs.cult + 10);
+    for (const p of b.staff) p.yarn = b.week;
+  } else if (how === 'bbq') {
+    b.bank -= c.bbq;
+    b.whs.cult = Math.min(100, b.whs.cult + 4);
+  } else b.whs.cult = Math.max(0, b.whs.cult - 5);
 }
 
 /** Someone's back has gone: send them home (2 weeks), jump on their machine yourself, or let them keep going (45% injured). */

@@ -23,7 +23,7 @@ import { coachOff, coachOk, runOn } from './coach';
 import { note } from './diary';
 
 /** Bump whenever the simulation changes, so older scores aren't checked against new rules. */
-export const SIM_VER = 2; // 2: Run on answers small cards itself
+export const SIM_VER = 3; // 2: Run on answers small cards itself. 3: playtest fixes (council bans, cover, Christmas)
 
 export type SeasonId = 'wet2010' | 'dry2019' | 'prog2022';
 

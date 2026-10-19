@@ -17,6 +17,12 @@ export function yearOf(week: number): number {
   return BASE_YEAR + Math.floor((Math.floor((week - 1) / WEEKS_PER_MONTH) + START_MONTH) / 12);
 }
 
+/** The Christmas shutdown: the two weeks from about 20 December (day 263 counting from 1 April). */
+export function shutWeek(week: number): boolean {
+  const d = ((week - 1) * 7) % 365.25;
+  return d >= 262 && d < 276;
+}
+
 /** Days since the career began, for looking up that day's rain. */
 export function dayOffset(week: number, day: number): number {
   return (week - 1) * 7 + day;
