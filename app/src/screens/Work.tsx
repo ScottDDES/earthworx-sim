@@ -101,7 +101,7 @@ function SubOffers({ c, j, act }: { c: Career; j: Job; act: Act }) {
 }
 
 function JobCard({ c, j, act }: { c: Career; j: Job; act: Act }) {
-  if (j.kind === 'dam') return <DamJobCard c={c} j={j} />;
+  if (j.kind === 'dam') return <DamJobCard c={c} j={j} act={act} />;
   const due = j.due as number, late = c.week > due;
   if (j.state === 'subbed') {
     const q = j.sub as { name: string; crews: number; pace: number; rate?: number }, ldw = j.kind === 'own' ? ((j.ld as number) ?? LD_OWN) : LD_WEEK;

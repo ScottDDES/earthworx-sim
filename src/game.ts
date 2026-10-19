@@ -20,7 +20,7 @@ import { genMgrApplicants, hireMgr as hireMgrPerson, mgrIs, mgrOf, mgrTraitsWeek
 import { afterService, fitterWeek, wsmWeek, type WorkshopEvent } from './workshop';
 import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium as premiumOf } from './overheads';
 import { compat } from './compat';
-import { bulkStart, bulkWeek, damDay, sendQuote, setRate, survey, type BulkEvent, type FarmEnquiry } from './bulk';
+import { bulkStart, bulkWeek, damDay, sendQuote, setPrecon, setRate, survey, type BulkBook, type BulkEvent } from './bulk';
 import { ERP_SETUP, PRICE_CHECK_FEE, erpOk, priceBand } from './advisory';
 import { BID_ODDS, rvOHFor } from './rivals';
 import { accept as acceptOffer, askWait as askWaitHire, barred, coverOff, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
@@ -71,7 +71,7 @@ export interface Career {
   /** Expansion packs switched on. Bulk and Ag is behind a test switch until it's sold as a pack. */
   packs?: { bulk?: boolean };
   /** The Bulk and Ag pack's farm enquiries. */
-  bulk?: { enq: FarmEnquiry[] };
+  bulk?: BulkBook;
   youJob: string | null;
   rep: number;
   ins: number;
@@ -321,6 +321,9 @@ export function damRate(c: Career, id: string, d: number): void {
 }
 export function damQuote(c: Career, id: string): boolean {
   return sendQuote(c as never, id);
+}
+export function damPrecon(c: Career, id: string, on: boolean): boolean {
+  return setPrecon(c as never, id, on);
 }
 
 /** Open for business: the first week's work, market and tenders. */
@@ -769,7 +772,7 @@ export function endWeek(c: Career): Report | null {
   c.offers = genOffers(wr, c as never, fmul(c), c.won, c.won2);
   c.market = genMarket(wr, { week: c.week, won: c.won, mood: mood(c), rivSell: c.rivSell, clear: c.clear }, () => uid(c));
   bulkMarket(c);
-  if (c.packs?.bulk) bulkWeek(worldRand(c, 'bulk-enq'), c as never, fmul(c), ev as BulkEvent[]);
+  if (c.packs?.bulk) bulkWeek(worldRand(c, 'bulk-enq'), c as never, fmul(c), ev as BulkEvent[], rep.mm);
   genTenders(wr, c as never, canTender((t) => owns(c, t), c.rep, c.whs.sys), mood(c), fmul(c));
   if (compat.prototype || !barred(c as never, TOWNS[c.town].council)) {
     genCouncil(wr, c as never, planCtx(c), fmul(c));

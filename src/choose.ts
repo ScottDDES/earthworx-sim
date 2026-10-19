@@ -10,6 +10,7 @@ import { hashN, pick, seedRand, type Rand } from './rng';
 import { lateChase, lateFriendly, latePark, lateWait, release, stars, type Job } from './hire';
 import { TOWNS } from './towns';
 import { compat } from './compat';
+import { REDZONE_CASH, REDZONE_FINE, leakArgue, leakFix, redzoneTake, wetClayPush, wetClayWait } from './bulk';
 import { ROLES } from './staff';
 import { mgrIs } from './managers';
 import { TYPES, overdue, value } from './machines';
@@ -236,6 +237,19 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       Object.assign(data, { g, job: gj, place: pick(cr, TOWNS[c.town].places), council: TOWNS[c.town].council });
       return [gj ? o('pullOff', () => calloutPull(r(), st, g, gj)) : o('go', () => callWork(st, g)), o('flatOut', () => {})];
     }
+    case 'wetclay': {
+      const j = jobOf(c, q.id);
+      if (!j || j.finished) return null;
+      Object.assign(data, { job: j, mm: q.mm, tested: !!j.tested });
+      return [o('wait', () => wetClayWait(j)), o('push', () => wetClayPush(c, j))];
+    }
+    case 'leak':
+      Object.assign(data, { farm: q.farm, place: q.place, dk: q.dk, fix: q.fix });
+      return [o('fix', () => leakFix(st, q.fix)), o('argue', () => leakArgue(st))];
+    case 'redzone':
+      data.cash = REDZONE_CASH;
+      data.fine = REDZONE_FINE;
+      return [o('no', () => {}), o('take', () => redzoneTake(st))];
     case 'early': {
       const ec = earlyClient(st);
       if (!ec) return null;

@@ -1,7 +1,7 @@
 // The fixes after the port: where the real game does better than the prototype.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, coverOff, drawCard, game, genEnquiry, genOffers, isBulk, pricingVol, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot } from '../src';
+import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, coverOff, dayQuality, drawCard, game, genEnquiry, genOffers, isBulk, leakOdds, passOdds, pricingVol, REDZONE_CASH, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot } from '../src';
 
 describe('a fair shuffle', () => {
   beforeAll(() => { compat.prototype = false; });
@@ -392,5 +392,87 @@ describe('Bulk and Ag pack, step 2: farm dams', () => {
     expect(pricingVol(e)).toBe(e.vol);
     e.surveyed = true;
     expect(pricingVol(e)).toBeGreaterThan(e.vol * 1.15);
+  });
+});
+
+describe('Bulk and Ag pack, step 3: what goes wrong', () => {
+  beforeAll(() => { compat.prototype = false; });
+  afterAll(() => { compat.prototype = true; });
+
+  const outfit = (seed: number, gear: string[]) => {
+    const c = game.newCareer({ co: 'Wall Earthmoving', loan: 900000, town: 'gdi' }, seed);
+    c.phase = 'play';
+    c.yard = 'regional';
+    c.bank = 2000000;
+    for (const [i, type] of gear.entries()) c.fleet.push({ id: 'b' + i, type, year: 2016, cond: 85, hours: 8000, svcAt: 8000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null } as never);
+    game.setPack(c, 'bulk', true);
+    return c;
+  };
+  const run = (gear: string[], opts: { tested?: boolean; precon?: boolean; answer?: (k: string) => number }) => {
+    let walls = 0, passed = 0, tested = 0;
+    const cards: Record<string, number> = {};
+    for (let seed = 1; seed <= 25; seed++) {
+      const c = outfit(seed, gear);
+      for (let w = 0; w < 70; w++) {
+        for (const e of c.bulk?.enq ?? []) {
+          if (opts.tested != null) e.tested = opts.tested;
+          if (!e.quoted && !c.jobs.some((j) => j.kind === 'dam' && !j.finished)) { e.rate = 2; game.damQuote(c, e.id); }
+        }
+        for (const j of c.jobs) if (j.kind === 'dam' && opts.precon) game.damPrecon(c, j.id, true);
+        for (let k = 0; c.queue.length && k < 20; k++) { const q = c.queue[0]!; cards[q.k] = (cards[q.k] || 0) + 1; choose(c, opts.answer ? opts.answer(q.k) : 0); }
+        const r = game.endWeek(c);
+        for (const e of (r?.events ?? []) as { k: string }[]) { if (e.k === 'damPassed') { passed++; tested++; } if (e.k === 'damFailed') tested++; }
+      }
+      walls += c.jobs.filter((j) => j.kind === 'dam' && j.finished).length;
+    }
+    return { walls, passed, tested, cards };
+  };
+
+  it('quality, test odds and leak odds move the right way', () => {
+    const poor = dayQuality({ compacted: false, watered: false, precon: false }, false), full = dayQuality({ compacted: true, watered: true, precon: true }, false);
+    expect(poor).toBeLessThan(0.6);
+    expect(full).toBe(1);
+    expect(dayQuality({ compacted: true, watered: true, precon: false }, true)).toBeLessThan(dayQuality({ compacted: true, watered: true, precon: false }, false));
+    expect(passOdds(0.95)).toBe(1);
+    expect(passOdds(0.5)).toBe(0);
+    expect(leakOdds(0.9)).toBe(0);
+    expect(leakOdds(0.55)).toBeGreaterThan(0.4);
+  });
+
+  it('a dozer on its own builds walls that leak; a full spread rarely does', () => {
+    const rough = run(['d9'], { tested: false }), proper = run(['s637', 's637', 'c825', 'moxycart'], { tested: false });
+    expect(rough.walls).toBeGreaterThan(10);
+    expect(proper.walls).toBeGreaterThan(10);
+    expect((rough.cards.leak || 0) / rough.walls).toBeGreaterThan(0.25);
+    expect((proper.cards.leak || 0) / proper.walls).toBeLessThan(0.05);
+  });
+
+  it('preconditioning the pit gets tested walls through', () => {
+    const plain = run(['s631', 's631', 'd8', 'padfoot'], { tested: true }), pre = run(['s631', 's631', 'd8', 'd8', 'c825', 'moxycart', 'moxycart'], { tested: true, precon: true });
+    expect(plain.tested).toBeGreaterThan(5);
+    expect(pre.tested).toBeGreaterThan(5);
+    expect(pre.passed / pre.tested).toBeGreaterThan(plain.passed / plain.tested);
+    expect(pre.passed / pre.tested).toBeGreaterThan(0.9);
+  });
+
+  it('wet weeks bring the wet-clay card, and a big dozer brings the red-zone call', () => {
+    const r = run(['s637', 's637', 'd9', 'c825', 'moxycart'], {});
+    expect(r.cards.wetclay || 0).toBeGreaterThan(0);
+    expect(r.cards.redzone || 0).toBeGreaterThan(0);
+  });
+
+  it('taking the red-zone job pays cash, and sometimes comes out', () => {
+    let found = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const c = outfit(seed, ['d9']);
+      c.queue = [{ k: 'redzone' }];
+      const bank = c.bank;
+      choose(c, 1);
+      expect(c.bank).toBe(bank + REDZONE_CASH);
+      for (let w = 0; w < 55; w++) { c.queue = []; game.endWeek(c); }
+      if (c.bulk?.rzFound) found++;
+    }
+    expect(found).toBeGreaterThan(5);
+    expect(found).toBeLessThan(40);
   });
 });

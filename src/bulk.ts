@@ -41,6 +41,17 @@ export const BULK_CASUAL = 650;
 /** Weeks an enquiry waits for your price, and weeks a won dam waits for a spread before the farmer goes elsewhere. */
 export const ENQ_WEEKS = 3;
 export const WAIT_WEEKS = 6;
+/** Share of enquiries that come with an engineer's spec and compaction tests on the wall, and what they pay extra. */
+export const TESTED_SHARE = 0.35;
+export const TESTED_PREMIUM = 0.15;
+/** A failed wall test: rework at this share of the price. A leak fixed: this share. */
+export const REWORK = 0.12;
+export const LEAK_FIX = 0.15;
+/** The red-zone call: three days' hourly cash, and the fine if it comes out. */
+export const REDZONE_CASH = 7200;
+export const REDZONE_FINE = 60000;
+/** A week with this much rain leaves the clay too wet to compact. */
+export const WET_CLAY_MM = 25;
 
 export type DamKind = 'ringTank' | 'turkeyNest';
 
@@ -59,6 +70,8 @@ export interface FarmEnquiry {
   /** What a surveyor would tell you (within 3% of the truth). Hidden until paid for. */
   survey: number;
   surveyed?: boolean;
+  /** An engineer's spec: compaction tests on the wall. */
+  tested?: boolean;
   /** The farmer's ceiling. Hidden. */
   budget: number;
   /** Your rate per m³, and the price once sent. */
@@ -67,7 +80,17 @@ export interface FarmEnquiry {
   week: number;
 }
 
-export type BulkState = Biz & { bulk?: { enq: FarmEnquiry[] } };
+export interface Leak { w: number; farm: string; place: string; dk: DamKind; price: number }
+export interface BulkBook {
+  enq: FarmEnquiry[];
+  /** Walls that will leak, and when the farmer rings. */
+  leaks?: Leak[];
+  /** The red-zone call: last asked, taken (week), found out. */
+  rzLast?: number;
+  rz?: number;
+  rzFound?: boolean;
+}
+export type BulkState = Biz & { bulk?: BulkBook };
 type B = BulkState;
 
 const FARMS = ['Kelly', 'Hartigan', 'Morrow', 'Fitzgerald', 'Lucas', 'Pearce', 'Doyle', 'McCann', 'Walsh', 'Brennan'] as const;
@@ -86,8 +109,10 @@ export function genEnquiry(rand: Rand, b: B, fmul: number): FarmEnquiry {
   const survey = Math.round(truth * (0.97 + rand() * 0.06));
   // big ring tanks go cheaper a m³ than small, fiddly turkey nests
   const budget = round(vol * (kind === 'ringTank' ? 2.6 + rand() * 1.0 : 3.8 + rand() * 1.4) * (0.92 + 0.08 * fmul), 500);
+  const tested = rand() < TESTED_SHARE;
+  const tbudget = tested ? round(budget * (1 + TESTED_PREMIUM), 500) : budget;
   const haul = kind === 'ringTank' ? int(rand, 15, 40) * 10 : int(rand, 6, 20) * 10;
-  return { id: uid(b), kind, farm: pick(rand, FARMS), place: pick(rand, TOWNS[b.town].places), dam, haul, vol, truth, survey, budget, rate: kind === 'ringTank' ? 3.1 : 4.5, week: b.week };
+  return { id: uid(b), kind, farm: pick(rand, FARMS), place: pick(rand, TOWNS[b.town].places), dam, haul, vol, truth, survey, budget: tbudget, tested, rate: (kind === 'ringTank' ? 3.1 : 4.5) + (tested ? 0.5 : 0), week: b.week };
 }
 
 /** Pay a surveyor: their figure replaces the sum on the plans. */
@@ -132,11 +157,39 @@ export type BulkEvent =
   | { k: 'damLapsed'; farm: string; place: string }
   | { k: 'damStarted'; jobId: string }
   | { k: 'damDone'; jobId: string; price: number; m3: number; est: number }
-  | { k: 'damGone'; jobId: string };
+  | { k: 'damGone'; jobId: string }
+  | { k: 'damPassed'; jobId: string }
+  | { k: 'damFailed'; jobId: string; cost: number }
+  | { k: 'redzoneFound'; fine: number };
 
 /** Once a week: farmers answer last week's quotes, unpriced enquiries lapse, and the phone might ring. */
-export function bulkWeek(rand: Rand, b: B, fmul: number, events: BulkEvent[]): void {
+export function bulkWeek(rand: Rand, b: B, fmul: number, events: BulkEvent[], mm = 0): void {
   const S = (b.bulk ??= { enq: [] });
+  // a wall that's leaking: the farmer rings
+  for (const L of (S.leaks ?? []).slice()) {
+    if (L.w <= b.week) {
+      S.leaks = S.leaks!.filter((x) => x !== L);
+      b.queue.push({ k: 'leak', ...L, fix: round(L.price * LEAK_FIX, 100) });
+    }
+  }
+  // a wet week: the clay on a dam that's going is too wet to roll
+  if (mm >= WET_CLAY_MM) {
+    const j = b.jobs.find((x) => x.kind === 'dam' && x.state === 'running' && !x.finished);
+    if (j && !b.queue.some((q) => q.k === 'wetclay')) b.queue.push({ k: 'wetclay', id: j.id, mm: Math.round(mm) });
+  }
+  // if you took the red-zone job, it can come out over the next year
+  if (S.rz != null && !S.rzFound && b.week - S.rz <= 52 && rand() < 0.008) {
+    S.rzFound = true;
+    b.bank -= REDZONE_FINE;
+    b.rep = Math.max(0, b.rep - 3);
+    events.push({ k: 'redzoneFound', fine: REDZONE_FINE });
+    note(b, { k: 'redzoneFound', fine: REDZONE_FINE });
+  }
+  // the red-zone call itself: once in a while, to an outfit with a big dozer
+  if (b.fleet.some((m) => m.type === 'd8' || m.type === 'd9' || m.type === 'd10') && b.week - (S.rzLast ?? -99) >= 40 && !b.queue.length && rand() < 0.04) {
+    S.rzLast = b.week;
+    b.queue.push({ k: 'redzone' });
+  }
   for (const e of S.enq.slice()) {
     if (e.quoted && e.week < b.week) {
       S.enq = S.enq.filter((x) => x !== e);
@@ -173,7 +226,7 @@ function damJob(b: B, e: FarmEnquiry): Job {
   const j: Job = {
     id: uid(b), kind: 'dam', type: 'd8', client: e.farm, place: e.place, days: 0, done: 0, rate: 0, fixed: e.quoted, terms: 2, fuelPaid: true,
     mId: null, who: null, rollerId: null, hireIn: 0, extra: 0, earned: 0, idleWeeks: 0, state: 'waiting',
-    dk: e.kind, dam: e.dam, haul: e.haul, truth: e.truth, est: pricingVol(e), m3: 0, won: b.week, spread: [] as string[], crew: {} as Record<string, string>,
+    dk: e.kind, tested: !!e.tested, qsum: 0, dam: e.dam, haul: e.haul, truth: e.truth, est: pricingVol(e), m3: 0, won: b.week, spread: [] as string[], crew: {} as Record<string, string>,
   };
   b.jobs.push(j);
   return j;
@@ -184,7 +237,16 @@ function damJob(b: B, e: FarmEnquiry): Job {
 const bulkScraper = (t: MachineType) => SCRAPER_SPEC[t as BulkType];
 
 /** What a set of machines moves an hour (bank m³), part by part, and the slowest part. */
-export function spreadRate(ms: readonly Pick<Machine, 'type'>[], haul: number): { rates: Record<string, number>; perHour: number; slowest: string; compacted: boolean; watered: boolean } {
+export function spreadRate(all: readonly Pick<Machine, 'type'>[], haul: number, precon = false): { rates: Record<string, number>; perHour: number; slowest: string; compacted: boolean; watered: boolean; precon: boolean } {
+  // preconditioning the pit takes a dozer (the smallest) and a moxy water cart off the spread
+  let ms = all.slice(), pre = false;
+  if (precon) {
+    const dz = ms.filter((m) => DOZE[m.type as BulkType]).sort((a, z) => DOZE[a.type as BulkType]! - DOZE[z.type as BulkType]!)[0], mc = ms.find((m) => m.type === 'moxycart');
+    if (dz && mc) {
+      ms = ms.filter((m) => m !== dz && m !== mc);
+      pre = true;
+    }
+  }
   const scr = ms.filter((m) => bulkScraper(m.type)), doz = ms.filter((m) => DOZE[m.type as BulkType]);
   const comp = ms.filter((m) => COMPACT_W[m.type as BulkType]), carts = ms.filter((m) => TANK[m.type]);
   const rates: Record<string, number> = {};
@@ -214,7 +276,7 @@ export function spreadRate(ms: readonly Pick<Machine, 'type'>[], haul: number): 
   if (carts.length) rates.water = carts.reduce((a, m) => a + waterCartRate(TANK[m.type]!, CART_TRIP), 0) / waterNeeded(1 - SHRINK, MOIST_ADD);
   let slowest = '', perHour = Infinity;
   for (const [k, r] of Object.entries(rates)) if (r < perHour) { perHour = r; slowest = k; }
-  return { rates, perHour: perHour === Infinity ? 0 : perHour * DELAYS, slowest, compacted: comp.length > 0, watered: carts.length > 0 };
+  return { rates, perHour: perHour === Infinity ? 0 : perHour * DELAYS, slowest, compacted: comp.length > 0, watered: carts.length > 0, precon: pre };
 }
 
 /** The machines a dam would take if it started now: every idle, working bulk machine and water cart. */
@@ -278,16 +340,41 @@ export function bulkStart(b: B, events: BulkEvent[]): void {
 }
 
 /** A day on a dam: the working machines move what the slowest part allows; fuel, servicing and casuals are paid. */
+/** How good a day's work on the wall is, 0 to 1: rolled, watered, the pit preconditioned, or pushed on in wet clay. */
+export function dayQuality(sr: { compacted: boolean; watered: boolean; precon: boolean }, wetPush: boolean): number {
+  return Math.max(0, Math.min(1, 0.55 + (sr.compacted ? 0.25 : 0) + (sr.watered ? 0.1 : 0) + (sr.precon ? 0.15 : 0) - (wetPush ? 0.25 : 0)));
+}
+
+/** The wall as built so far, 0 to 1. */
+export function wallQuality(j: Job): number {
+  return (j.m3 as number) > 0 ? ((j.qsum as number) || 0) / (j.m3 as number) : 0;
+}
+
+/** A tested wall passes on quality: sure at 0.9, never at 0.5 or below. Untested, a poor wall leaks: never at 0.85 or better. */
+export function passOdds(q: number): number {
+  return Math.max(0, Math.min(1, (q - 0.5) / 0.4));
+}
+export function leakOdds(q: number): number {
+  return Math.max(0, Math.min(1, (0.85 - q) * 1.5));
+}
+
 export function damDay(rand: Rand, b: B, j: Job, wet: boolean, w: WorkshopCtx, rep: WeekReport, events: BulkEvent[]): void {
   if (j.state !== 'running' || j.finished || wet) return;
+  // waiting for the clay to dry out
+  if (((j.dry as number) || 0) > 0) {
+    j.dry = (j.dry as number) - 1;
+    rep.lost++;
+    return;
+  }
   const ms = b.fleet.filter((m) => m.jobId === j.id && m.down === 0);
   const crew = j.crew as Record<string, string>;
   // a seat whose driver is off today stops that machine
   const going = ms.filter((m) => { const who = crew[m.id]; if (!who || who === 'casual') return true; if (who === 'you') return !(b.youBlocked > 0); return (b.staff.find((p) => p.id === who)?.off ?? 1) === 0; });
-  const sr = spreadRate(going, j.haul as number);
+  const sr = spreadRate(going, j.haul as number, !!j.precon && !!j.tested);
   if (sr.perHour <= 0) { rep.lost++; return; }
   const moved = sr.perHour * 9;
   j.m3 = (j.m3 as number) + moved;
+  j.qsum = ((j.qsum as number) || 0) + moved * dayQuality(sr, j.wetPush === b.week);
   j.wkM3 = ((j.wkM3 as number) || 0) + moved;
   j.slowest = sr.slowest;
   rep.worked++;
@@ -314,6 +401,55 @@ export function damDay(rand: Rand, b: B, j: Job, wet: boolean, w: WorkshopCtx, r
     for (const p of b.staff) if (p.jobId === j.id) p.jobId = null;
     if (b.youJob === j.id) b.youJob = null;
     events.push({ k: 'damDone', jobId: j.id, price: j.fixed as number, m3: Math.round(j.truth as number), est: Math.round(j.est as number) });
+    // the wall: a tested one is tested now; an untested poor one leaks later
+    const q = wallQuality(j);
+    j.q = Math.round(q * 100) / 100;
+    if (j.tested) {
+      if (rand() < passOdds(q)) {
+        b.rep += 1;
+        events.push({ k: 'damPassed', jobId: j.id });
+      } else {
+        const cost = round((j.fixed as number) * REWORK, 100);
+        b.bank -= cost;
+        rep.costs += cost;
+        j.spent = (j.spent || 0) + cost;
+        b.rep = Math.max(0, b.rep - 1);
+        events.push({ k: 'damFailed', jobId: j.id, cost });
+      }
+    } else if (rand() < leakOdds(q)) {
+      const S = (b.bulk ??= { enq: [] });
+      (S.leaks ??= []).push({ w: b.week + int(rand, 8, 30), farm: j.client, place: j.place, dk: j.dk as DamKind, price: j.fixed as number });
+    }
     note(b, { k: 'damDone', farm: j.client, place: j.place, dk: j.dk, price: j.fixed, m3: Math.round(j.truth as number), est: Math.round(j.est as number), spent: Math.round(j.spent || 0) });
   }
+}
+
+/** Precondition the pit (tested walls only): a dozer and a moxy water cart wet the dirt up before it's picked up. */
+export function setPrecon(b: B, id: string, on: boolean): boolean {
+  const j = b.jobs.find((x) => x.id === id);
+  if (!j || j.kind !== 'dam' || !j.tested || j.finished) return false;
+  j.precon = on;
+  return true;
+}
+
+// ---------- the cards ----------
+
+/** Wet clay: wait two working days for it to dry, or push on and the wall suffers this week. */
+export function wetClayWait(j: Job): void {
+  j.dry = 2;
+}
+export function wetClayPush(b: { week: number }, j: Job): void {
+  j.wetPush = b.week;
+}
+/** A leaking wall: go back and fix it, or tell them it's their clay. */
+export function leakFix(b: B, fix: number): void {
+  b.bank -= fix;
+}
+export function leakArgue(b: B): void {
+  b.rep = Math.max(0, b.rep - 2);
+}
+/** The red-zone job: the cash now, and a chance it comes out over the next year. */
+export function redzoneTake(b: B): void {
+  b.bank += REDZONE_CASH;
+  (b.bulk ??= { enq: [] }).rz = b.week;
 }

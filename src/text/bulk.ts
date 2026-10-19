@@ -20,6 +20,11 @@ export function enquiryLine(e: FarmEnquiry): string {
   return d.topLength + ' × ' + d.topWidth + ' m at the top, ' + d.depth + ' m deep, ' + d.sideBatter + ':1 sides and ' + d.endBatter + ':1 ends. About ' + e.haul + ' m from the pit to the wall.';
 }
 
+/** The wall so far, in a word. */
+export function wallWord(q: number): string {
+  return q >= 0.85 ? 'good' : q >= 0.7 ? 'fair' : 'poor';
+}
+
 /** What the slowest part of the spread is, in words. */
 export const SLOWEST: Record<string, string> = {
   scrapers: 'the scrapers',
@@ -42,6 +47,9 @@ export function bulkLine(e: { k: string; [x: string]: any }, title?: string): st
     case 'damLapsed': return (e.farm ?? 'A farmer') + ' near ' + e.place + ' stopped waiting for your price.';
     case 'damStarted': return 'The spread is on ' + (title ?? (e.farm + '\'s dam near ' + e.place)) + '.';
     case 'damDone': return (title ?? (e.farm + '\'s dam near ' + e.place)) + ' is finished: ' + n0(e.m3) + ' m³ moved, against ' + n0(e.est) + ' priced. ' + f(e.price) + ' invoiced' + (e.spent != null ? ', ' + f(e.spent) + ' spent on fuel, servicing and casuals.' : '.');
+    case 'damPassed': return (title ?? 'The wall') + ': passed its compaction tests. Track record +1.';
+    case 'damFailed': return (title ?? 'The wall') + ': failed its compaction tests. ' + f(e.cost) + ' of rework, track record −1.';
+    case 'redzoneFound': return 'That scrub you pushed over has come out. A fine of ' + f(e.fine) + ', and track record −3.';
     case 'damGone': return (e.farm ? e.farm + ' got someone else in: nobody turned up to start the dam near ' + e.place : 'A farmer got someone else in: the dam never started') + '. Track record −1.';
   }
   return null;

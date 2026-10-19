@@ -1,10 +1,10 @@
 // The Bulk and Ag pack on the Work tab: farmers ringing about dams, and the dams on the go.
 
 import {
-  BULK_CASUAL, SURVEY_COST, TYPES, WAIT_WEEKS, damEstimate, damVolume, freeSpread, pricingVol, quotePrice, game,
+  BULK_CASUAL, SURVEY_COST, TYPES, WAIT_WEEKS, wallQuality, damEstimate, damVolume, freeSpread, pricingVol, quotePrice, game,
   type FarmEnquiry, type Job,
 } from '@engine';
-import { DAM_KIND, SLOWEST, damTitle, enquiryLine } from '@engine/text/bulk';
+import { DAM_KIND, SLOWEST, damTitle, enquiryLine, wallWord } from '@engine/text/bulk';
 import { f } from '../format';
 
 type Career = game.Career;
@@ -16,9 +16,10 @@ export function EnquiryCard({ c, e, act }: { c: Career; e: FarmEnquiry; act: Act
   const vol = pricingVol(e), d = damVolume(e.dam), spread = freeSpread(c), est = damEstimate(c as never, spread, vol, e.haul), price = quotePrice(e);
   return (
     <div className="card">
-      <div className="row"><span className="chip c-job">FARM</span><span className="chip c-idle">{DAM_KIND[e.kind].toUpperCase()}</span><span className="grow" /><span className="tiny muted">{e.quoted ? 'Price sent' : 'Rang week ' + e.week}</span></div>
+      <div className="row"><span className="chip c-job">FARM</span><span className="chip c-idle">{DAM_KIND[e.kind].toUpperCase()}</span>{e.tested && <span className="chip c-rain">TESTED WALL</span>}<span className="grow" /><span className="tiny muted">{e.quoted ? 'Price sent' : 'Rang week ' + e.week}</span></div>
       <b>{damTitle(e)}</b>
       <div className="small muted">{enquiryLine(e)}</div>
+      {e.tested && <div className="tiny">An engineer's spec: the wall gets compaction tests at the end, and pays about 15% more. Fail and you rework it at your cost. Roll it, water it, and think about preconditioning the pit.</div>}
       <div className="kv"><span>The dam sum (floor {n0(d.floorLength)} × {n0(d.floorWidth)} m)</span><span className="num">{n0(e.vol)} m³</span></div>
       {e.surveyed
         ? <div className="kv"><span>The surveyor's figure</span><b className="num">{n0(e.survey)} m³</b></div>
@@ -49,7 +50,7 @@ export function EnquiryCard({ c, e, act }: { c: Career; e: FarmEnquiry; act: Act
 }
 
 /** A dam on the go: dirt moved, the spread and who's driving, and what's holding it up. */
-export function DamJobCard({ c, j }: { c: Career; j: Job }) {
+export function DamJobCard({ c, j, act }: { c: Career; j: Job; act: Act }) {
   const ms = c.fleet.filter((m) => m.jobId === j.id), crew = (j.crew || {}) as Record<string, string>;
   const est = j.est as number, m3 = Math.min(j.m3 as number, j.truth as number), pct = Math.min(100, Math.round((m3 / est) * 100));
   const who = (id: string) => (id === 'you' ? 'You' : id === 'casual' ? 'labour hire' : c.staff.find((p) => p.id === id)?.name ?? '?');
@@ -65,6 +66,13 @@ export function DamJobCard({ c, j }: { c: Career; j: Job }) {
           <div className="bar"><i style={{ width: pct + '%', background: pct > 100 ? 'var(--rust)' : 'var(--teal)' }} /></div>
           {(j.m3 as number) > est && <div className="tiny" style={{ color: 'var(--rust)' }}>Past what you priced: there's more dirt in it than you allowed for, and the price is fixed.</div>}
           <div className="tiny muted">{ms.map((m) => TYPES[m.type].short + (m.down > 0 ? ' (broken down)' : '') + ': ' + who(crew[m.id] ?? 'casual')).join(' · ')}</div>
+          <div className="tiny">The wall so far: <b>{wallWord(wallQuality(j))}</b>{j.tested ? ' (tested at the end)' : ''}.</div>
+          {!!j.tested && (
+            <div className="row" style={{ paddingTop: 4 }}>
+              <span className="grow"><b className="small">Precondition the pit</b><br /><span className="tiny muted">A dozer and a moxy water cart wet the dirt before it's picked up. Slower spread, much better wall.</span></span>
+              <button type="button" className={'btn' + (j.precon ? ' dark' : '')} aria-pressed={!!j.precon} onClick={() => act((x) => game.damPrecon(x, j.id, !j.precon))}>{j.precon ? 'On' : 'Off'}</button>
+            </div>
+          )}
           {j.slowest ? <div className="tiny muted">Held up by {SLOWEST[j.slowest as string] ?? (j.slowest as string)}. Spent so far {f(j.spent || 0)}.</div> : null}
         </>
       )}

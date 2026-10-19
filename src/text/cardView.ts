@@ -12,6 +12,7 @@ import { TRUCK_DAY } from '../planning';
 import { WHS_SYS } from '../overheads';
 import { HURT_ADVISORY, WELLBEING_ADVISORY, nearMissAdvisoryCost, seriousAdvisoryCost } from '../advisory';
 import { compat } from '../compat';
+import { DAM_KIND } from './bulk';
 import { yearOf } from '../calendar';
 import { councilTitle, jobTitle, pmOf, subTenderTitle } from './work';
 import { NEAR_MISS_STORIES, QUIET_REPLIES, SERIOUS_STORIES } from './safety';
@@ -207,6 +208,22 @@ export function cardView(c: Career, q: Career['queue'][number], d: DrawnCard): C
       if (!compat.prototype) put('advisory', 'Ring DDES Advisory · ' + f(HURT_ADVISORY), 'They manage the injury: the right doctor this week and a return-to-work plan. ' + n + ' is back in a week, not two.');
       return out('Crew', n + '\'s back has gone', n + ' says a week of rough tracks has done their back in, but wants to keep going.');
     }
+    case 'wetclay': {
+      const t = (DAM_KIND[D.job.dk as keyof typeof DAM_KIND] ?? 'dam').toLowerCase();
+      put('wait', 'Wait for it to dry', 'Two working days lost while the clay dries out. The wall goes in right.');
+      put('push', 'Push on', 'No days lost, but wet clay won\'t compact: this week\'s layers go in soft.' + (D.tested ? ' The wall gets tested at the end.' : ' It might hold. It might leak.'));
+      return out('Bulk and Ag', 'The clay\'s wet', D.mm + ' mm last week. The clay in the pit on ' + D.job.client + '\'s ' + t + ' near ' + D.job.place + ' is too wet to roll down.');
+    }
+    case 'leak': {
+      const t = (DAM_KIND[D.dk as keyof typeof DAM_KIND] ?? 'dam').toLowerCase();
+      put('fix', 'Go back and fix it · ' + f(D.fix), 'Float a spread back out, cut out the soft section and rebuild it properly.');
+      put('argue', 'Tell them it\'s their clay', 'Free today. ' + D.farm + ' will tell everyone at the field day. Track record −2.');
+      return out('Bulk and Ag', D.farm + '\'s dam is leaking', D.farm + ' rang: the ' + t + ' you built near ' + D.place + ' is dropping faster than evaporation, and there\'s a wet patch at the toe of the wall.');
+    }
+    case 'redzone':
+      put('no', 'Say no', 'It\'s not allowed to be cleared, and the fine would land on you as well as them. They might ring someone else for their next dam.');
+      put('take', 'Take it · ' + f(D.cash) + ' cash', 'Three days on the dozer, hourly, cash in hand. If it comes out over the next year: a fine of about ' + f(D.fine) + ' and track record −3.');
+      return out('Bulk and Ag', 'A job off the books', 'A grazier rang. They want a patch of scrub pushed over on the back of the place: country you know is mapped as not to be cleared. Hourly rate, cash, no paperwork. "Nobody goes out there."');
     case 'xmas':
       put('party', 'Christmas party at the pub · ' + f(D.cost.party), 'A proper night out for the crew and their partners. They\'ll be talking about it for weeks.');
       put('bbq', 'A slab and a barbie in the yard · ' + f(D.cost.bbq), 'Friday arvo, sausages and a few beers. Better than nothing.');
@@ -373,6 +390,9 @@ function line(c: Career, k: string, id: string, D: Record<string, any>, R: any):
       if (id === 'advisory') return n + ' saw a physio on Tuesday and is back on Monday with light duties sorted.';
       return R ? n + ' finished the week, then was off for 6 weeks. Insurance claim lodged and your premium is up.' : n + ' got through it. You got lucky this time.';
     }
+    case 'wetclay': return id === 'wait' ? 'Stood the spread down for two days to let it dry.' : 'Pushed on. The layers this week went in heavy and soft.';
+    case 'leak': return id === 'fix' ? 'Back out there with a spread. Fixed properly this time: ' + f(D.fix) + '.' : D.farm + ' isn\'t happy, and neither are the neighbours who heard about it.';
+    case 'redzone': return id === 'take' ? f(D.cash) + ' in an envelope. Don\'t mention it.' : 'Said no. They didn\'t sound surprised.';
     case 'xmas': return id === 'party' ? 'Great night. A few sore heads on Saturday, and the crew is still talking about it.' : id === 'bbq' ? 'Good arvo. Everyone heads off for the break in good spirits.' : 'Everyone just knocked off on Friday. Nobody said much.';
     case 'breakin':
       if (id === 'claim') return 'Claim paid. Premiums are up for a while.';
