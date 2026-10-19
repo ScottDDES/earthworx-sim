@@ -1,6 +1,7 @@
 // Starting a career: company name, the start-up loan (which sets the difficulty), Hardcore, then the town.
 
 import { useState } from 'react';
+import { BETA } from '../channel';
 import { SlotsCard, type Saves } from '../Slots';
 import { SeasonPicker } from '../Seasons';
 import { slotMetaAll } from '../store';
@@ -19,6 +20,7 @@ export function SetupScreen({ onStart, saves }: { onStart: (s: game.Setup) => vo
   const [co, setCo] = useState('Black Soil Earthmoving');
   const [loan, setLoan] = useState(180000);
   const [hc, setHc] = useState(false);
+  const [bulk, setBulk] = useState(BETA);
   const [town, setTown] = useState<TownId>('gdi');
 
   if (step === 0) {
@@ -59,6 +61,15 @@ export function SetupScreen({ onStart, saves }: { onStart: (s: game.Setup) => vo
           <span className="small muted">One life. If what you own is worth less than what you owe for four weeks running, the business goes into administration and the career is over. The tax office gives one payment plan a year, no more.</span>
         </button>
         <div className="small note">{hc ? 'Hardcore: no second chances. You\'ll get a warning the first week you\'re under water.' : 'Miss three repayments and the bank takes your best machine. You keep going with what\'s left.'}</div>
+        {BETA && (
+          <button type="button" className={'pick' + (bulk ? ' on' : '')} aria-pressed={bulk} onClick={() => setBulk(!bulk)}>
+            <span className="row" style={{ width: '100%' }}>
+              <b className="grow" style={{ fontSize: 16 }}>Bulk and Ag pack{bulk && <span className="chip c-job" style={{ marginLeft: 6, verticalAlign: 2 }}>ON</span>}</b>
+              <span className="small muted">Free in the beta</span>
+            </span>
+            <span className="small muted">Dozers, scrapers and moxies; farmers and developers ringing about dams, levelling, channels, clearing and bulk earthworks. Your road work carries on as well.</span>
+          </button>
+        )}
         <button type="button" className="big" onClick={() => setStep(1)}>Next: pick your base</button>
         {Object.keys(slotMetaAll()).length > 0 && <SlotsCard saves={saves} />}
         <SeasonPicker saves={saves} />
@@ -80,7 +91,7 @@ export function SetupScreen({ onStart, saves }: { onStart: (s: game.Setup) => vo
       ))}
       <div className="btns"><button type="button" className="btn" onClick={() => setStep(0)}>Back</button></div>
       <div className="small muted" style={{ textAlign: 'center' }}>{fk(loan)} loan + $40k savings = {fk(loan + 40000)} in the bank to buy your first machine.</div>
-      <button type="button" className="big" onClick={() => onStart({ co, loan, town, hc })}>Take the {fk(loan)} loan and set up in {TOWNS[town].name}</button>
+      <button type="button" className="big" onClick={() => onStart({ co, loan, town, hc, bulk: BETA && bulk })}>Take the {fk(loan)} loan and set up in {TOWNS[town].name}</button>
     </div>
   );
 }

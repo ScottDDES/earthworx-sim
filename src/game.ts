@@ -45,6 +45,8 @@ export interface Setup {
   loan: number;
   town: TownId;
   hc?: boolean;
+  /** Start with the Bulk and Ag pack on. */
+  bulk?: boolean;
 }
 
 /** A whole career. Fields are added by the parts of the game that use them. */
@@ -293,6 +295,7 @@ export function newCareer(setup: Setup, seed: number, wxStart?: number): Career 
   c.youJob = null;
   c.coach = { i: 0, at: 1 };
   c.tabs = {};
+  if (setup.bulk) setPack(c, 'bulk', true);
   note(c, { k: 'started', co: c.co, town: c.town, loan: setup.loan });
   return c;
 }

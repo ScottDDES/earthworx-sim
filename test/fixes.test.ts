@@ -576,3 +576,29 @@ describe('Bulk and Ag pack, step 4: the rest of the work', () => {
     expect(busts).toBeLessThan(15);
   });
 });
+
+describe('Bulk and Ag in the beta: on from the start', () => {
+  beforeAll(() => { compat.prototype = false; });
+  afterAll(() => { compat.prototype = true; });
+
+  it('a new career with the pack on has bulk gear for sale from day one and plays a year without trouble', () => {
+    const c = game.newCareer({ co: 'Beta Earthmoving', loan: 180000, town: 'gdi', bulk: true }, 99);
+    expect(c.packs?.bulk).toBe(true);
+    expect(c.market!.listings.some((m) => isBulk(m.type))).toBe(true);
+    const g = c.market!.listings.filter((m) => m.type === 'grader').sort((x, y) => x.price - y.price)[0]!;
+    game.buy(c, g.id);
+    game.open(c);
+    for (let w = 0; w < 52; w++) {
+      for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0);
+      for (const o of c.offers.slice()) game.accept(c, o.id);
+      game.endWeek(c);
+    }
+    expect(c.week).toBe(53);
+    expect(Number.isFinite(c.bank)).toBe(true);
+    expect((c.bulk?.enq ?? []).length).toBeGreaterThan(0);
+    // and without it, the same seed is the base game
+    const off = game.newCareer({ co: 'Beta Earthmoving', loan: 180000, town: 'gdi' }, 99);
+    expect(off.packs?.bulk).toBeFalsy();
+    expect(off.market!.listings.some((m) => isBulk(m.type))).toBe(false);
+  });
+});

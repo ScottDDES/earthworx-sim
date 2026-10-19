@@ -2,6 +2,7 @@
 // the district (the market and the other outfits), and selling up to retire.
 
 import { useState } from 'react';
+import { BETA } from '../channel';
 import { MOODS, TICKETS, inherit, TIER, canBuyOut, checks, checks2, checks3, checks4, checks5, ownedCounts, rung, rvForm, rvPhase, stars, game, play } from '@engine';
 import { STEPS, TICKET_CATS, TICKET_TEXT, checkWords, districtForm, starTxt } from '@engine/text/career';
 import { diaryLines } from '@engine/text/diary';
@@ -232,9 +233,9 @@ export function CareerTab({ c, act, onNew, saves }: { c: Career; act: Act; onNew
           <span className="grow"><b className="small">Sound</b><br /><span className="tiny muted">A stamp for wins and tickets, a diesel turn-over each week.</span></span>
           <button type="button" className={'btn' + (c.sound ? ' dark' : '')} aria-pressed={!!c.sound} onClick={() => act((x) => { x.sound = !x.sound; sfx('win', x.sound); })}>{c.sound ? 'On' : 'Off'}</button>
         </div>
-        {!c.season && (
+        {!c.season && BETA && (
           <div className="row">
-            <span className="grow"><b className="small">Bulk and Ag pack (testing)</b><br /><span className="tiny muted">Dozers, scrapers, compactors and moxies in the Market. Work for them comes next. Test builds only.</span></span>
+            <span className="grow"><b className="small">Bulk and Ag pack</b><br /><span className="tiny muted">Free in the beta. Dozers, scrapers and moxies in the Market; farmers and developers ringing on the Work tab.</span></span>
             <button type="button" className={'btn' + (c.packs?.bulk ? ' dark' : '')} aria-pressed={!!c.packs?.bulk} onClick={() => act((x) => game.setPack(x, 'bulk', !x.packs?.bulk))}>{c.packs?.bulk ? 'On' : 'Off'}</button>
           </div>
         )}
