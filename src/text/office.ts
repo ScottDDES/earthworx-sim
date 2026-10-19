@@ -67,3 +67,6 @@ export function ownerFlags(c: Career, cur: readonly WeekRow[]): [FlagLevel, stri
   if (cur.length >= 8 && P.rev && P.ws / P.rev > 0.08) F.push(['warn', 'Workshop and repairs ate ' + pct(P.ws, P.rev) + '% of turnover. Worn gear costs more than it earns.', 'yard']);
   return F;
 }
+
+/** The ERP's name in the game. One place, so a rename is one line. */
+export const ERP_NAME = 'ProActive by DDES';

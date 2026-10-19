@@ -8,7 +8,7 @@ import {
   mgrOf, mgrUnlocked, monthIdx, nextWhs, odLimit, premParts, recentInc, riskMult, svcCost, unlocked, value, whsNp, fleetValue, wages,
   game, type Machine, type MachineType, type YardId, play,
 } from '@engine';
-import { alertText } from '@engine/text/office';
+import { ERP_NAME, alertText } from '@engine/text/office';
 import { jobTitle } from '@engine/text/work';
 import { MachineIcon, WeatherIcon } from '../Icon';
 import { MONTHS, f, fk } from '../format';
@@ -450,12 +450,12 @@ function Safety({ c, act }: { c: Career; act: Act }) {
         <div className="tiny muted">Public liability {f(P0.base)}, plant cover {f(P0.plant)}, workers' comp {f(P0.comp)}{Math.abs(c.ins - 1) > 0.005 ? ', with your claims record loading it ' + (c.ins > 1 ? '+' : '') + Math.round((c.ins - 1) * 100) + '%' : ''}{W.sys >= 3 ? ', less 10% for certification' : ''}. Loadings ease back over a year without claims.</div>
         {erpOk(c.yard) || c.erp ? (
           <div className="ycard">
-            <div className="row"><b className="grow">DDES ERP</b>{c.erp ? <span className="chip c-job">RUNNING</span> : <span className="num small">{f(ERP_SETUP)}</span>}</div>
+            <div className="row"><b className="grow">{ERP_NAME}</b>{c.erp ? <span className="chip c-job">RUNNING</span> : <span className="num small">{f(ERP_SETUP)}</span>}</div>
             <div className="small muted">One system for the whole outfit: prestarts, inductions, SWMS, incidents, timesheets and servicing, all in one place. Takes the grind out of WHS and compliance.</div>
             <div className="small">{c.erp ? 'Saving' : 'Would save'} about {f(game.erpSaving(c))} a week, after its own {f(ERP_WEEK)} a week: half the safety-system upkeep, a quarter off toolbox talks, 5% off insurance and 3% off your overheads.</div>
             {!c.erp && <button type="button" className="btn dark" disabled={c.bank < ERP_SETUP} onClick={() => act((x) => play.buyErp(x))}>Put it in</button>}
           </div>
-        ) : YARD_ORDER.indexOf(c.yard) >= YARD_ORDER.indexOf('depot') ? <div className="tiny muted">The DDES ERP, which cuts WHS and compliance costs, comes with a regional depot.</div> : null}
+        ) : YARD_ORDER.indexOf(c.yard) >= YARD_ORDER.indexOf('depot') ? <div className="tiny muted">{ERP_NAME}, which cuts WHS and compliance costs, comes with a regional depot.</div> : null}
       </div>
     </>
   );
