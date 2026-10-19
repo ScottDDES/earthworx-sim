@@ -1,7 +1,7 @@
 // The fixes after the port: where the real game does better than the prototype.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, coverOff, drawCard, game, genOffers, nearMissAdvisoryCost, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot } from '../src';
+import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, coverOff, drawCard, game, genOffers, isBulk, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot } from '../src';
 
 describe('a fair shuffle', () => {
   beforeAll(() => { compat.prototype = false; });
@@ -277,5 +277,62 @@ describe('DDES Advisory and the DDES ERP', () => {
     expect(game.buyErp(c)).toBe(true);
     expect(game.overheads(c)).toBeLessThan(before);
     expect(game.buyErp(c)).toBe(false);
+  });
+});
+
+describe('Bulk and Ag pack, step 1: the machines', () => {
+  beforeAll(() => { compat.prototype = false; });
+  afterAll(() => { compat.prototype = true; });
+
+  const play = (bulk: boolean, buy: boolean) => {
+    const c = game.newCareer({ co: 'Bulk Earthmoving', loan: 900000, town: 'gdi' }, 4242);
+    const g = c.market!.listings.filter((m) => m.type === 'grader').sort((x, y) => x.price - y.price)[0]!;
+    game.buy(c, g.id);
+    game.open(c);
+    if (bulk) game.setPack(c, 'bulk', true);
+    let bought = 0;
+    for (let w = 0; w < 80; w++) {
+      for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0);
+      for (const o of c.offers.slice()) game.accept(c, o.id);
+      if (buy && bulk && game.room(c) > 0) {
+        const l = c.market!.listings.find((m) => isBulk(m.type) && m.price < c.bank - 60000);
+        if (l && game.buy(c, l.id)) bought++;
+      }
+      for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0);
+      game.endWeek(c);
+    }
+    return { c, bought };
+  };
+
+  it('with the pack on, bulk machines come up for sale every week; with it off, none do', () => {
+    const on = play(true, false).c, off = play(false, false).c;
+    expect(on.market!.listings.filter((m) => isBulk(m.type)).length).toBe(3);
+    expect(off.market!.listings.some((m) => isBulk(m.type))).toBe(false);
+  });
+
+  it('switching the pack on changes nothing else: the same career, week for week', () => {
+    const strip = (c: game.Career) => { const x = JSON.parse(JSON.stringify(c)); x.market.listings = x.market.listings.filter((m: { type: string }) => !isBulk(m.type as never)); delete x.packs; delete x.seq; return JSON.stringify({ ...x, market: { ...x.market, listings: x.market.listings.map((m: any) => ({ ...m, id: 0 })), lot: { ...x.market.lot, id: 0 } } }); };
+    const on = play(true, false).c, off = play(false, false).c;
+    expect(on.bank).toBe(off.bank);
+    expect(on.week).toBe(off.week);
+    expect(on.rep).toBe(off.rep);
+    expect(strip(on).length).toBeGreaterThan(1000);
+  });
+
+  it('bulk gear can be bought, sits in the yard, wears and costs money like any machine', () => {
+    const { c, bought } = play(true, true);
+    expect(bought).toBeGreaterThan(0);
+    const bulk = c.fleet.filter((m) => isBulk(m.type));
+    expect(bulk.length).toBeGreaterThan(0);
+    expect(Number.isFinite(c.bank)).toBe(true);
+    expect(Number.isFinite(game.overheads(c))).toBe(true);
+    for (const m of bulk) expect(value(m, c.week)).toBeGreaterThan(0);
+  });
+
+  it('a leaderboard season can\'t switch the pack on', () => {
+    const c = game.newCareer({ co: 'Season Earthmoving', loan: 180000, town: 'gdi' }, 1);
+    (c as { season?: unknown }).season = { id: 'wet2010', weeks: 26, v: 4, nw0: 0 };
+    expect(game.setPack(c, 'bulk', true)).toBe(false);
+    expect(c.packs?.bulk).toBeFalsy();
   });
 });

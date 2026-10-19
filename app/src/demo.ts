@@ -1,11 +1,11 @@
 // Demo careers, for looking at later screens without playing up to them. Open the app with ?demo=council.
 // A business that's run its own contract, with a fleet, a few hands, and a council package and a flood
-// recovery program out to tender.
+// recovery program out to tender. ?demo=bulk is the same business with the Bulk and Ag pack on and some of its gear.
 
 import { genCouncil, genMajor, newAccounts, newMachine, seedRand, uid, game, type MachineType } from '@engine';
 
 export function demoCareer(kind: string): game.Career | null {
-  if (kind !== 'council') return null;
+  if (kind !== 'council' && kind !== 'bulk') return null;
   const c = game.newCareer({ co: 'Demo Earthmoving', loan: 350000, town: 'gdi' }, 20261017);
   const rand = seedRand(7);
   c.phase = 'play';
@@ -30,5 +30,9 @@ export function demoCareer(kind: string): game.Career | null {
   const p = game.planCtx(c);
   for (let i = 0; i < 200 && !c.ctenders.some((t) => !t.major); i++) genCouncil(seedRand(100 + i), c as never, p, 1.4);
   for (let i = 0; i < 400 && !c.ctenders.some((t) => t.major); i++) genMajor(seedRand(900 + i), c as never, p, 1.5, false);
+  if (kind === 'bulk') {
+    for (const k of ['d8', 'd9', 's631', 's631', 'c825', 'moxycart'] as MachineType[]) c.fleet.push(newMachine(rand, uid(c), k, 2015, 78, 11000));
+    game.setPack(c, 'bulk', true);
+  }
   return c;
 }

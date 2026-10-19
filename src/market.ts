@@ -7,7 +7,7 @@ import { mRef, note } from './diary';
 import { dayOffset, yearOf } from './calendar';
 import { topUp, type Loan } from './bank';
 import { book, type Accounts } from './ledger';
-import { newMachine, value, type Machine, type MachineType } from './machines';
+import { BULK_TYPES, newMachine, value, type BulkType, type Machine, type MachineType } from './machines';
 import { int, pick, type Rand } from './rng';
 import { meanYearMm, rainMm, type WeatherCtx } from './weather';
 
@@ -209,6 +209,28 @@ export function genMarket(rand: Rand, x: MarketInputs, nextId: () => string): Ma
   if (clr && --clr.n <= 0) x.clear.shift();
   const lot: AuctionLot = { id, type, year, cond, hours, from, bid, max, leader: 'rival', done: false, guideLo: v * 0.75, guideHi: v * 1.05, unknown: pick(rand, UNKNOWNS) };
   return { listings: L, lot };
+}
+
+/** How often each Bulk and Ag machine comes up for sale: the everyday gear more, the big scrapers less. */
+const BULK_ODDS: Record<BulkType, number> = {
+  d6: 3, d8: 3, d9: 2, d10: 1, pull: 2, s623: 1, s631: 2, s637: 1, s651: 1, s657: 1, padfoot: 2, c815: 2, c825: 1, excavator: 3, moxy: 2, moxycart: 2,
+};
+
+/**
+ * The Bulk and Ag pack's listings: three a week, alongside the road gear. They come off their own random stream so
+ * the base game's market is the same with the pack on or off.
+ */
+export function genBulkListings(rand: Rand, week: number, mood: Mood, nextId: () => string): Listing[] {
+  const pm = MOODS[mood].pm, yr = yearOf(week), bag = BULK_TYPES.flatMap((t) => Array(BULK_ODDS[t]).fill(t) as BulkType[]), L: Listing[] = [];
+  for (let i = 0; i < 3; i++) {
+    const type = pick(rand, bag), year = int(rand, 2006, 2020), cond = int(rand, 45, 86);
+    const s = rand(), seller: Seller = s < 0.45 ? 'dealer' : 'private';
+    const claimed = seller === 'dealer' ? cond : Math.min(92, cond + int(rand, 0, 14));
+    const m: Listing = { id: nextId(), type, year, cond, claimed, hours: (yr - year) * int(rand, 650, 900), seller, revealed: seller === 'dealer', price: 0 };
+    m.price = round(value({ type, year, cond: claimed }, week) * (seller === 'dealer' ? 1.12 : 0.95) * pm, 500);
+    L.push(m);
+  }
+  return L;
 }
 
 // ---------- buying ----------

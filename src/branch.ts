@@ -3,7 +3,7 @@
 
 import { mRef, note } from './diary';
 import { book, type Accounts } from './ledger';
-import { TYPES, breaks, svcLeft, wear, type Machine, type WorkshopCtx } from './machines';
+import { TYPES, breaks, isRoad, svcLeft, wear, type Machine, type WorkshopCtx } from './machines';
 import { invoice, type Biz, type WeekReport } from './hire';
 import { int, pick, type Rand } from './rng';
 import { NAMES } from './staff';
@@ -60,7 +60,7 @@ export function brMachines(fleet: readonly Machine[]): Machine[] {
 /** Full crews there (a grader, roller and cart each), at a slower pace without two carts a crew. */
 export function brCrews(fleet: readonly Machine[]): { n: number; pace: number } {
   const c = { grader: 0, roller: 0, cart: 0, truck: 0 };
-  for (const m of brMachines(fleet)) if (m.down === 0) c[m.type]++;
+  for (const m of brMachines(fleet)) if (m.down === 0 && isRoad(m.type)) c[m.type]++;
   const n = Math.min(c.grader, c.roller, c.cart);
   return { n, pace: c.cart >= 2 * n ? 1 : 0.85 };
 }

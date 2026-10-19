@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  DIFFICULTY, PARTS, TYPES, YARDS, YARD_ORDER, baseValue, breakChance, breakdown, breaks, costIdx,
+  DIFFICULTY, PARTS, TYPES, isBulk, YARDS, YARD_ORDER, baseValue, breakChance, breakdown, breaks, costIdx,
   difficultyOf, int, serviced, machineName, newAccounts, newMachine, overdue, pick, seedRand, serviceFind, svcCost,
   svcLeft, value, wear, type Difficulty, type Machine, type MachineType, type WorkshopCtx, type YardId,
 } from '../src';
@@ -49,10 +49,12 @@ function randomWorkshop(R: () => number) {
 
 describe('tables', () => {
   it('machine types, yards, difficulties and parts are the same', () => {
-    expect(TYPES).toEqual(P.TYPES);
+    // the road gear is the prototype's; the Bulk and Ag pack's machines are the real game's own
+    const road = <T,>(r: Record<string, T>) => Object.fromEntries(Object.entries(r).filter(([k]) => !isBulk(k as never)));
+    expect(road(TYPES)).toEqual(P.TYPES);
     expect(YARDS).toEqual(P.YARDS);
     expect(DIFFICULTY).toEqual(P.DIFF_P);
-    expect(PARTS).toEqual(P.PARTS);
+    expect(road(PARTS)).toEqual(P.PARTS);
   });
 
   it('the starting loan sets the same difficulty, and inflation runs the same', () => {

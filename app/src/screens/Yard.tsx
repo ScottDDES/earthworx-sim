@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import {
-  ERP_SETUP, ERP_WEEK, erpOk, BR_FLOAT, BR_MGR, BR_RENT, BR_SETUP, BR_SLOTS, GPS_COST, MGR, ROLES, SKILLS, TOWNS, WHS_SYS, YARDS, YARD_ORDER,
+  BULK_TYPES, ERP_SETUP, ERP_WEEK, erpOk, BR_FLOAT, BR_MGR, BR_RENT, BR_SETUP, BR_SLOTS, GPS_COST, MGR, ROLES, SKILLS, TOWNS, WHS_SYS, YARDS, YARD_ORDER,
   bigNoWsm, brCrews, brMachines, brProfit, brTown, canBranch, fitPer, fitters, forecast, lastInc, machineAlerts, machineName,
   mgrOf, mgrUnlocked, monthIdx, nextWhs, odLimit, premParts, recentInc, riskMult, svcCost, unlocked, value, whsNp, fleetValue, wages,
   game, type Machine, type MachineType, type YardId, play,
@@ -240,8 +240,12 @@ function MachineRow({ c, m, onOpen }: { c: Career; m: Machine; onOpen: () => voi
   );
 }
 
-const FLEET_ORDER: MachineType[] = ['grader', 'roller', 'cart', 'truck'];
-const FLEET_PL: Record<MachineType, string> = { grader: 'Graders', roller: 'Rollers', cart: 'Water carts', truck: 'Side tippers' };
+const FLEET_ORDER: MachineType[] = ['grader', 'roller', 'cart', 'truck', ...BULK_TYPES];
+const FLEET_PL: Record<MachineType, string> = {
+  grader: 'Graders', roller: 'Rollers', cart: 'Water carts', truck: 'Side tippers',
+  d6: 'D6 dozers', d8: 'D8 dozers', d9: 'D9 dozers', d10: 'D10 dozers', pull: 'Pull scrapers', s623: '623 scrapers', s631: '631 scrapers', s637: '637 scrapers',
+  s651: '651 scrapers', s657: '657 scrapers', padfoot: 'Padfoot rollers', c815: '815 compactors', c825: '825 compactors', excavator: 'Excavators', moxy: 'Moxies', moxycart: 'Moxy water carts',
+};
 type Filter = 'all' | 'idle' | 'attn' | MachineType;
 const needsWork = (m: Machine) => m.down > 0 || !!m.band || svcLeftOf(m) <= 45 || m.cond < 65;
 

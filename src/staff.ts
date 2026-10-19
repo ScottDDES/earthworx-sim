@@ -1,7 +1,7 @@
 // People. Permanent staff are paid every week, working or not; casuals from labour hire
 // are paid only on the days they work. You (the owner) can drive a grader, roller or water cart.
 
-import type { MachineType } from './machines';
+import { isRoad, type MachineType, type RoadType } from './machines';
 import { pick, type Rand } from './rng';
 
 export type Role = 'grader' | 'roller' | 'cart' | 'truck' | 'super' | 'ops' | 'fitter' | 'wsm';
@@ -166,7 +166,7 @@ export function fillRoles(need: Partial<Seats>, people: readonly { id: string; r
   const used: string[] = [];
   const order = people.slice().sort((a, b) => ROLES[a.role].drives.length - ROLES[b.role].drives.length);
   for (const p of order) {
-    const seat = ROLES[p.role].drives.find((k) => left[k] > 0);
+    const seat = ROLES[p.role].drives.find((k): k is RoadType => isRoad(k) && left[k] > 0);
     if (seat) {
       left[seat]--;
       used.push(p.id);

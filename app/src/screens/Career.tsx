@@ -232,6 +232,12 @@ export function CareerTab({ c, act, onNew, saves }: { c: Career; act: Act; onNew
           <span className="grow"><b className="small">Sound</b><br /><span className="tiny muted">A stamp for wins and tickets, a diesel turn-over each week.</span></span>
           <button type="button" className={'btn' + (c.sound ? ' dark' : '')} aria-pressed={!!c.sound} onClick={() => act((x) => { x.sound = !x.sound; sfx('win', x.sound); })}>{c.sound ? 'On' : 'Off'}</button>
         </div>
+        {!c.season && (
+          <div className="row">
+            <span className="grow"><b className="small">Bulk and Ag pack (testing)</b><br /><span className="tiny muted">Dozers, scrapers, compactors and moxies in the Market. Work for them comes next. Test builds only.</span></span>
+            <button type="button" className={'btn' + (c.packs?.bulk ? ' dark' : '')} aria-pressed={!!c.packs?.bulk} onClick={() => act((x) => game.setPack(x, 'bulk', !x.packs?.bulk))}>{c.packs?.bulk ? 'On' : 'Off'}</button>
+          </div>
+        )}
         <div className="tiny muted"><a href={PRIVACY_URL} target="_blank" rel="noopener">Privacy policy</a></div>
       </div>
       {c.won && c.phase === 'play' && (

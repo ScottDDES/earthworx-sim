@@ -6,8 +6,8 @@ import { bankWeek, newLoan, weeklyRepay, type Loan } from './bank';
 import { yearOf } from './calendar';
 import { DIFFICULTY, costIdx as costIdxOf, difficultyOf, type Difficulty } from './difficulty';
 import { book, newAccounts, type Accounts } from './ledger';
-import { GPS_COST, TYPES, newMachine, serviced, svcCost, value, type Machine } from './machines';
-import { MOODS, fmul as fmulOf, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, unlist, inspect as inspectL, bid as bidL, hammer as hammerL, type HammerResult, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
+import { GPS_COST, TYPES, isBulk, newMachine, serviced, svcCost, value, type Machine } from './machines';
+import { MOODS, fmul as fmulOf, genBulkListings, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, unlist, inspect as inspectL, bid as bidL, hammer as hammerL, type HammerResult, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
 import { fromState, hashN, int, pick, seedRand, type Rand } from './rng';
 import { mkRivals, rivalsWeek, type Rival, type RivalEvent } from './rivals';
 import { newWhs, safetyWeek, upgradeWhs, type SafetyEvent, type Whs } from './safety';
@@ -67,6 +67,8 @@ export interface Career {
   youBlocked: number;
   /** Running the DDES ERP. */
   erp?: boolean;
+  /** Expansion packs switched on. Bulk and Ag is behind a test switch until it's sold as a pack. */
+  packs?: { bulk?: boolean };
   youJob: string | null;
   rep: number;
   ins: number;
@@ -292,12 +294,28 @@ export function newCareer(setup: Setup, seed: number, wxStart?: number): Career 
   return c;
 }
 
+/** The Bulk and Ag machines join the week's listings when the pack is on. */
+function bulkMarket(c: Career): void {
+  if (c.packs?.bulk && c.market) c.market.listings.push(...genBulkListings(worldRand(c, 'bulk'), c.week, mood(c), () => uid(c)));
+}
+
+/** Switch an expansion pack on or off (a test switch for now; never in a leaderboard season). */
+export function setPack(c: Career, pack: 'bulk', on: boolean): boolean {
+  if (c.season) return false;
+  const was = !!c.packs?.[pack];
+  c.packs = { ...(c.packs || {}), [pack]: on };
+  if (on && !was) bulkMarket(c);
+  if (!on && c.market) c.market.listings = c.market.listings.filter((m) => !isBulk(m.type));
+  return true;
+}
+
 /** Open for business: the first week's work, market and tenders. */
 export function open(c: Career): void {
   c.phase = 'play';
   const rand = worldRand(c, 'open');
   c.offers = genOffers(rand, c as never, fmul(c), c.won, c.won2);
   c.market = genMarket(rand, { week: c.week, won: c.won, mood: mood(c), rivSell: c.rivSell, clear: c.clear }, () => uid(c));
+  bulkMarket(c);
   genTenders(rand, c as never, canTender((t) => owns(c, t), c.rep, c.whs.sys), mood(c), fmul(c));
   note(c, { k: 'open' });
   coachTick(c);
@@ -727,6 +745,7 @@ export function endWeek(c: Career): Report | null {
   const wr = worldRand(c, 'world');
   c.offers = genOffers(wr, c as never, fmul(c), c.won, c.won2);
   c.market = genMarket(wr, { week: c.week, won: c.won, mood: mood(c), rivSell: c.rivSell, clear: c.clear }, () => uid(c));
+  bulkMarket(c);
   genTenders(wr, c as never, canTender((t) => owns(c, t), c.rep, c.whs.sys), mood(c), fmul(c));
   if (compat.prototype || !barred(c as never, TOWNS[c.town].council)) {
     genCouncil(wr, c as never, planCtx(c), fmul(c));

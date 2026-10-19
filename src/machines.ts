@@ -5,7 +5,14 @@ import { yearOf } from './calendar';
 import { book, type Accounts } from './ledger';
 import { int, pick, type Rand } from './rng';
 
-export type MachineType = 'grader' | 'roller' | 'cart' | 'truck';
+/** The road gear the base game is built on. */
+export type RoadType = 'grader' | 'roller' | 'cart' | 'truck';
+/** The Bulk and Ag pack's gear: each model its own type, so prices, fuel and hire rates are its own. */
+export type BulkType =
+  | 'd6' | 'd8' | 'd9' | 'd10'
+  | 'pull' | 's623' | 's631' | 's637' | 's651' | 's657'
+  | 'padfoot' | 'c815' | 'c825' | 'excavator' | 'moxy' | 'moxycart';
+export type MachineType = RoadType | BulkType;
 
 export interface MachineSpec {
   name: string;
@@ -29,7 +36,45 @@ export const TYPES: Record<MachineType, MachineSpec> = {
   roller: { name: 'Smooth drum roller', short: 'roller', newV: 220000, svc: 1200, fuel: 470, wet: 1260, dry: 3885, sub: 1750 },
   cart:   { name: 'Water cart 18kL', short: 'water cart', newV: 300000, svc: 1500, fuel: 530, wet: 1260, dry: 3885, sub: 1750 },
   truck:  { name: 'Side tipper', short: 'side tipper', newV: 260000, svc: 1100, fuel: 850, wet: 1010, dry: 4200, sub: 1860 },
+  // Bulk and Ag (my guesses, Scott OK'd them for testing): wet hire is a day with operator, dry hire a week
+  d6:        { name: 'Dozer D6', short: 'D6', newV: 750000, svc: 1600, fuel: 600, wet: 1900, dry: 6300, sub: 2300 },
+  d8:        { name: 'Dozer D8', short: 'D8', newV: 1150000, svc: 2200, fuel: 900, wet: 2350, dry: 7800, sub: 2800 },
+  d9:        { name: 'Dozer D9', short: 'D9', newV: 1600000, svc: 2800, fuel: 1150, wet: 2800, dry: 9200, sub: 3350 },
+  d10:       { name: 'Dozer D10', short: 'D10', newV: 2300000, svc: 3500, fuel: 1500, wet: 3400, dry: 11200, sub: 4100 },
+  pull:      { name: 'Tractor and pull scrapers', short: 'pull scraper', newV: 800000, svc: 2400, fuel: 1000, wet: 2000, dry: 6600, sub: 2400 },
+  s623:      { name: 'Scraper 623, elevating', short: '623', newV: 1300000, svc: 2600, fuel: 1100, wet: 2350, dry: 7800, sub: 2800 },
+  s631:      { name: 'Scraper 631, open bowl', short: '631', newV: 1700000, svc: 2800, fuel: 1350, wet: 2700, dry: 8900, sub: 3250 },
+  s637:      { name: 'Scraper 637, push-pull', short: '637', newV: 1900000, svc: 3000, fuel: 1500, wet: 2950, dry: 9700, sub: 3550 },
+  s651:      { name: 'Scraper 651, open bowl', short: '651', newV: 2400000, svc: 3400, fuel: 1800, wet: 3400, dry: 11200, sub: 4100 },
+  s657:      { name: 'Scraper 657, push-pull', short: '657', newV: 2700000, svc: 3600, fuel: 2000, wet: 3800, dry: 12500, sub: 4550 },
+  padfoot:   { name: 'Padfoot roller', short: 'padfoot', newV: 260000, svc: 1200, fuel: 480, wet: 1300, dry: 4300, sub: 1550 },
+  c815:      { name: 'Compactor 815', short: '815', newV: 900000, svc: 2000, fuel: 900, wet: 1980, dry: 6500, sub: 2400 },
+  c825:      { name: 'Compactor 825', short: '825', newV: 1250000, svc: 2400, fuel: 1100, wet: 2340, dry: 7700, sub: 2800 },
+  excavator: { name: 'Excavator 25t', short: 'excavator', newV: 380000, svc: 1400, fuel: 650, wet: 1530, dry: 5000, sub: 1850 },
+  moxy:      { name: 'Moxy 30t', short: 'moxy', newV: 650000, svc: 1600, fuel: 800, wet: 1620, dry: 5300, sub: 1950 },
+  moxycart:  { name: 'Moxy water cart 28kL', short: 'moxy cart', newV: 700000, svc: 1700, fuel: 850, wet: 1700, dry: 5600, sub: 2050 },
 };
+
+/** Which family each machine belongs to, for grouping in the yard. */
+export type Family = RoadType | 'dozer' | 'scraper' | 'compactor' | 'excavator' | 'moxy';
+export const FAMILY: Record<MachineType, Family> = {
+  grader: 'grader', roller: 'roller', cart: 'cart', truck: 'truck',
+  d6: 'dozer', d8: 'dozer', d9: 'dozer', d10: 'dozer',
+  pull: 'scraper', s623: 'scraper', s631: 'scraper', s637: 'scraper', s651: 'scraper', s657: 'scraper',
+  padfoot: 'compactor', c815: 'compactor', c825: 'compactor', excavator: 'excavator', moxy: 'moxy', moxycart: 'moxy',
+};
+
+/** The Bulk and Ag pack's machines, in the order the Market shows them. */
+export const BULK_TYPES: readonly BulkType[] = ['d6', 'd8', 'd9', 'd10', 'pull', 's623', 's631', 's637', 's651', 's657', 'padfoot', 'c815', 'c825', 'excavator', 'moxy', 'moxycart'];
+
+/** Road gear: what crews, councils and contracts are counted in. */
+export function isRoad(t: MachineType): t is RoadType {
+  return t === 'grader' || t === 'roller' || t === 'cart' || t === 'truck';
+}
+
+export function isBulk(t: MachineType): t is BulkType {
+  return FAMILY[t] !== t || t === 'excavator' || t === 'moxy';
+}
 
 export type MachineStatus = 'idle' | 'working' | 'hired' | 'listed' | 'auction' | 'branch' | string;
 
@@ -169,11 +214,22 @@ export function breakdown(rand: Rand, m: Machine, w: WorkshopCtx, acc?: Accounts
   }
 }
 
+const DOZER_PARTS = ['worn track links', 'cracked blade push arm', 'weeping tilt cylinder', 'tired final drive seals', 'cracked ripper shank'] as const;
+const SCRAPER_PARTS = ['cracked bowl cutting edge', 'weeping apron cylinder', 'worn hitch pins', 'slipping transmission clutch'] as const;
+const COMPACTOR_PARTS = ['worn tamping feet', 'cracked blade mount', 'weeping steering cylinder', 'worn articulation bushes'] as const;
+
 export const PARTS: Record<MachineType, readonly string[]> = {
   grader: ['cracked circle drive mount', 'weeping blade lift cylinder', 'worn steering pins', 'cracked radiator core', 'slack in the tandem chains'],
   roller: ['vibe bearing running hot', 'weeping drum motor seal', 'cracked ROPS mount', 'worn articulation bushes'],
   cart:   ['water pump seal letting go', 'cracked spray bar bracket', 'slipping clutch', 'worn spring hangers'],
   truck:  ['cracked tipper hoist mount', 'leaking air tank', 'worn kingpins', 'weeping hoist cylinder'],
+  d6: DOZER_PARTS, d8: DOZER_PARTS, d9: DOZER_PARTS, d10: DOZER_PARTS,
+  pull: SCRAPER_PARTS, s623: SCRAPER_PARTS, s631: SCRAPER_PARTS, s637: SCRAPER_PARTS, s651: SCRAPER_PARTS, s657: SCRAPER_PARTS,
+  padfoot: ['vibe bearing running hot', 'worn padfoot shell', 'cracked ROPS mount', 'worn articulation bushes'],
+  c815: COMPACTOR_PARTS, c825: COMPACTOR_PARTS,
+  excavator: ['weeping boom cylinder', 'worn bucket pins', 'cracked track frame', 'slow swing motor'],
+  moxy: ['cracked tray hinge', 'worn articulation bushes', 'leaking hoist cylinder', 'tired diff bearings'],
+  moxycart: ['water pump seal letting go', 'cracked spray bar bracket', 'worn articulation bushes', 'tired diff bearings'],
 };
 
 export interface Find {

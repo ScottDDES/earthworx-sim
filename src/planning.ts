@@ -5,7 +5,7 @@
 // Nothing here writes sentences: what's holding a plan up comes back as codes and numbers.
 
 import { monthIdx } from './calendar';
-import { TYPES, type Machine, type MachineType } from './machines';
+import { TYPES, isRoad, type Machine, type MachineType, type RoadType } from './machines';
 import { fillRoles, type CrewFill, type Person, type Role } from './staff';
 import { MOB, STD_CREW_DAY, TREAT, gradeDays, type Quantities } from './tenders';
 import { TOWNS, type TownId } from './towns';
@@ -69,7 +69,7 @@ export function hm(x: { hm?: Record<string, string> | null }, k: string): 'wet' 
   return (x.hm && (x.hm[k] as 'wet' | 'dry')) || 'dry';
 }
 
-export type Counts = Record<MachineType, number>;
+export type Counts = Record<RoadType, number>;
 
 /** The career a plan reads. */
 export interface PlanCtx {
@@ -94,14 +94,14 @@ export function planCounts(p: PlanCtx, start: number): Counts {
   for (const m of p.fleet) {
     const mj = m.jobId ? p.jobs.find((j) => j.id === m.jobId) : undefined;
     if (m.status === 'auction' || m.status === 'listed' || (mj && (mj.kind === 'own' || jobEnds(p, mj) >= (start || p.week)))) continue;
-    o[m.type]++;
+    if (isRoad(m.type)) o[m.type]++;
   }
   return o;
 }
 
 export function ownedCounts(fleet: readonly Machine[]): Counts {
   const o: Counts = { grader: 0, roller: 0, cart: 0, truck: 0 };
-  for (const m of fleet) if (m.status !== 'auction' && m.status !== 'listed' && m.status !== 'branch') o[m.type]++;
+  for (const m of fleet) if (m.status !== 'auction' && m.status !== 'listed' && m.status !== 'branch' && isRoad(m.type)) o[m.type]++;
   return o;
 }
 
