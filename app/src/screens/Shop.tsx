@@ -28,7 +28,7 @@ export function ListingCard({ c, m, act, shop = false }: { c: Career; m: Listing
   return (
     <div className="card">
       <div className="row">{seller}<span className="grow" /><span className="num" style={{ fontWeight: 600, fontSize: 16 }}>{f(m.price)}</span></div>
-      <div className="mhead"><MachineIcon type={m.type} /><b className="grow">{machineName(m)}, {m.year}</b></div>
+      <div className="mhead"><MachineIcon type={m.type} rt={m.rt} /><b className="grow">{machineName(m)}, {m.year}</b></div>
       {m.multi && <div className="tiny muted">Rubber tyres knead and seal the gravel: a better finish than a smooth drum on its own.</div>}
       <div className="small muted">{m.hours.toLocaleString('en-AU')} hrs · {condTxt} · {note}</div>
       <div className="btns">

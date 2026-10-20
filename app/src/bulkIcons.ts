@@ -40,7 +40,18 @@ const LOADER =
   '<path d="M27 2h13l1 11H27z"/><rect x="29" y="4" width="10" height="7" rx="1" fill="var(--glass)"/><path d="M42 8h14l2 5H42z"/>' +
   '<circle cx="21" cy="24" r="7"/>' + hub(21, 24, 2.3) + '<circle cx="50" cy="24" r="7"/>' + hub(50, 24, 2.3);
 
+/** A roadtrain side tipper: two short trailers behind the prime mover, squeezed into the same 64 × 32 as a single. */
+const ROADTRAIN =
+  '<path d="M1 7h20v7a5 5 0 0 1-5 5H6a5 5 0 0 1-5-5z"/><rect x="1" y="5.4" width="20" height="1.4" rx=".7"/>' +
+  '<rect x="7.5" y="8.5" width="1.2" height="8" rx=".6" fill="var(--glass)"/><rect x="13.5" y="8.5" width="1.2" height="8" rx=".6" fill="var(--glass)"/>' +
+  '<path d="M24 7h19v7a5 5 0 0 1-5 5H29a5 5 0 0 1-5-5z"/><rect x="24" y="5.4" width="19" height="1.4" rx=".7"/>' +
+  '<rect x="30" y="8.5" width="1.2" height="8" rx=".6" fill="var(--glass)"/><rect x="36.2" y="8.5" width="1.2" height="8" rx=".6" fill="var(--glass)"/>' +
+  '<path d="M48 6h8l6 7.5V22H48z"/><path d="M50.3 8.3h5l3.4 4.7h-8.4z" fill="var(--glass)"/><rect x="45" y="11" width="2" height="11"/>' +
+  '<rect x="1" y="20.5" width="20" height="2" rx="1"/><rect x="20" y="19.8" width="5" height="1.4"/><rect x="24" y="20.5" width="38" height="2" rx="1"/>' +
+  [4.5, 11, 17.5, 28, 34.5, 41, 51, 58.5].map((x) => `<circle cx="${x}" cy="27.4" r="3.2"/>`).join('');
+
 export const BULK_SVG: Record<string, string> = {
+  roadtrain: ROADTRAIN,
   loader: LOADER,
   d6: DOZER, d8: DOZER, d9: DOZER, d10: DOZER,
   pull: SCRAPER, s623: SCRAPER, s627: SCRAPER, s631: SCRAPER, s637: SCRAPER, s651: SCRAPER, s657: SCRAPER,
