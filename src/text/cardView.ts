@@ -139,6 +139,10 @@ export function cardView(c: Career, q: Career['queue'][number], d: DrawnCard): C
     case 'break': {
       const m = D.m as Machine, k = D.card, j = D.job;
       put('warranty', 'Claim it on the dealer warranty', 'Free. Down for ' + k.dd + ' days while their mechanic gets out.');
+      if (D.fitter) {
+        put('fitterFix', D.fitter + ' fixes it properly · ' + f(D.fitFix), 'Parts and their time. Down ' + D.fitDays + ' day' + (D.fitDays === 1 ? '' : 's') + ', then it\'s sorted.');
+        put('patch', D.fitter + ' patches it up · ' + f(D.fitPatch), 'Back working tomorrow. Breakdown odds go up until it\'s fixed properly, and it costs more when it lets go.');
+      }
       put('mobile', 'Get a mobile mechanic out', f(k.cost * 1.25) + '. Back working next week.');
       put('dealer', 'Wait for the dealer\'s workshop', f(k.cost) + '. Down about ' + k.dd + ' days next week.');
       if (k.rc != null) put('hireIn', 'Hire in a replacement', f(k.cost + k.rc) + ' all up. The client never misses a day.');
@@ -356,6 +360,8 @@ function line(c: Career, k: string, id: string, D: Record<string, any>, R: any):
     case 'break': {
       const k = D.card;
       if (id === 'warranty') return 'Fixed under warranty. Lost ' + k.dd + ' days.';
+      if (id === 'fitterFix') return D.fitter + ' fixed it properly. ' + f(D.fitFix) + ', and ' + D.fitDays + ' day' + (D.fitDays === 1 ? '' : 's') + ' down.';
+      if (id === 'patch') return D.fitter + ' patched it up for ' + f(D.fitPatch) + '. Keep an eye on it.';
       if (id === 'mobile') return 'Fixed on the spot for ' + f(k.cost * 1.25) + '.';
       if (id === 'dealer') return 'Booked in. ' + f(k.cost) + ', and ' + k.dd + ' days off the job.';
       return 'Replacement on site the next morning. ' + f(k.cost + k.rc) + ' all up.';

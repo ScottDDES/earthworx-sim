@@ -3,6 +3,7 @@
 import type { Career } from '../game';
 import { TICKETS, checks, checks2, checks3, checks4, rung } from '../career';
 import { ownedCounts } from '../planning';
+import { TYPES, type MachineType } from '../machines';
 import { coachStep, type CoachStep, type Handled, type MentorNote, type RunStop, type TabId } from '../coach';
 import { TICKET_TEXT, checkWords } from './career';
 
@@ -74,5 +75,8 @@ export function handledLine(h: Handled): string {
     tresult: 'Lost a tender',
     cresult: 'Lost a council tender',
   };
+  const mach = h.type ? TYPES[h.type as MachineType]?.short ?? h.type : 'machine';
+  if (h.k === 'break') t.break = 'The ' + mach + ' broke down: ' + (h.id === 'warranty' ? 'claimed it on the warranty' : h.id === 'patch' ? who + ' patched it up' : who + ' fixed it properly');
+  if (h.k === 'svcfind') t.svcfind = 'Fault found on the ' + mach + ': ' + (h.id === 'patch' ? who + ' patched it up' : who + ' fixed it properly');
   return 'Wk ' + h.w + ' · ' + (t[h.k] ?? 'Handled a card');
 }

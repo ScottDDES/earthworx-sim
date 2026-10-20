@@ -13,13 +13,13 @@ import { TOWNS } from './towns';
 import { compat } from './compat';
 import { REDZONE_CASH, REDZONE_FINE, leakArgue, leakFix, redzoneTake, wetClayPush, wetClayWait } from './bulk';
 import { ROLES } from './staff';
-import { mgrIs } from './managers';
+import { bestFitter, mgrIs } from './managers';
 import { TYPES, overdue, value } from './machines';
 import { lendCap } from './market';
 import { fleetValue } from './overheads';
 import { nearMissAdvisory, nearMissCard, nearMissReport, nearMissShrug, quietAdvisory, quietDaysOff, quietLeave, quietYarn, seriousAdvisory, seriousCard, seriousHide, seriousNotify, swmsPay, swmsSelf } from './safety';
 import { dryDamBore, dryDamFar, dryDamFarMore, gravelArgue, gravelCart, gravelCartCost, gravelWork, ownFlow, pitFar, pitFarmer, staffOwn, staffSubs, swapCardKeep, swapIn, variationFree, variationLodge, variationValue, variationWriting } from './contracts';
-import { breakCard, breakFix, breakinCamera, breakinClaim, breakinWithout, callGrader, calloutPull, callWork, clearingBorrow, clearingCash, xmasCost, xmasParty, earlyClient, earlyTake, extraAgree, extraAsk, extraFree, hurtAdvisory, hurtCover, hurtHome, hurtKeepGoing, rainCrews, rainDecide, svcFindDays, svcFix, svcPatch, turnoverKeep, turnoverSell } from './cards';
+import { breakCard, breakFitterFix, breakFix, breakPatch, fitterFixCost, fitterFixDays, fitterPatchCost, breakinCamera, breakinClaim, breakinWithout, callGrader, calloutPull, callWork, clearingBorrow, clearingCash, xmasCost, xmasParty, earlyClient, earlyTake, extraAgree, extraAsk, extraFree, hurtAdvisory, hurtCover, hurtHome, hurtKeepGoing, rainCrews, rainDecide, svcFindDays, svcFix, svcPatch, turnoverKeep, turnoverSell } from './cards';
 import { bankMoreTime, basInterest, basPay, basPlan, basPlanOk, gstInBank, odLimit, repoPick, repossess } from './office';
 import { weeklyRepay } from './bank';
 import { askSellUp, buyOutAll, buyOutBest, buyOutOffer, buyOutPay, canBuyOut, collapseCard, collapseClaim, collapseSell, insureBroker, sellAll, sellBest, sellBuyer, sellGear, sellPrice, sellTwo, walkAway } from './shocks';
@@ -140,6 +140,12 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       const card = breakCard(cr, st, m), j = jobOf(c, m.jobId), out: CardOpt[] = [];
       Object.assign(data, { card, m, job: j, overdue: overdue(m), patched: m.bandBroke ?? null });
       if (card.warranty) out.push(o('warranty', () => breakFix(st, m, card, 'warranty')));
+      // the real game: your own fitter can patch it up or fix it properly
+      const fit = compat.prototype || card.warranty ? null : bestFitter(c.staff);
+      if (fit) {
+        Object.assign(data, { fitter: fit.name, fitPatch: fitterPatchCost(card), fitFix: fitterFixCost(card), fitDays: fitterFixDays(card) });
+        out.push(o('fitterFix', () => breakFitterFix(st, m, card)), o('patch', () => breakPatch(r(), st, m, card)));
+      }
       out.push(o('mobile', () => breakFix(st, m, card, 'mobile')), o('dealer', () => breakFix(st, m, card, 'dealer')));
       if (j && j.kind !== 'dry' && !card.warranty) out.push(o('hireIn', () => breakFix(st, m, card, 'hireIn')));
       return out;

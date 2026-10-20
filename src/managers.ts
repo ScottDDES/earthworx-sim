@@ -77,6 +77,12 @@ export function fitters(staff: readonly Person[]): Person[] {
   return staff.filter((p) => (p.role === 'fitter' || p.role === 'wsm') && p.off === 0);
 }
 
+const SKILL_RANK = { green: 0, solid: 1, gun: 2 } as const;
+/** Your best fitter at work (a workshop manager counts): who makes the call on a breakdown. */
+export function bestFitter(staff: readonly Person[]): Person | null {
+  return fitters(staff).sort((a, b) => SKILL_RANK[b.skill] - SKILL_RANK[a.skill])[0] ?? null;
+}
+
 /** Machines one fitter can look after. */
 export function fitPer(staff: readonly Person[]): number {
   return mgrIs(staff, 'planner') ? 8 : 6;

@@ -8,7 +8,7 @@ import { note } from './diary';
 import { weeklyRepay } from './bank';
 import { dayOffset } from './calendar';
 import { book } from './ledger';
-import { newMachine, TYPES, type Machine } from './machines';
+import { PARTS, newMachine, TYPES, type Machine } from './machines';
 import { CLIENTS, freeDriver, invoice, uid, type Biz, type Job, type WeekReport } from './hire';
 import { int, pick, type Rand } from './rng';
 import { ROLES } from './staff';
@@ -324,6 +324,24 @@ export function breakCard(cardRand: Rand, b: Biz, m: Machine): BreakCard {
   return { cost, dd, warranty: ws, rc, story };
 }
 export type BreakFix = 'warranty' | 'mobile' | 'dealer' | 'hireIn';
+
+/** The real game, with a fitter of your own: patch it up for 30% and keep it going, or fix it properly for 80% and a day or so down. */
+export const fitterPatchCost = (c: BreakCard) => round(c.cost * 0.3, 50);
+export const fitterFixCost = (c: BreakCard) => round(c.cost * 0.8, 50);
+export const fitterFixDays = (c: BreakCard) => Math.max(1, c.dd - 1);
+export function breakPatch(rand: Rand, b: Biz, m: Machine, c: BreakCard): void {
+  const cost = fitterPatchCost(c);
+  b.bank -= cost;
+  book(b.acc, 'workshop', cost);
+  m.down = 0;
+  m.band = { part: pick(rand, PARTS[m.type]), fix: c.cost, w: b.week };
+}
+export function breakFitterFix(b: Biz, m: Machine, c: BreakCard): void {
+  const cost = fitterFixCost(c);
+  b.bank -= cost;
+  book(b.acc, 'workshop', cost);
+  m.down = fitterFixDays(c);
+}
 export function breakFix(b: Biz, m: Machine, c: BreakCard, how: BreakFix): void {
   if (how === 'warranty') m.down = c.dd;
   if (how === 'mobile') {

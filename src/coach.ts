@@ -9,6 +9,8 @@ import { whyNot } from './hire';
 import { machineAlerts } from './books';
 import { choose, drawCard } from './choose';
 import { compat } from './compat';
+import { bestFitter } from './managers';
+import { hashN } from './rng';
 
 export type CoachStep = 'earn' | 'end' | 'late' | 'health' | 'goal';
 export type TabId = 'yard' | 'work' | 'map' | 'market' | 'bank' | 'career';
@@ -174,8 +176,9 @@ function quietStop(c: Career, before: Before, r: Report | null): RunStop | null 
 }
 
 /**
- * Cards Run on answers for you, with the safe answer, instead of stopping: the small day-to-day calls. Bigger ones
- * (results you won, the bank, breakdowns, injuries, money decisions) still stop it. Lost tender results only say
+ * Cards Run on answers for you, with the safe answer, instead of stopping: the small day-to-day calls (and breakdowns,
+ * when you've a fitter to make the call: see fitterCall). Bigger ones
+ * (results you won, the bank, breakdowns with no fitter, injuries, money decisions) still stop it. Lost tender results only say
  * "Carry on", so they don't stop it either.
  */
 export const RUN_ANSWERS: Record<string, string> = { rainday: 'standDown', late: 'wait', quiet: 'yarn', nearmiss: 'report', early: 'wait' };
@@ -187,10 +190,25 @@ export interface Handled {
   k: string;
   id: string;
   who?: string;
+  /** The machine, on a breakdown or a fault found at a service. */
+  type?: string;
+}
+
+/**
+ * Breakdowns and faults found at a service, when you've a fitter (the real game): their call, by how good they are.
+ * Green patches it, solid is 50-50, a gun always fixes it properly. Warranty work goes to the dealer. No fitter: it stops.
+ */
+export function fitterCall(c: Career, q: { k: string; id?: string }, data: Record<string, any>): string | null {
+  if (compat.prototype || (q.k !== 'break' && q.k !== 'svcfind')) return null;
+  const f = bestFitter(c.staff);
+  if (!f) return null;
+  if (q.k === 'break' && data.card?.warranty) return 'warranty';
+  const proper = f.skill === 'gun' || (f.skill === 'solid' && hashN('fitter|' + c.week + '|' + q.id) % 2 === 0);
+  return q.k === 'break' ? (proper ? 'fitterFix' : 'patch') : proper ? 'fix' : 'patch';
 }
 
 /** Answer the small cards at the front of the queue. Returns the tickets earned doing it. */
-function answerSmall(c: Career, w: number, handled: Handled[]): string[] {
+export function answerSmall(c: Career, w: number, handled: Handled[]): string[] {
   const tix: string[] = [];
   while (c.queue.length) {
     const q = c.queue[0]!, d = drawCard(c, q);
@@ -198,11 +216,12 @@ function answerSmall(c: Career, w: number, handled: Handled[]): string[] {
       choose(c, 0); // no longer applies: it just goes
       continue;
     }
-    const want = RUN_ANSWERS[q.k], i = want ? d.opts.findIndex((o) => o.id === want) : NEWS_ONLY.has(q.k) && d.opts.length === 1 ? 0 : -1;
+    const fit = fitterCall(c, q, d.data), want = fit ?? RUN_ANSWERS[q.k], i = want ? d.opts.findIndex((o) => o.id === want) : NEWS_ONLY.has(q.k) && d.opts.length === 1 ? 0 : -1;
     if (i < 0) break;
     const a = choose(c, i);
     if (!a) continue;
-    handled.push({ w, k: q.k, id: a.id, ...(d.data.person?.name ? { who: d.data.person.name as string } : {}) });
+    const fitName = fit ? bestFitter(c.staff)?.name : undefined;
+    handled.push({ w, k: q.k, id: a.id, ...(d.data.person?.name ? { who: d.data.person.name as string } : fitName ? { who: fitName } : {}), ...(fit && d.data.m ? { type: d.data.m.type as string } : {}) });
     tix.push(...a.tix);
   }
   return tix;
