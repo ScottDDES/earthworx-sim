@@ -1,7 +1,7 @@
 // Roadtrains: a side tipper with a second trailer (the real game only).
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { RT_COST, RT_HIRE_DAY, TRUCK_DAY, choose, setPlan, compat, game, genCouncil, planEval, rtM3, rtWorth, seedRand, signOwn, truckM3, value, type CouncilTender, type Machine } from '../src';
+import { crewRoad, rtRoad, rtShare, RT_COST, RT_HIRE_DAY, TRUCK_DAY, choose, setPlan, compat, game, genCouncil, planEval, rtM3, rtWorth, seedRand, signOwn, truckM3, value, type CouncilTender, type Machine } from '../src';
 
 const truck = (id: string, rt = false): Machine => ({ id, type: 'truck', year: 2016, cond: 85, hours: 9000, svcAt: 9000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null, ...(rt ? { rt: true } : {}) });
 
@@ -81,6 +81,33 @@ describe('roadtrains', () => {
     const ja = work(a.c, a.t), jb = work(b.c, b.t);
     expect(ja.finished && jb.finished).toBe(true);
     expect(jb.done).toBeLessThan(ja.done * 0.92);
+  });
+
+  it("some roads aren't rated for roadtrains: there they cart as singles", () => {
+    const names = Array.from({ length: 400 }, (_, i) => 'Test Rd ' + i), rated = names.filter(rtRoad).length / names.length;
+    expect(rated).toBeGreaterThan(0.5);
+    expect(rated).toBeLessThan(0.8);
+    const unrated = names.filter((n) => !rtRoad(n));
+    const a = withTender(4, false), b = withTender(4, true), c = withTender(4, true);
+    c.t.roads.forEach((r, i) => { r.name = unrated[i]!; });
+    expect(rtShare(c.t)).toBe(0);
+    const pa = game.planCtx(a.c), pb = game.planCtx(b.c), pc = game.planCtx(c.c);
+    const ea = planEval(pa, a.t, a.t.pl), eb = planEval(pb, b.t, b.t.pl), ec = planEval(pc, c.t, c.t.pl);
+    expect(eb.sDays).toBeLessThan(ea.sDays);
+    expect(ec.sDays).toBeCloseTo(ea.sDays, 6);
+    // and on the job: a package of unrated roads takes as long with roadtrains as with singles
+    const ja = work(a.c, a.t), jc = work(c.c, c.t);
+    expect(Math.abs(jc.done - ja.done)).toBeLessThan(ja.done * 0.08);
+    compat.prototype = true;
+    expect(unrated.every(rtRoad)).toBe(true);
+    compat.prototype = false;
+  });
+
+  it('on a program each road is checked: roadtrains speed the rated ones only', () => {
+    const names = Array.from({ length: 50 }, (_, i) => 'Prog Rd ' + i), yes = names.find(rtRoad)!, no = names.find((n) => !rtRoad(n))!;
+    const rd = (name: string) => ({ name, L: 5, hfg: 5, mfg: 0, lfg: 0, resheet: 1500, haul: 25, water: 6 }) as any, crew = { sub: false, gr: 1, ro: 1, ca: 2, tr: 1 };
+    expect(crewRoad({}, crew, rd(yes), true, 1).s).toBeLessThan(crewRoad({}, crew, rd(yes), true, 0).s);
+    expect(crewRoad({}, crew, rd(no), true, 1).s).toBe(crewRoad({}, crew, rd(no), true, 0).s);
   });
 
   it('they come up in the market, and buying one gets you a roadtrain', () => {

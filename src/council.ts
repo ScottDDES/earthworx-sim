@@ -12,7 +12,7 @@ import { int, pick, type Rand } from './rng';
 import { compat, shuffled } from './compat';
 import { rvOHFor, rvWin, whoPrices } from './rivals';
 import {
-  autoPlan, hm, newCrew, planCounts, planEval, planHasLoader, progRun, rtHired, stdPlan, subCrewTerms, tidyCrew,
+  autoPlan, hm, newCrew, planCounts, planEval, planHasLoader, progRun, rtHired, rtShare, stdPlan, subCrewTerms, tidyCrew,
   type CouncilTender, type Counts, type PlanCtx, type PlanEval, type PlanRoad,
 } from './planning';
 import { RETAIN, gradeDays, npOf, ohShareDefault, tbs, type NonPrice, type Standing, type Tenderer } from './tenders';
@@ -262,6 +262,7 @@ export function signOwn(st: CouncilWorld & { jobs: Job[] }, p: PlanCtx, t: Counc
   // the real game: a loader at the pit (dry or wet if none of yours is free when it starts), or none
   if (!compat.prototype) j.ldr = planHasLoader(pl) && t.q.resheet > 0 ? hm(pl, 'loader') : null;
   if (rtHired(pl)) j.rtHire = true;
+  if (!compat.prototype) j.rtShare = rtShare(t);
   st.jobs.push(j);
   st.ownWon = (st.ownWon || 0) + 1;
   mapWork(st.dmap!, t.roads.map((x) => x.mapId).filter(Boolean) as string[], j);

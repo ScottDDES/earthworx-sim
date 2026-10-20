@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import {
-  COUNCIL_TERMS, PRICE_CHECK_FEE, RT_HIRE_DAY, compat, FLOAT_KM, FLOAT_MOVE, LD_OWN, TRUCK_DAY, TYPES, awayCounts, cartEff, hm, loadersFree, npOf, odLimit, planCounts, planHasLoader, rtFree, roadUnits, stars, subRate, truckM3, weeksFor, game,
+  COUNCIL_TERMS, PRICE_CHECK_FEE, RT_HIRE_DAY, compat, FLOAT_KM, FLOAT_MOVE, LD_OWN, TRUCK_DAY, TYPES, awayCounts, cartEff, hm, loadersFree, npOf, odLimit, planCounts, planHasLoader, rtFree, rtRoad, rtShare, roadUnits, stars, subRate, truckM3, weeksFor, game,
   type CouncilTender, type PlanEval, type ProgOp, play,
 } from '@engine';
 import { CREW_COL, bottText, issueText } from '@engine/text/plan';
@@ -63,6 +63,12 @@ function Stepper({ label, sub, val, onDown, onUp }: { label: string; sub: string
   );
 }
 
+/** Which of the roads take roadtrains, in words. */
+function rtNote(t: CouncilTender): string {
+  const n = t.roads.filter((r) => rtRoad(r.name)).length, N = t.roads.length;
+  return n === N ? 'Every road here is rated for roadtrains.' : n === 0 ? "None of these roads are rated for roadtrains: they'd cart as singles." : `${n} of the ${N} roads are rated for roadtrains (${Math.round(rtShare(t) * 100)}% of the gravel). On the rest they cart as singles.`;
+}
+
 /** Who supplies the plant: your own machines first (as many as you choose), the rest dry hire or subbie plant. */
 function Plant({ c, t, e, act }: { c: Career; t: CouncilTender; e: PlanEval; act: Act }) {
   const av = planCounts(game.planCtx(c), t.close + 1), pl = t.pl, N = pl.crews, rts = rtFree(game.planCtx(c), t.close + 1);
@@ -82,14 +88,14 @@ function Plant({ c, t, e, act }: { c: Career; t: CouncilTender; e: PlanEval; act
                 <button type="button" className="btn" style={{ minHeight: 40, padding: '0 12px' }} disabled={!(use < Math.min(a, need))} onClick={() => act((x) => play.setPlan(x, t.id, 'own:' + k, 1))}>+</button>
               </span>
             </div>
-            {k === 'truck' && rts > 0 && <div className="tiny muted">{Math.min(rts, use)} of yours {Math.min(rts, use) === 1 ? 'is a roadtrain' : 'are roadtrains'}: they go on first and cart about half as much again.</div>}
+            {k === 'truck' && rts > 0 && <div className="tiny muted">{Math.min(rts, use)} of yours {Math.min(rts, use) === 1 ? 'is a roadtrain' : 'are roadtrains'}: they go on first and cart about half as much again. {rtNote(t)}</div>}
             {rest > 0 && (k === 'truck' ? (compat.prototype ? <div className="tiny muted">{rest} hired with drivers at {f(TRUCK_DAY)} a day, only on resheeting days.</div> : (
               <>
                 <div className="seg">
                   <button type="button" className={pl.rtHire ? '' : 'on'} onClick={() => pl.rtHire && act((x) => play.setPlan(x, t.id, 'rtHire', -1))}>Singles · {f(TRUCK_DAY)}/day</button>
                   <button type="button" className={pl.rtHire ? 'on' : ''} onClick={() => !pl.rtHire && act((x) => play.setPlan(x, t.id, 'rtHire', 1))}>Roadtrains · {f(RT_HIRE_DAY)}/day</button>
                 </div>
-                <div className="tiny muted">{rest} hired with drivers and fuel, only on resheeting days.{pl.rtHire ? ' A roadtrain carts about half as much again as a single on a normal haul, less with no loader at the pit.' : ''}</div>
+                <div className="tiny muted">{rest} hired with drivers and fuel, only on resheeting days.{pl.rtHire ? ' A roadtrain carts about half as much again as a single on a normal haul, less with no loader at the pit.' : ''} {rtNote(t)}</div>
               </>
             )) : (
               <div className="seg">
@@ -191,7 +197,7 @@ function PackageSheet({ c, t, act, onClose }: { c: Career; t: CouncilTender; act
         <div className="card">
           <div className="row tiny muted"><span className="grow">Road</span><span style={{ width: 48, textAlign: 'right' }}>Heavy</span><span style={{ width: 54, textAlign: 'right' }}>Medium</span><span style={{ width: 48, textAlign: 'right' }}>Light</span><span style={{ width: 64, textAlign: 'right' }}>Resheet</span></div>
           {t.roads.slice(0, allRoads ? 999 : 8).map((x, i) => (
-            <div key={i} className="row small"><span className="grow">{x.name}</span><span className="num" style={{ width: 48, textAlign: 'right' }}>{x.hfg}</span><span className="num" style={{ width: 54, textAlign: 'right' }}>{x.mfg}</span><span className="num" style={{ width: 48, textAlign: 'right' }}>{x.lfg || 0}</span><span className="num" style={{ width: 64, textAlign: 'right' }}>{x.resheet.toLocaleString('en-AU')} m³</span></div>
+            <div key={i} className="row small"><span className="grow">{x.name}{!compat.prototype && !rtRoad(x.name) && <span className="tiny muted" style={{ display: 'block' }}>Singles only</span>}</span><span className="num" style={{ width: 48, textAlign: 'right' }}>{x.hfg}</span><span className="num" style={{ width: 54, textAlign: 'right' }}>{x.mfg}</span><span className="num" style={{ width: 48, textAlign: 'right' }}>{x.lfg || 0}</span><span className="num" style={{ width: 64, textAlign: 'right' }}>{x.resheet.toLocaleString('en-AU')} m³</span></div>
           ))}
           {t.roads.length > 8 && <button type="button" className="btn" onClick={() => setAllRoads(!allRoads)}>{allRoads ? 'Show fewer roads' : 'Show all ' + t.roads.length + ' roads'}</button>}
           <div className="tiny muted">{t.weeks} weeks allowed from the start, then {f(LD_OWN)} a week in damages. The council pays monthly claims in {COUNCIL_TERMS} weeks, less 5% retention. Water point {t.waterKm} km from the work.</div>
@@ -323,7 +329,7 @@ function ProgramSheet({ c, t, act, onClose }: { c: Career; t: CouncilTender; act
                       <b className="num" style={{ width: 18, color: CREW_COL[sel % 6] }}>{n + 1}</b>
                       <span className="grow" style={{ minWidth: 0 }}>
                         <span className="small" style={{ display: 'block' }}>{rd.name}{x.float ? <span className="tiny" style={{ color: 'var(--warn)' }}> float</span> : null}</span>
-                        <span className="tiny muted">{rd.L} km · {rd.resheet.toLocaleString('en-AU')} m³ · haul {rd.haul} km · water {rd.water} km · {x.days.toFixed(1)} d{x.b !== 'ok' && <> · <b style={{ color: col }}>{x.b === 'idle' ? 'trucks idle' : x.b}</b></>}</span>
+                        <span className="tiny muted">{rd.L} km · {rd.resheet.toLocaleString('en-AU')} m³ · haul {rd.haul} km{!compat.prototype && !rtRoad(rd.name) ? ' · singles only' : ''} · water {rd.water} km · {x.days.toFixed(1)} d{x.b !== 'ok' && <> · <b style={{ color: col }}>{x.b === 'idle' ? 'trucks idle' : x.b}</b></>}</span>
                       </span>
                       <Btn disabled={!n} onClick={op({ op: 'mv', i: sel, j: n, d: -1 })}>↑</Btn>
                       <Btn disabled={n >= R.roads.length - 1} onClick={op({ op: 'mv', i: sel, j: n, d: 1 })}>↓</Btn>

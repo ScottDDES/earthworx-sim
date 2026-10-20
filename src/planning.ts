@@ -12,7 +12,7 @@ import { MOB, STD_CREW_DAY, TREAT, gradeDays, type Quantities } from './tenders'
 import { TOWNS, type TownId } from './towns';
 import { YARDS, type YardId } from './yards';
 import type { Job } from './hire';
-import { int, type Rand } from './rng';
+import { hashN, int, type Rand } from './rng';
 
 /** Normal water run (km), a hired truck's day, a site's weekly running cost. */
 export const WATER_STD_KM = 6;
@@ -54,6 +54,20 @@ export function rtM3(haul: number, loaded = true): number {
 }
 export function rtWorth(haul: number, loaded = true): number {
   return rtM3(haul, loaded) / truckM3(haul, loaded);
+}
+
+/**
+ * Is a road rated for roadtrains? About two in three are; the rest take singles only, so a roadtrain drops its
+ * second trailer and carts as a single there. Fixed by the road's name, so a road is the same on every tender.
+ */
+export function rtRoad(name: string): boolean {
+  return compat.prototype || hashN('roadtrain|' + name) % 100 < 65;
+}
+
+/** The share of a package's gravel going onto roads rated for roadtrains. */
+export function rtShare(t: Pick<CouncilTender, 'roads'>): number {
+  const all = t.roads.reduce((a, r) => a + r.resheet, 0);
+  return all ? t.roads.reduce((a, r) => a + (rtRoad(r.name) ? r.resheet : 0), 0) / all : 1;
 }
 
 /** Your roadtrains free by a week: they go on before the single side tippers. */
@@ -305,7 +319,7 @@ export function crewRoad(t: Pick<CouncilTender, 'subPace'>, c: Pick<ProgCrew, 's
     const pc = t.subPace || 0.85;
     return { g: gradeDays(rd) / pc, s: rd.resheet / (TREAT.resheet.per * pc), b: 'ok', fl: null };
   }
-  const fl = flow(Math.min(c.gr, c.ro), c.ca, c.tr + (rts ? rts * (rtWorth(rd.haul!, loaded) - 1) : 0), rd.water!, rd.haul!, loaded), g = gradeDays(rd) / fl.out, s = rd.resheet ? rd.resheet / fl.sheetRate : 0;
+  const fl = flow(Math.min(c.gr, c.ro), c.ca, c.tr + (rts && rtRoad(rd.name) ? rts * (rtWorth(rd.haul!, loaded) - 1) : 0), rd.water!, rd.haul!, loaded), g = gradeDays(rd) / fl.out, s = rd.resheet ? rd.resheet / fl.sheetRate : 0;
   const b: Block = fl.wf < 0.999 ? 'water' : rd.resheet && fl.gf < 0.95 ? 'gravel' : rd.resheet >= 600 && fl.supply > fl.need * 1.6 ? 'idle' : 'ok';
   return { g, s, b, fl };
 }
@@ -601,7 +615,7 @@ export function planEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned?: Partial
   const ld = planLoader(p, t, pl), pit = t.pits[pl.pit]!, q = t.q;
   const ownT = Math.min(owned.truck || 0, pl.crews * pl.trucks), rts = Math.min(ownT, rtFree(p, t.close + 1));
   const allRts = rts + (rtHired(pl) ? pl.crews * pl.trucks - ownT : 0);
-  const fl = flow(crewMul(pl), pl.carts, pl.trucks + (allRts ? (allRts * (rtWorth(pit.haul, ld !== null) - 1)) / pl.crews : 0), t.waterKm, pit.haul, ld !== null);
+  const fl = flow(crewMul(pl), pl.carts, pl.trucks + (allRts ? (allRts * (rtWorth(pit.haul, ld !== null) - 1) * rtShare(t)) / pl.crews : 0), t.waterKm, pit.haul, ld !== null);
   let gDays = gradeDays(q) / fl.out, sDays = q.resheet / fl.sheetRate;
   // Subbie crews work alongside yours; the work splits by pace.
   const SC = Math.min(pl.subs || 0, t.subAvail || 0), U = gradeDays(q) + q.resheet / TREAT.resheet.per, rho = U / Math.max(0.01, gDays + sDays);
@@ -668,7 +682,7 @@ export function stdPlan(p: PlanCtx, t: CouncilTender): { pl: Plan; e: PlanEval }
       const pl: Plan = { crews: t.stdCrews || 2, graders: 1, rollers: 1, carts: 1, trucks: 1, pit, hm: { grader: mode, roller: mode, cart: mode } };
       if (loader !== undefined) Object.assign(pl, { loader, hm: { ...pl.hm, loader: mode } });
       if (rtHire) pl.rtHire = 1;
-      const worth = rtHire ? rtWorth(t.pits[pit]!.haul, loader !== 0) : 1;
+      const worth = rtHire ? 1 + (rtWorth(t.pits[pit]!.haul, loader !== 0) - 1) * rtShare(t) : 1;
       while (pl.carts < 4 && flow(1, pl.carts, 1, t.waterKm, t.pits[pit]!.haul).wf < 1) pl.carts++;
       while (pl.trucks < 8 && flow(1, pl.carts, pl.trucks * worth, t.waterKm, t.pits[pit]!.haul, loader !== 0).gf < 1) pl.trucks++;
       const e = planEval(p, t, pl, { grader: 2, roller: 1, cart: 2, truck: 1 }, [{ id: 'a', role: 'grader' }, { id: 'b', role: 'grader' }, { id: 'c', role: 'roller' }]);
