@@ -5,7 +5,8 @@
 
 import { book } from './ledger';
 import { monthIdx } from './calendar';
-import { TYPES, breakdown, breaks, wear, type BulkType, type Machine, type MachineType, type WorkshopCtx } from './machines';
+import { compat, onCompat } from './compat';
+import { TYPES, breakdown, breaks, dayHours, wear, type BulkType, type Machine, type MachineType, type WorkshopCtx } from './machines';
 import { int, pick, type Rand } from './rng';
 import { ROLES } from './staff';
 import { TOWNS } from './towns';
@@ -22,6 +23,7 @@ const round = (n: number, to: number) => Math.round(n / to) * to;
 export const SCRAPER_SPEC: Partial<Record<BulkType, { bank: number; load: number; lk: number; ek: number; pushed: boolean }>> = {
   pull: { bank: 11, load: 1.2, lk: 15, ek: 22, pushed: false },
   s623: { bank: 13, load: 1.0, lk: 20, ek: 30, pushed: false },
+  s627: { bank: 15, load: 1.0, lk: 21, ek: 31, pushed: false },
   s631: { bank: 18, load: 0.7, lk: 22, ek: 32, pushed: true },
   s637: { bank: 18, load: 1.0, lk: 22, ek: 32, pushed: false },
   s651: { bank: 26, load: 0.8, lk: 24, ek: 34, pushed: true },
@@ -36,6 +38,7 @@ export const CUT_HA: Partial<Record<BulkType, number>> = { d8: 1.5, d9: 2.0, d10
 export const COMPACT_W: Partial<Record<MachineType, number>> = { padfoot: 2.1, c815: 3.2, c825: 3.7, roller: 2.1 };
 /** Water cart tanks (litres). */
 export const TANK: Partial<Record<MachineType, number>> = { cart: 18000, moxycart: 28000 };
+onCompat(() => { TANK.moxycart = compat.prototype ? 28000 : 40000; });
 /** An excavator digging a channel or loading trucks, bank m³ an hour; a moxy or side tipper carting from it. */
 export const DIG = 110;
 export const CART_M3: Partial<Record<MachineType, number>> = { moxy: 75, truck: 45 };
@@ -528,7 +531,7 @@ export function machineDay(t: MachineType): number {
 
 /** What a job would take with a set of machines: days, and the cost of the spread (fuel, servicing, casual operators). */
 export function jobEstimate(b: Pick<B, 'fleet' | 'staff' | 'youJob' | 'bulk'>, ms: readonly Machine[], e: Pick<FarmEnquiry, 'kind' | 'haul' | 'per' | 'rock'>, qty: number) {
-  const sr = workRate(ms, { dk: e.kind, haul: e.haul, per: e.per, rock: e.rock }, b.bulk?.att), perDay = sr.perHour * 9;
+  const sr = workRate(ms, { dk: e.kind, haul: e.haul, per: e.per, rock: e.rock }, b.bulk?.att), perDay = sr.perHour * dayHours();
   const days = perDay > 0 ? Math.ceil(qty / perDay) : Infinity;
   const seats = seatPlan(b, ms);
   const dayCost = ms.reduce((a, m) => a + machineDay(m.type), 0) + seats.casuals * BULK_CASUAL;
@@ -645,7 +648,7 @@ export function damDay(rand: Rand, b: B, j: Job, wet: boolean, w: WorkshopCtx, r
     rep.lost++;
     return;
   }
-  const moved = sr.perHour * 9;
+  const moved = sr.perHour * dayHours();
   j.m3 = (j.m3 as number) + moved;
   j.qsum = ((j.qsum as number) || 0) + moved * dayQuality(sr, j.wetPush === b.week, kind);
   j.slowest = sr.slowest;

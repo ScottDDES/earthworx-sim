@@ -54,8 +54,8 @@ function owns(st: Ladder, t: string): boolean {
 
 const isBulkPath = (st: Ladder) => st.path === 'bulk';
 const ownsAny = (st: Ladder, ts: readonly string[]) => st.fleet.some((m) => ts.includes(m.type) && m.status !== 'auction');
-const DIRT = ['d6', 'd8', 'd9', 'd10', 'pull', 's623', 's631', 's637', 's651', 's657', 'excavator'];
-const SCRAPERS = ['pull', 's623', 's631', 's637', 's651', 's657'];
+const DIRT = ['d6', 'd8', 'd9', 'd10', 'pull', 's623', 's627', 's631', 's637', 's651', 's657', 'excavator'];
+const SCRAPERS = ['pull', 's623', 's627', 's631', 's637', 's651', 's657'];
 const DOZERS = ['d6', 'd8', 'd9', 'd10'];
 const COMPACTORS = ['padfoot', 'c815', 'c825'];
 const WATER = ['cart', 'moxycart'];

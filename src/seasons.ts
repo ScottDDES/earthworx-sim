@@ -23,7 +23,7 @@ import { coachOff, coachOk, runOn } from './coach';
 import { note } from './diary';
 
 /** Bump whenever the simulation changes, so older scores aren't checked against new rules. */
-export const SIM_VER = 5; // 5: bulk fuel and the diesel price. 2: Run on answers small cards itself. 3: playtest fixes (council bans, cover, Christmas). 4: DDES Advisory on WHS and tenders, the DDES ERP
+export const SIM_VER = 6; // 6: Scott's hire schedule on a 10-hour day, and the 627. 5: bulk fuel and the diesel price. 2: Run on answers small cards itself. 3: playtest fixes (council bans, cover, Christmas). 4: DDES Advisory on WHS and tenders, the DDES ERP
 
 export type SeasonId = 'wet2010' | 'dry2019' | 'prog2022';
 

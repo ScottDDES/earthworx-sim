@@ -36,7 +36,7 @@ const MOXYCART = MOXY_FRONT + '<rect x="25" y="6" width="37" height="13" rx="6.5
 
 export const BULK_SVG: Record<string, string> = {
   d6: DOZER, d8: DOZER, d9: DOZER, d10: DOZER,
-  pull: SCRAPER, s623: SCRAPER, s631: SCRAPER, s637: SCRAPER, s651: SCRAPER, s657: SCRAPER,
+  pull: SCRAPER, s623: SCRAPER, s627: SCRAPER, s631: SCRAPER, s637: SCRAPER, s651: SCRAPER, s657: SCRAPER,
   padfoot: COMPACTOR, c815: COMPACTOR, c825: COMPACTOR,
   excavator: EXCAVATOR, moxy: MOXY, moxycart: MOXYCART,
 };

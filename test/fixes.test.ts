@@ -645,7 +645,7 @@ describe('Starting as a bulk earthworks outfit', () => {
     let alive = 0, jobs = 0;
     for (let seed = 1; seed <= 8; seed++) {
       const c = bulkCareer(seed, 180000);
-      const ex = c.market!.listings.filter((m) => m.type === 'excavator' || m.type === 'd6').sort((a, b) => b.price - a.price).find((m) => m.price < c.bank - 40000)!;
+      const ex = c.market!.listings.filter((m) => m.type === 'excavator').sort((a, b) => b.price - a.price).find((m) => m.price < c.bank - 40000)!;
       game.buy(c, ex.id);
       game.open(c);
       for (let w = 0; w < 104 && c.phase === 'play'; w++) {

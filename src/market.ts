@@ -213,7 +213,7 @@ export function genMarket(rand: Rand, x: MarketInputs, nextId: () => string): Ma
 
 /** How often each Bulk and Ag machine comes up for sale: the everyday gear more, the big scrapers less. */
 const BULK_ODDS: Record<BulkType, number> = {
-  d6: 3, d8: 3, d9: 2, d10: 1, pull: 2, s623: 1, s631: 2, s637: 1, s651: 1, s657: 1, padfoot: 2, c815: 2, c825: 1, excavator: 3, moxy: 2, moxycart: 2,
+  d6: 3, d8: 3, d9: 2, d10: 1, pull: 2, s623: 1, s627: 1, s631: 2, s637: 1, s651: 1, s657: 1, padfoot: 2, c815: 2, c825: 1, excavator: 3, moxy: 2, moxycart: 2,
 };
 
 /**

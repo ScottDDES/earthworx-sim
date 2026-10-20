@@ -5,6 +5,7 @@
 // Nothing here writes sentences: what's holding a plan up comes back as codes and numbers.
 
 import { monthIdx } from './calendar';
+import { compat, onCompat } from './compat';
 import { TYPES, isRoad, type Machine, type MachineType, type RoadType } from './machines';
 import { fillRoles, type CrewFill, type Person, type Role } from './staff';
 import { MOB, STD_CREW_DAY, TREAT, gradeDays, type Quantities } from './tenders';
@@ -15,7 +16,9 @@ import { int, type Rand } from './rng';
 
 /** Normal water run (km), a hired truck's day, a site's weekly running cost. */
 export const WATER_STD_KM = 6;
-export const TRUCK_DAY = 1860;
+/** A side tipper and driver hired in for a day, your fuel: the prototype's rate, then Scott's schedule on a 10-hour day. */
+export let TRUCK_DAY = 1860;
+onCompat(() => { TRUCK_DAY = compat.prototype ? 1860 : 2200; });
 export const SITE_WEEK = 1200;
 /** Floats: roads further apart than this need the gear floated, costing this much and half a day. */
 export const FLOAT_KM = 12;

@@ -27,7 +27,7 @@ export const ROLES: Record<Role, RoleSpec> = {
   fitter: { name: 'Fitter', wage: 1600, casual: 0, drives: [], note: 'Works in your workshop and looks after up to 6 machines: services them when due for a quarter of the dealer price, fixes patched-up jobs on idle gear, and cuts breakdowns.' },
   // the Bulk and Ag pack's trades
   dozer:   { name: 'Dozer operator', wage: 2200, casual: 650, drives: ['d6', 'd8', 'd9', 'd10', 'padfoot'], note: 'Any dozer, D6 to D10, and the padfoot.' },
-  scraper: { name: 'Scraper operator', wage: 2150, casual: 650, drives: ['pull', 's623', 's631', 's637', 's651', 's657', 'padfoot', 'c815', 'c825'], note: 'Any scraper, and the compactors.' },
+  scraper: { name: 'Scraper operator', wage: 2150, casual: 650, drives: ['pull', 's623', 's627', 's631', 's637', 's651', 's657', 'padfoot', 'c815', 'c825'], note: 'Any scraper, and the compactors.' },
   plant:   { name: 'Plant operator', wage: 1900, casual: 600, drives: ['excavator', 'moxy', 'moxycart', 'c815', 'c825', 'padfoot'], note: 'Excavator, moxies and the compactors.' },
   wsm:    { name: 'Workshop manager', wage: 3200, casual: 0, drives: [], note: 'Runs the workshop and does a fitter\'s work too: every service and repair, and tells you when gear is due to be turned over. Past 12 machines, a fleet without one breaks down a quarter more often.' },
 };

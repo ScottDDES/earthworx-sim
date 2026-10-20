@@ -1,7 +1,8 @@
 // Machines: what they're worth, how they wear, servicing, and breakdowns.
-// Condition runs 10 to 100. Every day worked adds 9 hours. A service is due every 250 hours.
+// Condition runs 10 to 100. Every day worked adds 10 hours (9 in the prototype). A service is due every 250 hours.
 
 import { yearOf } from './calendar';
+import { compat, onCompat } from './compat';
 import { book, type Accounts } from './ledger';
 import { int, pick, type Rand } from './rng';
 
@@ -10,7 +11,7 @@ export type RoadType = 'grader' | 'roller' | 'cart' | 'truck';
 /** The Bulk and Ag pack's gear: each model its own type, so prices, fuel and hire rates are its own. */
 export type BulkType =
   | 'd6' | 'd8' | 'd9' | 'd10'
-  | 'pull' | 's623' | 's631' | 's637' | 's651' | 's657'
+  | 'pull' | 's623' | 's627' | 's631' | 's637' | 's651' | 's657'
   | 'padfoot' | 'c815' | 'c825' | 'excavator' | 'moxy' | 'moxycart';
 export type MachineType = RoadType | BulkType;
 
@@ -43,6 +44,7 @@ export const TYPES: Record<MachineType, MachineSpec> = {
   d10:       { name: 'Dozer D10', short: 'D10', newV: 2300000, svc: 3500, fuel: 1500, wet: 3400, dry: 11200, sub: 4100 },
   pull:      { name: 'Tractor and pull scrapers', short: 'pull scraper', newV: 800000, svc: 2400, fuel: 1000, wet: 2000, dry: 6600, sub: 2400 },
   s623:      { name: 'Scraper 623, elevating', short: '623', newV: 1300000, svc: 2600, fuel: 1100, wet: 2350, dry: 7800, sub: 2800 },
+  s627:      { name: 'Scraper 627, push-pull', short: '627', newV: 1600000, svc: 2800, fuel: 1300, wet: 2650, dry: 8800, sub: 3150 },
   s631:      { name: 'Scraper 631, open bowl', short: '631', newV: 1700000, svc: 2800, fuel: 1350, wet: 2700, dry: 8900, sub: 3250 },
   s637:      { name: 'Scraper 637, push-pull', short: '637', newV: 1900000, svc: 3000, fuel: 1500, wet: 2950, dry: 9700, sub: 3550 },
   s651:      { name: 'Scraper 651, open bowl', short: '651', newV: 2400000, svc: 3400, fuel: 1800, wet: 3400, dry: 11200, sub: 4100 },
@@ -55,17 +57,57 @@ export const TYPES: Record<MachineType, MachineSpec> = {
   moxycart:  { name: 'Moxy water cart 28kL', short: 'moxy cart', newV: 700000, svc: 1700, fuel: 850, wet: 1700, dry: 5600, sub: 2050 },
 };
 
+/**
+ * The real game's rates: Scott's 2022-23 hire schedule, on a 10-hour day. wet is the hourly rate with the client's
+ * fuel, fuel the gap to the rate with your fuel, sub that whole rate (what another outfit charges you), dry a week.
+ * The 627's are a guess between the 623 and the 637. The prototype keeps the table above.
+ */
+const RATES: Partial<Record<MachineType, { wet: number; withFuel: number; dry: number; name?: string }>> = {
+  grader: { wet: 185, withFuel: 240, dry: 5000, name: 'Grader 14ft' },
+  roller: { wet: 150, withFuel: 200, dry: 2500 },
+  cart: { wet: 140, withFuel: 200, dry: 2500 },
+  truck: { wet: 170, withFuel: 220, dry: 2750 },
+  d6: { wet: 150, withFuel: 200, dry: 6500 },
+  d8: { wet: 250, withFuel: 370, dry: 8000 },
+  d9: { wet: 300, withFuel: 450, dry: 10000 },
+  d10: { wet: 380, withFuel: 520, dry: 12500 },
+  pull: { wet: 240, withFuel: 360, dry: 10000 },
+  s623: { wet: 300, withFuel: 430, dry: 12000 },
+  s627: { wet: 330, withFuel: 490, dry: 14000 },
+  s631: { wet: 275, withFuel: 390, dry: 10000 },
+  s637: { wet: 355, withFuel: 540, dry: 16000 },
+  s651: { wet: 400, withFuel: 610, dry: 15000 },
+  s657: { wet: 480, withFuel: 750, dry: 20000 },
+  padfoot: { wet: 150, withFuel: 200, dry: 2500 },
+  c815: { wet: 170, withFuel: 250, dry: 3000 },
+  c825: { wet: 195, withFuel: 300, dry: 3000 },
+  excavator: { wet: 200, withFuel: 250, dry: 2500, name: 'Excavator 30t' },
+  moxy: { wet: 180, withFuel: 260, dry: 3000 },
+  moxycart: { wet: 200, withFuel: 300, dry: 4000, name: 'Moxy water cart 40kL' },
+};
+/** Hours in a working day: what a wet hire day is charged on and what a day puts on the clock. */
+export const dayHours = () => (compat.prototype ? 9 : 10);
+const PROTO_TYPES = JSON.parse(JSON.stringify(TYPES)) as typeof TYPES;
+onCompat(() => {
+  for (const k of Object.keys(TYPES) as MachineType[]) {
+    const r = RATES[k], h = dayHours();
+    Object.assign(TYPES[k], PROTO_TYPES[k]);
+    if (compat.prototype || !r) continue;
+    Object.assign(TYPES[k], { wet: r.wet * h, fuel: (r.withFuel - r.wet) * h, sub: r.withFuel * h, dry: r.dry }, r.name ? { name: r.name } : {});
+  }
+});
+
 /** Which family each machine belongs to, for grouping in the yard. */
 export type Family = RoadType | 'dozer' | 'scraper' | 'compactor' | 'excavator' | 'moxy';
 export const FAMILY: Record<MachineType, Family> = {
   grader: 'grader', roller: 'roller', cart: 'cart', truck: 'truck',
   d6: 'dozer', d8: 'dozer', d9: 'dozer', d10: 'dozer',
-  pull: 'scraper', s623: 'scraper', s631: 'scraper', s637: 'scraper', s651: 'scraper', s657: 'scraper',
+  pull: 'scraper', s623: 'scraper', s627: 'scraper', s631: 'scraper', s637: 'scraper', s651: 'scraper', s657: 'scraper',
   padfoot: 'compactor', c815: 'compactor', c825: 'compactor', excavator: 'excavator', moxy: 'moxy', moxycart: 'moxy',
 };
 
 /** The Bulk and Ag pack's machines, in the order the Market shows them. */
-export const BULK_TYPES: readonly BulkType[] = ['d6', 'd8', 'd9', 'd10', 'pull', 's623', 's631', 's637', 's651', 's657', 'padfoot', 'c815', 'c825', 'excavator', 'moxy', 'moxycart'];
+export const BULK_TYPES: readonly BulkType[] = ['d6', 'd8', 'd9', 'd10', 'pull', 's623', 's627', 's631', 's637', 's651', 's657', 'padfoot', 'c815', 'c825', 'excavator', 'moxy', 'moxycart'];
 
 /** Road gear: what crews, councils and contracts are counted in. */
 export function isRoad(t: MachineType): t is RoadType {
@@ -114,7 +156,6 @@ export const SVC_EVERY = 250;
 export const GPS_COST = 85000;
 /** GPS machine control: a grader gets 7% more done a day. */
 export const GPS_MUL = 1.07;
-export const HOURS_PER_DAY = 9;
 
 const round = (n: number, to: number) => Math.round(n / to) * to;
 
@@ -183,7 +224,7 @@ export function serviced(m: Machine, by: 'dealer' | 'fitter'): void {
  * An overdue service wears it faster.
  */
 export function wear(m: Machine, mult: number, acc?: Accounts): void {
-  m.hours += HOURS_PER_DAY;
+  m.hours += dayHours();
   if (acc) book(acc, 'machineDays', 1);
   m.cond = Math.max(10, m.cond - (0.28 * mult + (overdue(m) ? 0.25 : 0)));
 }
@@ -224,7 +265,7 @@ export const PARTS: Record<MachineType, readonly string[]> = {
   cart:   ['water pump seal letting go', 'cracked spray bar bracket', 'slipping clutch', 'worn spring hangers'],
   truck:  ['cracked tipper hoist mount', 'leaking air tank', 'worn kingpins', 'weeping hoist cylinder'],
   d6: DOZER_PARTS, d8: DOZER_PARTS, d9: DOZER_PARTS, d10: DOZER_PARTS,
-  pull: SCRAPER_PARTS, s623: SCRAPER_PARTS, s631: SCRAPER_PARTS, s637: SCRAPER_PARTS, s651: SCRAPER_PARTS, s657: SCRAPER_PARTS,
+  pull: SCRAPER_PARTS, s623: SCRAPER_PARTS, s627: SCRAPER_PARTS, s631: SCRAPER_PARTS, s637: SCRAPER_PARTS, s651: SCRAPER_PARTS, s657: SCRAPER_PARTS,
   padfoot: ['vibe bearing running hot', 'worn padfoot shell', 'cracked ROPS mount', 'worn articulation bushes'],
   c815: COMPACTOR_PARTS, c825: COMPACTOR_PARTS,
   excavator: ['weeping boom cylinder', 'worn bucket pins', 'cracked track frame', 'slow swing motor'],

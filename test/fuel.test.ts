@@ -3,7 +3,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   BULK_OFF, CALLOUT, buyTank, orderFuel, DIESEL_BASE, RISE_FALL, TANKS, compat, choose, drawCard, fuelIdle, fuelSettle, fuelStart, fuelWeek, game, hashN, newAccounts,
-  newFuel, pumpPrice, seedRand, warMul, type FuelBook, type FuelEvent,
+  newFuel, pumpPrice, seedRand, warMul, TYPES, dayHours, type FuelBook, type FuelEvent,
 } from '../src';
 
 type FB = Parameters<typeof fuelStart>[0];
@@ -166,6 +166,23 @@ describe('bulk fuel', () => {
     fuelStart(b, []);
     fuelWeek(() => 0, b, 1, []);
     expect(b.fuel).toBeUndefined();
+    compat.prototype = false;
+  });
+});
+
+describe('the hire schedule', () => {
+  beforeAll(() => { compat.prototype = false; });
+  afterAll(() => { compat.prototype = true; });
+
+  it("the real game charges Scott's schedule on a 10-hour day; the prototype keeps its own", () => {
+    expect(TYPES.d8).toMatchObject({ wet: 2500, fuel: 1200, sub: 3700, dry: 8000 });
+    expect(TYPES.grader.name).toBe('Grader 14ft');
+    expect(TYPES.s627.short).toBe('627');
+    expect(dayHours()).toBe(10);
+    compat.prototype = true;
+    expect(TYPES.d8).toMatchObject({ wet: 2350, fuel: 900, dry: 7800 });
+    expect(TYPES.grader).toMatchObject({ name: 'Grader 12M', wet: 1665, fuel: 570, dry: 5100, sub: 2230 });
+    expect(dayHours()).toBe(9);
     compat.prototype = false;
   });
 });

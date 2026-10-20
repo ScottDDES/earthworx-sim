@@ -3,10 +3,24 @@
 
 import type { Rand } from './rng';
 
+let proto = false;
+const hooks: (() => void)[] = [];
+
 export const compat = {
   /** Behave exactly as the prototype does, quirks included. Tests turn this on; the game leaves it off. */
-  prototype: false,
+  get prototype() { return proto; },
+  set prototype(v: boolean) {
+    if (v === proto) return;
+    proto = v;
+    for (const h of hooks) h();
+  },
 };
+
+/** Run fn now and whenever the prototype switch flips: for tables that hold the prototype's numbers or the real game's. */
+export function onCompat(fn: () => void): void {
+  hooks.push(fn);
+  fn();
+}
 
 /**
  * A shuffled copy. The prototype sorts with a random comparator, which is biased (some orders come up far more
