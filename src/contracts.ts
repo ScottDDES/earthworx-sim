@@ -13,7 +13,7 @@ import {
 } from './hire';
 import { GPS_MUL, TYPES, breakdown, breaks, wear, type Machine, type MachineType, type WorkshopCtx } from './machines';
 import { mapDone, type DistrictMap } from './map';
-import { FLOAT_DAYS, FLOAT_KM, FLOAT_MOVE, SITE_WEEK, TRUCK_DAY, crewMul, crewPeople, flow, hm, roadDist, subRate, weeksFor, type PlanCtx } from './planning';
+import { FLOAT_DAYS, FLOAT_KM, FLOAT_MOVE, SITE_WEEK, TRUCK_DAY, crewMul, crewPeople, flow, hm, loaderDay, roadDist, subRate, weeksFor, type LoaderMode, type PlanCtx } from './planning';
 import { relAdd } from './relations';
 import { int, type Rand } from './rng';
 import { shuffled } from './compat';
@@ -304,6 +304,14 @@ export function staffOwn(b: ContractBiz, dayNow: number | null): void {
       fuelDay += (need[k]! - wet[k]!) * TYPES[k].fuel;
     }
     j.fuelCrew = fuelDay / crews;
+    if (j.ldr) {
+      const ld = b.fleet.find((m) => m.type === 'loader' && m.status === 'idle' && m.down === 0);
+      if (ld) {
+        ld.status = 'job';
+        ld.jobId = j.id;
+        j.ldrId = ld.id;
+      }
+    }
     if (j.prog) {
       j.subDay = 0;
       j.casualDay = 0;
@@ -413,8 +421,32 @@ export function finishPts(b: Biz, j: Job): number {
   return (g && gG * 2 >= g ? 1 : 0) + (ro && rM * 2 >= ro ? 1 : 0);
 }
 
-export function ownFlow(j: Job) {
-  return flow(crewMul(j as { graders?: number; rollers?: number }), j.carts as number, j.trucks as number, j.waterKm as number, j.haul as number);
+export function ownFlow(j: Job, loaded = j.ldr !== null) {
+  return flow(crewMul(j as { graders?: number; rollers?: number }), j.carts as number, j.trucks as number, j.waterKm as number, j.haul as number, loaded);
+}
+
+/**
+ * Is the loader loading today? A job from before loaders (or the prototype) just gets loaded. Your own loader
+ * broken down means the trucks wait on the pit's; gone for good (sold, repossessed) and a hired one takes its place.
+ */
+export function loaderOn(b: Pick<Biz, 'fleet'>, j: Job): boolean {
+  if (j.ldr === undefined) return true;
+  if (j.ldr === null) return false;
+  if (!j.ldrId) return true;
+  const m = mach(b as Biz, j.ldrId as string);
+  if (!m || m.jobId !== j.id) {
+    j.ldrId = null;
+    return true;
+  }
+  return m.down === 0 || m.cover > 0;
+}
+
+/** A carting day for the loader: its cost, booked to the job, its diesel, and wear on your own. */
+function loaderWork(rand: Rand, b: ContractBiz, j: Job, w: WorkshopCtx, events: ContractEvent[]): { cost: number; fuel: number } {
+  if (!j.ldr) return { cost: 0, fuel: 0 };
+  const own = j.ldrId ? mach(b, j.ldrId as string) : undefined, d = loaderDay(own ? 'own' : (j.ldr as LoaderMode));
+  if (own && own.down === 0) wearAndBreak(rand, b, own, w, events);
+  return d;
 }
 
 function wearAndBreak(rand: Rand, b: Biz, m: Machine, w: WorkshopCtx, events: ContractEvent[]): void {
@@ -443,8 +475,8 @@ function crewHome(b: Biz, j: Job, c: ProgCrewRun, i: number, events: ContractEve
 
 /** One working day of a program: each crew on its own road, floating between far ones. */
 export function progDay(rand: Rand, b: ContractBiz, j: Job, rep: WeekReport, w: WorkshopCtx, events: ContractEvent[]): void {
-  const P = j.prog as Prog, pace = (j.subPace as number) || 0.85;
-  let cost = 0;
+  const P = j.prog as Prog, pace = (j.subPace as number) || 0.85, loaded = loaderOn(b, j);
+  let cost = 0, carted = false;
   // Each crew has its own machines: a breakdown stops that crew only.
   if (!P.split) {
     P.split = true;
@@ -490,7 +522,7 @@ export function progDay(rand: Rand, b: ContractBiz, j: Job, rep: WeekReport, w: 
         frac -= fu;
         continue;
       }
-      const rd = c.q[c.k]!, fl = c.sub ? null : flow(Math.min(c.gr, c.ro), c.ca, c.tr, rd.water!, rd.haul!), dayc = c.sub ? (j.subRate as number) || 0 : c.day;
+      const rd = c.q[c.k]!, fl = c.sub ? null : flow(Math.min(c.gr, c.ro), c.ca, c.tr, rd.water!, rd.haul!, loaded), dayc = c.sub ? (j.subRate as number) || 0 : c.day;
       if (rd.g > 1e-6) {
         const gr = c.sub ? pace : fl!.out * crewGps(b, c), ug = Math.min(frac, rd.g / gr);
         rd.g -= gr * ug;
@@ -504,7 +536,10 @@ export function progDay(rand: Rand, b: ContractBiz, j: Job, rep: WeekReport, w: 
         j.sLeft = (j.sLeft as number) - pl3;
         frac -= us;
         cost += (dayc + (c.sub ? 0 : c.sheetDay)) * us + pl3 * rd.roy;
-        if (!c.sub) j.done += us;
+        if (!c.sub) {
+          j.done += us;
+          carted = true;
+        }
       }
       if (rd.g <= 1e-6 && rd.s <= 1e-6) {
         rd.g = 0;
@@ -529,6 +564,11 @@ export function progDay(rand: Rand, b: ContractBiz, j: Job, rep: WeekReport, w: 
       if (m && m.down === 0 && (m.type !== 'truck' || c.q[Math.min(c.k, c.q.length - 1)]!.g <= 0)) wearAndBreak(rand, b, m, w, events);
     }
   });
+  if (carted && loaded) {
+    const L = loaderWork(rand, b, j, w, events);
+    cost += L.cost;
+    if (L.fuel) fuelUse(b, L.fuel, true);
+  }
   b.bank -= cost;
   rep.costs += cost;
   if (P.crews.every((c) => c.done) || ((j.gLeft as number) <= 0.01 && (j.sLeft as number) <= 0.5)) {
@@ -568,7 +608,8 @@ export function ownDay(rand: Rand, b: ContractBiz, j: Job, rep: WeekReport, w: W
     return;
   }
   rep.lost += crews - active;
-  const fl = ownFlow(j), share = active / crews, sheeting = (j.gLeft as number) <= 0;
+  const loaded = loaderOn(b, j), fl = ownFlow(j, loaded), share = active / crews, sheeting = (j.gLeft as number) <= 0;
+  let carted = false;
   let cost = active * (j.fuelCrew != null ? (j.fuelCrew as number) : (j.graders as number) * TYPES.grader.fuel + (j.rollers as number) * TYPES.roller.fuel + (j.carts as number) * TYPES.cart.fuel)
     + Math.round(((j.casualDay as number) + ((j.subDay as number) || 0)) * share);
   const truckDay = ((crews * (j.trucks as number) - (j.ownTrucks as number)) * TRUCK_DAY + (j.ownTrucks as number) * TYPES.truck.fuel + (j.truckCasualDay as number)) / crews;
@@ -580,7 +621,13 @@ export function ownDay(rand: Rand, b: ContractBiz, j: Job, rep: WeekReport, w: W
       j.sLeft = (j.sLeft as number) - placed;
       cost += truckDay + placed * (j.royalty as number);
       fuel += ((j.ownTrucks as number) * TYPES.truck.fuel) / crews;
+      carted = true;
     }
+  }
+  if (carted && loaded) {
+    const L = loaderWork(rand, b, j, w, events);
+    cost += L.cost;
+    fuel += L.fuel;
   }
   j.done += active;
   rep.worked += active;

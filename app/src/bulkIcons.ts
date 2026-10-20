@@ -34,7 +34,14 @@ const MOXY_FRONT =
 const MOXY = MOXY_FRONT + '<path d="M25 5h37l-3.5 13H27z"/>';
 const MOXYCART = MOXY_FRONT + '<rect x="25" y="6" width="37" height="13" rx="6.5"/><rect x="58" y="19" width="5" height="1.6"/>';
 
+/** A wheel loader at the gravel pit, bucket down at the front. */
+const LOADER =
+  '<path d="M1 14h10l1 9H2z"/><path d="M10 15l14-5 2 3-15 5z"/><rect x="18" y="13" width="38" height="8" rx="2"/>' +
+  '<path d="M27 2h13l1 11H27z"/><rect x="29" y="4" width="10" height="7" rx="1" fill="var(--glass)"/><path d="M42 8h14l2 5H42z"/>' +
+  '<circle cx="21" cy="24" r="7"/>' + hub(21, 24, 2.3) + '<circle cx="50" cy="24" r="7"/>' + hub(50, 24, 2.3);
+
 export const BULK_SVG: Record<string, string> = {
+  loader: LOADER,
   d6: DOZER, d8: DOZER, d9: DOZER, d10: DOZER,
   pull: SCRAPER, s623: SCRAPER, s627: SCRAPER, s631: SCRAPER, s637: SCRAPER, s651: SCRAPER, s657: SCRAPER,
   padfoot: COMPACTOR, c815: COMPACTOR, c825: COMPACTOR,

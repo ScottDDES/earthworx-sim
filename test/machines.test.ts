@@ -49,8 +49,8 @@ function randomWorkshop(R: () => number) {
 
 describe('tables', () => {
   it('machine types, yards, difficulties and parts are the same', () => {
-    // the road gear is the prototype's; the Bulk and Ag pack's machines are the real game's own
-    const road = <T,>(r: Record<string, T>) => Object.fromEntries(Object.entries(r).filter(([k]) => !isBulk(k as never)));
+    // the road gear is the prototype's; the Bulk and Ag pack's machines and the pit loader are the real game's own
+    const road = <T,>(r: Record<string, T>) => Object.fromEntries(Object.entries(r).filter(([k]) => !isBulk(k as never) && k !== 'loader'));
     expect(road(TYPES)).toEqual(P.TYPES);
     expect(YARDS).toEqual(P.YARDS);
     expect(DIFFICULTY).toEqual(P.DIFF_P);

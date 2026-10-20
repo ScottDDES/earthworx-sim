@@ -233,6 +233,16 @@ export function genBulkListings(rand: Rand, week: number, mood: Mood, nextId: ()
   return L;
 }
 
+/** The real game: now and then a loader comes up, for the gravel pit. Its own random stream, like the pack's. */
+export function genLoaderListings(rand: Rand, week: number, mood: Mood, nextId: () => string): Listing[] {
+  if (rand() > 0.35) return [];
+  const type = 'loader' as const, yr = yearOf(week), year = int(rand, 2006, 2020), cond = int(rand, 45, 86);
+  const seller: Seller = rand() < 0.45 ? 'dealer' : 'private', claimed = seller === 'dealer' ? cond : Math.min(92, cond + int(rand, 0, 14));
+  const m: Listing = { id: nextId(), type, year, cond, claimed, hours: (yr - year) * int(rand, 650, 900), seller, revealed: seller === 'dealer', price: 0 };
+  m.price = round(value({ type, year, cond: claimed }, week) * (seller === 'dealer' ? 1.12 : 0.95) * MOODS[mood].pm, 500);
+  return [m];
+}
+
 // ---------- buying ----------
 
 export const INSPECT_COST = 600;

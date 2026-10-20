@@ -315,8 +315,8 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       const mul = crewMul(j as never), far = j.far as { haul: number };
       Object.assign(data, {
         job: j, left: Math.round(Math.max(0, j.sLeft as number)), farHaul: far.haul,
-        farSupply: flow(mul, j.carts as number, j.trucks as number, j.waterKm as number, far.haul).supply,
-        farSupply2: flow(mul, j.carts as number, (j.trucks as number) + 2, j.waterKm as number, far.haul).supply,
+        farSupply: flow(mul, j.carts as number, j.trucks as number, j.waterKm as number, far.haul, j.ldr !== null).supply,
+        farSupply2: flow(mul, j.carts as number, (j.trucks as number) + 2, j.waterKm as number, far.haul, j.ldr !== null).supply,
       });
       return [o('far', () => pitFar(j, false)), o('farTrucks', () => pitFar(j, true)), o('farmer', () => pitFarmer(st, j))];
     }

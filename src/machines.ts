@@ -13,7 +13,9 @@ export type BulkType =
   | 'd6' | 'd8' | 'd9' | 'd10'
   | 'pull' | 's623' | 's627' | 's631' | 's637' | 's651' | 's657'
   | 'padfoot' | 'c815' | 'c825' | 'excavator' | 'moxy' | 'moxycart';
-export type MachineType = RoadType | BulkType;
+/** A wheel loader at the gravel pit, loading the trucks (the real game only). */
+export type PitType = 'loader';
+export type MachineType = RoadType | BulkType | PitType;
 
 export interface MachineSpec {
   name: string;
@@ -55,6 +57,7 @@ export const TYPES: Record<MachineType, MachineSpec> = {
   excavator: { name: 'Excavator 25t', short: 'excavator', newV: 380000, svc: 1400, fuel: 650, wet: 1530, dry: 5000, sub: 1850 },
   moxy:      { name: 'Moxy 30t', short: 'moxy', newV: 650000, svc: 1600, fuel: 800, wet: 1620, dry: 5300, sub: 1950 },
   moxycart:  { name: 'Moxy water cart 28kL', short: 'moxy cart', newV: 700000, svc: 1700, fuel: 850, wet: 1700, dry: 5600, sub: 2050 },
+  loader:    { name: 'Loader 966', short: 'loader', newV: 520000, svc: 1500, fuel: 540, wet: 1530, dry: 4000, sub: 2070 },
 };
 
 /**
@@ -84,6 +87,7 @@ const RATES: Partial<Record<MachineType, { wet: number; withFuel: number; dry: n
   excavator: { wet: 200, withFuel: 250, dry: 2500, name: 'Excavator 30t' },
   moxy: { wet: 180, withFuel: 260, dry: 3000 },
   moxycart: { wet: 200, withFuel: 300, dry: 4000, name: 'Moxy water cart 40kL' },
+  loader: { wet: 170, withFuel: 230, dry: 4000 },
 };
 /** Hours in a working day: what a wet hire day is charged on and what a day puts on the clock. */
 export const dayHours = () => (compat.prototype ? 9 : 10);
@@ -98,12 +102,13 @@ onCompat(() => {
 });
 
 /** Which family each machine belongs to, for grouping in the yard. */
-export type Family = RoadType | 'dozer' | 'scraper' | 'compactor' | 'excavator' | 'moxy';
+export type Family = RoadType | 'dozer' | 'scraper' | 'compactor' | 'excavator' | 'moxy' | 'loader';
 export const FAMILY: Record<MachineType, Family> = {
   grader: 'grader', roller: 'roller', cart: 'cart', truck: 'truck',
   d6: 'dozer', d8: 'dozer', d9: 'dozer', d10: 'dozer',
   pull: 'scraper', s623: 'scraper', s627: 'scraper', s631: 'scraper', s637: 'scraper', s651: 'scraper', s657: 'scraper',
   padfoot: 'compactor', c815: 'compactor', c825: 'compactor', excavator: 'excavator', moxy: 'moxy', moxycart: 'moxy',
+  loader: 'loader',
 };
 
 /** The Bulk and Ag pack's machines, in the order the Market shows them. */
@@ -115,7 +120,7 @@ export function isRoad(t: MachineType): t is RoadType {
 }
 
 export function isBulk(t: MachineType): t is BulkType {
-  return FAMILY[t] !== t || t === 'excavator' || t === 'moxy';
+  return t !== 'loader' && (FAMILY[t] !== t || t === 'excavator' || t === 'moxy');
 }
 
 export type MachineStatus = 'idle' | 'working' | 'hired' | 'listed' | 'auction' | 'branch' | string;
@@ -271,6 +276,7 @@ export const PARTS: Record<MachineType, readonly string[]> = {
   excavator: ['weeping boom cylinder', 'worn bucket pins', 'cracked track frame', 'slow swing motor'],
   moxy: ['cracked tray hinge', 'worn articulation bushes', 'leaking hoist cylinder', 'tired diff bearings'],
   moxycart: ['water pump seal letting go', 'cracked spray bar bracket', 'worn articulation bushes', 'tired diff bearings'],
+  loader: ['weeping lift cylinder', 'worn bucket pins', 'tired transmission clutch packs', 'worn articulation bushes'],
 };
 
 export interface Find {

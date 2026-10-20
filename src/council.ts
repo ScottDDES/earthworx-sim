@@ -9,10 +9,10 @@ import { TOWNS } from './towns';
 import { BOQ, CT_PITS, CT_ROADS, dmap, mapRival, mapWork, pickRoads, placePos } from './map';
 import type { Mood } from './market';
 import { int, pick, type Rand } from './rng';
-import { shuffled } from './compat';
+import { compat, shuffled } from './compat';
 import { rvOHFor, rvWin, whoPrices } from './rivals';
 import {
-  autoPlan, newCrew, planCounts, planEval, progRun, stdPlan, subCrewTerms, tidyCrew,
+  autoPlan, hm, newCrew, planCounts, planEval, planHasLoader, progRun, stdPlan, subCrewTerms, tidyCrew,
   type CouncilTender, type Counts, type PlanCtx, type PlanEval, type PlanRoad,
 } from './planning';
 import { RETAIN, gradeDays, npOf, ohShareDefault, tbs, type NonPrice, type Standing, type Tenderer } from './tenders';
@@ -259,6 +259,8 @@ export function signOwn(st: CouncilWorld & { jobs: Job[] }, p: PlanCtx, t: Counc
   j.gLeft = j.g0;
   j.sLeft = j.s0;
   j.gravel = j.s0;
+  // the real game: a loader at the pit (dry or wet if none of yours is free when it starts), or none
+  if (!compat.prototype) j.ldr = planHasLoader(pl) && t.q.resheet > 0 ? hm(pl, 'loader') : null;
   st.jobs.push(j);
   st.ownWon = (st.ownWon || 0) + 1;
   mapWork(st.dmap!, t.roads.map((x) => x.mapId).filter(Boolean) as string[], j);
@@ -273,11 +275,11 @@ export function pullOutCouncil(st: { rep: number }): void {
 
 // ---------- changing a plan (each change clears your price) ----------
 
-export type PlanKey = 'subs' | 'crews' | 'graders' | 'rollers' | 'carts' | 'trucks' | 'pit';
+export type PlanKey = 'subs' | 'crews' | 'graders' | 'rollers' | 'carts' | 'trucks' | 'pit' | 'loader';
 
 /** Nudge a plan setting within its limits; 'own:grader' etc. caps how many of your own you put on it. */
 export function setPlan(p: PlanCtx, t: CouncilTender, k: PlanKey | `own:${string}`, d: number): void {
-  const lim: Record<PlanKey, [number, number]> = { subs: [0, t.subAvail || 0], crews: [1, t.major ? 6 : 3], graders: [1, 2], rollers: [1, 2], carts: [1, 4], trucks: [1, 8], pit: [0, 1] };
+  const lim: Record<PlanKey, [number, number]> = { subs: [0, t.subAvail || 0], crews: [1, t.major ? 6 : 3], graders: [1, 2], rollers: [1, 2], carts: [1, 4], trucks: [1, 8], pit: [0, 1], loader: [0, 1] };
   if (t.pl.graders == null) {
     t.pl.graders = 1;
     t.pl.rollers = 1;
@@ -293,6 +295,7 @@ export function setPlan(p: PlanCtx, t: CouncilTender, k: PlanKey | `own:${string
   }
   const key = k as PlanKey;
   if (key === 'pit') t.pl.pit = +d;
+  else if (key === 'loader') t.pl.loader = Math.max(0, Math.min(1, (t.pl.loader ?? 1) + d));
   else (t.pl as unknown as Record<string, number>)[key] = Math.max(lim[key][0], Math.min(lim[key][1], ((t.pl as unknown as Record<string, number>)[key] ?? 0) + d));
   t.bid = null;
 }

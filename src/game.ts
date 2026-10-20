@@ -7,7 +7,7 @@ import { yearOf } from './calendar';
 import { DIFFICULTY, costIdx as costIdxOf, difficultyOf, type Difficulty } from './difficulty';
 import { book, newAccounts, type Accounts } from './ledger';
 import { GPS_COST, TYPES, isBulk, newMachine, serviced, svcCost, value, type Machine } from './machines';
-import { MOODS, fmul as fmulOf, genBulkListings, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, unlist, inspect as inspectL, bid as bidL, hammer as hammerL, type HammerResult, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
+import { MOODS, fmul as fmulOf, genBulkListings, genLoaderListings, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, unlist, inspect as inspectL, bid as bidL, hammer as hammerL, type HammerResult, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
 import { fromState, hashN, int, pick, seedRand, type Rand } from './rng';
 import { mkRivals, rivalsWeek, type Rival, type RivalEvent } from './rivals';
 import { newWhs, safetyWeek, upgradeWhs, type SafetyEvent, type Whs } from './safety';
@@ -346,6 +346,11 @@ function bulkMarket(c: Career): void {
   if (c.packs?.bulk && c.market) c.market.listings.push(...genBulkListings(worldRand(c, 'bulk'), c.week, mood(c), () => uid(c)));
 }
 
+/** A loader for the gravel pit, now and then (the real game). */
+function loaderMarket(c: Career): void {
+  if (!compat.prototype && c.market) c.market.listings.push(...genLoaderListings(worldRand(c, 'loader'), c.week, mood(c), () => uid(c)));
+}
+
 /** Switch an expansion pack on or off (a test switch for now; never in a leaderboard season). */
 export function setPack(c: Career, pack: 'bulk', on: boolean): boolean {
   if (c.season) return false;
@@ -380,6 +385,7 @@ export function open(c: Career): void {
   c.offers = genOffers(rand, c as never, fmul(c), c.won, c.won2);
   c.market = genMarket(rand, { week: c.week, won: c.won, mood: mood(c), rivSell: c.rivSell, clear: c.clear }, () => uid(c));
   bulkMarket(c);
+  loaderMarket(c);
   // a bulk outfit opens with a couple of calls about work its gear can do
   if (c.path === 'bulk') {
     const br = worldRand(c, 'bulk-open'), can = doable(c as never);
@@ -830,6 +836,7 @@ export function endWeek(c: Career): Report | null {
   c.offers = genOffers(wr, c as never, fmul(c), c.won, c.won2);
   c.market = genMarket(wr, { week: c.week, won: c.won, mood: mood(c), rivSell: c.rivSell, clear: c.clear }, () => uid(c));
   bulkMarket(c);
+  loaderMarket(c);
   fuelWeek(worldRand(c, 'diesel'), c as never, costIdx(c), ev as FuelEvent[]);
   if (c.packs?.bulk) bulkWeek(worldRand(c, 'bulk-enq'), c as never, fmul(c), ev as BulkEvent[], rep.mm);
   genTenders(wr, c as never, canTender((t) => owns(c, t), c.rep, c.whs.sys), mood(c), fmul(c));

@@ -407,7 +407,7 @@ export function handOver(b: Biz, j: Job, d: number | null, events: HireEvent[]):
 /** Free a finished job's machines and people straight away, so whatever's waiting can start mid-week. */
 export function freeUp(b: Biz, j: Job, d: number | null, events: HireEvent[]): void {
   j.freed = true;
-  for (const id of [j.mId, j.rollerId, j.cartId, j.cart2Id, ...(j.ownedIds || [])]) {
+  for (const id of [j.mId, j.rollerId, j.cartId, j.cart2Id, j.ldrId as string | undefined, ...(j.ownedIds || [])]) {
     const m = id ? b.fleet.find((x) => x.id === id) : undefined;
     if (m && m.jobId === j.id) {
       m.status = 'idle';
@@ -423,7 +423,7 @@ export function freeUp(b: Biz, j: Job, d: number | null, events: HireEvent[]): v
 export function release(b: Biz, j: Job, events: HireEvent[]): void {
   // a contract's roads: fixed if it finished, back to damaged if it was cut short or never done
   if (j.mapIds && b.dmap) mapDone(b.dmap, j.mapIds as string[], !!j.finished && !j.cut, b.week);
-  for (const id of [j.mId, j.rollerId, j.cartId, j.cart2Id]) {
+  for (const id of [j.mId, j.rollerId, j.cartId, j.cart2Id, j.ldrId as string | undefined]) {
     const m = id ? b.fleet.find((x) => x.id === id) : undefined;
     if (m && (m.jobId === j.id || (!j.freed && m.jobId == null))) {
       m.status = 'idle';

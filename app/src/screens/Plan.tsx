@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import {
-  COUNCIL_TERMS, PRICE_CHECK_FEE, FLOAT_KM, FLOAT_MOVE, LD_OWN, TRUCK_DAY, TYPES, awayCounts, cartEff, hm, npOf, odLimit, planCounts, roadUnits, stars, subRate, truckM3, weeksFor, game,
+  COUNCIL_TERMS, PRICE_CHECK_FEE, FLOAT_KM, FLOAT_MOVE, LD_OWN, TRUCK_DAY, TYPES, awayCounts, cartEff, hm, loadersFree, npOf, odLimit, planCounts, planHasLoader, roadUnits, stars, subRate, truckM3, weeksFor, game,
   type CouncilTender, type PlanEval, type ProgOp, play,
 } from '@engine';
 import { CREW_COL, bottText, issueText } from '@engine/text/plan';
@@ -91,6 +91,7 @@ function Plant({ c, t, e, act }: { c: Career; t: CouncilTender; e: PlanEval; act
           </div>
         );
       })}
+      {e.c.loader != null && <Loader c={c} t={t} e={e} act={act} />}
       <div className="tiny muted">Dry hire is paid every week, rain or shine, and you put an operator on it. Subbie plant comes with its own operator and fuel and is only paid on days it works. Keep your own machines off the job if they're earning more on hire elsewhere.</div>
       {t.subAvail && !e.prog ? (
         <Stepper label="Full subcontractor crews" val={pl.subs || 0} onDown={() => act((x) => play.setPlan(x, t.id, 'subs', -1))} onUp={() => act((x) => play.setPlan(x, t.id, 'subs', 1))}
@@ -100,11 +101,38 @@ function Plant({ c, t, e, act }: { c: Career; t: CouncilTender; e: PlanEval; act
   );
 }
 
+/** The loader at the gravel pit (the real game): yours if one's free, else hired dry or with an operator, or none. */
+function Loader({ c, t, e, act }: { c: Career; t: CouncilTender; e: PlanEval; act: Act }) {
+  const pl = t.pl, on = planHasLoader(pl), mine = loadersFree(game.planCtx(c), t.close + 1) > 0, wet = hm(pl, 'loader') === 'wet';
+  const haul = e.prog ? Math.round(t.roads.reduce((a, r) => a + (r.haul || 0) * r.resheet, 0) / Math.max(1, t.q.resheet)) : t.pits[pl.pit]!.haul;
+  if (!t.q.resheet) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 0', borderBottom: '1px solid var(--soft)' }}>
+      <div className="row" style={{ flexWrap: 'nowrap', alignItems: 'center' }}>
+        <span className="grow"><b className="small">Loader at the gravel pit</b><span className="tiny muted" style={{ display: 'block' }}>
+          {on ? (mine ? 'Yours goes out to the pit on carting days.' : 'Loads the trucks on carting days. Yours: none free.') : `None: the trucks wait their turn on the pit's loader. A truck brings in about ${Math.round(truckM3(haul, false))} m³ a day instead of ${Math.round(truckM3(haul))}.`}
+        </span></span>
+        <div className="seg" style={{ flex: 'none' }}>
+          <button type="button" className={on ? 'on' : ''} onClick={() => !on && act((x) => play.setPlan(x, t.id, 'loader', 1))}>Yes</button>
+          <button type="button" className={on ? '' : 'on'} onClick={() => on && act((x) => play.setPlan(x, t.id, 'loader', -1))}>None</button>
+        </div>
+      </div>
+      {on && !mine && (
+        <div className="seg">
+          <button type="button" className={wet ? '' : 'on'} onClick={() => act((x) => play.setHireMode(x, t.id, 'loader', 'dry'))}>Dry hire · {f(TYPES.loader.dry)}/wk</button>
+          <button type="button" className={wet ? 'on' : ''} onClick={() => act((x) => play.setHireMode(x, t.id, 'loader', 'wet'))}>Subbie + operator · {f(subRate('loader'))}/day</button>
+        </div>
+      )}
+      {on && <div className="tiny muted">{mine ? 'Your fuel and a labour-hire operator' : wet ? 'Paid only on days the trucks are carting' : 'Hired just for the carting weeks, with your fuel and a labour-hire operator'}: about {f(e.c.loader!)} on this job.</div>}
+    </div>
+  );
+}
+
 /** The price: cost lines, overheads share, margin, your price, how they'll score you, submit. */
 function Price({ c, t, act }: { c: Career; t: CouncilTender; act: Act }) {
   const [lines, setLines] = useState(false);
   const ev = game.evaluate(c, t.id)!, e = ev.e, CP = ev.price, price = CP.price;
-  const rows: [string, number][] = [['Fuel', e.c.fuel], ['Casuals (' + e.casuals + ')', e.c.labour], ['Wear and servicing', e.c.wear], ['Dry hire', e.c.hire], ['Subbies (wet hire)', e.c.subbies], ['Subbie crews', e.c.subcrews], ['Gravel trucks', e.c.trucks], ['Gravel royalty', e.c.royalty], ['Mobilisation', e.c.mob], ['Floats between roads', e.c.floats ?? 0], ['Site costs, traffic control', e.c.site]];
+  const rows: [string, number][] = [['Fuel', e.c.fuel], ['Casuals (' + e.casuals + ')', e.c.labour], ['Wear and servicing', e.c.wear], ['Dry hire', e.c.hire], ['Subbies (wet hire)', e.c.subbies], ['Subbie crews', e.c.subcrews], ['Gravel trucks', e.c.trucks], ['Gravel royalty', e.c.royalty], ...(e.c.loader != null ? [['Loader at the pit', e.c.loader] as [string, number]] : []), ['Mobilisation', e.c.mob], ['Floats between roads', e.c.floats ?? 0], ['Site costs, traffic control', e.c.site]];
   const np = npOf('council', null, null, game.standing(c), () => 0), capped = game.capFull(c) && !t.bid, loose = (e.unassigned ?? []).length;
   return (
     <>
@@ -171,7 +199,7 @@ function PackageSheet({ c, t, act, onClose }: { c: Career; t: CouncilTender; act
           <Stepper label="Gravel trucks per crew" sub={`Your own side tippers first, then hired with a driver at ${f(TRUCK_DAY)} a day, only on resheeting days.`} val={pl.trucks} onDown={set('trucks', -1)} onUp={set('trucks', 1)} />
           <div className="sub" style={{ marginTop: 6 }}>Gravel pit</div>
           <div className="seg">{t.pits.map((x, i) => <button key={i} type="button" className={pl.pit === i ? 'on' : ''} onClick={() => act((y) => play.setPlan(y, t.id, 'pit', i))}>{x.name} · {x.haul} km</button>)}</div>
-          <div className="tiny muted">{pit.note} Royalty ${pit.royalty}/m³. A truck brings in about {Math.round(truckM3(pit.haul))} m³ a day on this haul.</div>
+          <div className="tiny muted">{pit.note} Royalty ${pit.royalty}/m³. A truck brings in about {Math.round(truckM3(pit.haul, planHasLoader(pl)))} m³ a day on this haul{planHasLoader(pl) ? '' : ', with no loader of your own at the pit'}.</div>
           <div className="small">Crew: you{e.crew.used.length > 1 ? ', ' + (e.crew.used.length - 1) + ' of your staff' : ''}{e.casuals ? ' and ' + e.casuals + ' casual' + (e.casuals > 1 ? 's' : '') + ' from labour hire' : ''}.{e.hiredTrucks ? ` ${e.hiredTrucks} hired truck${e.hiredTrucks > 1 ? 's' : ''} with drivers.` : ''}</div>
           <Plant c={c} t={t} e={e} act={act} />
         </div>

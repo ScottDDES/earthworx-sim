@@ -31,9 +31,29 @@ const round = (n: number, to: number) => Math.round(n / to) * to;
 export function cartLoads(km: number): number {
   return 540 / (30 + km * 3);
 }
-/** m³ a truck brings in a day: 15 m³ a load, 20 minutes to load and tip plus 2 minutes a km of haul. */
-export function truckM3(haul: number): number {
-  return (15 * 540) / (20 + haul * 2);
+/**
+ * m³ a truck brings in a day: 15 m³ a load, 20 minutes to load and tip plus 2 minutes a km of haul. In the real game
+ * that's with your loader at the pit; without one the trucks wait their turn on the pit's own, 50 minutes a load.
+ */
+export function truckM3(haul: number, loaded = true): number {
+  return (15 * 540) / ((loaded || compat.prototype ? 20 : 50) + haul * 2);
+}
+
+/** A labour-hire operator on the loader. */
+export const LOADER_CASUAL = 650;
+/** How the loader comes: your own, dry hire (your operator and fuel), or a subbie with operator and fuel. */
+export type LoaderMode = 'own' | 'dry' | 'wet';
+
+/** A loader's cost for a day the trucks are carting, and the diesel in it you buy. Dry hire runs only while carting. */
+export function loaderDay(mode: LoaderMode): { cost: number; fuel: number } {
+  const T = TYPES.loader;
+  if (mode === 'wet') return { cost: T.sub, fuel: 0 };
+  return { cost: T.fuel + LOADER_CASUAL + (mode === 'dry' ? Math.round(T.dry / 5) : 0), fuel: T.fuel };
+}
+
+/** Is there a loader on the plan? Always in the prototype (it doesn't have them); in the real game, unless you take it off. */
+export function planHasLoader(pl: Pick<Plan, 'loader'>): boolean {
+  return compat.prototype || (pl.loader ?? 1) > 0;
 }
 /** A crew's pace in graders: each grader needs its own roller. */
 export function crewMul(x: { graders?: number; rollers?: number }): number {
@@ -61,9 +81,9 @@ export interface Flow {
   gf: number;
 }
 
-export function flow(mul: number, carts: number, trucks: number, waterKm: number, haul: number): Flow {
+export function flow(mul: number, carts: number, trucks: number, waterKm: number, haul: number, loaded = true): Flow {
   const wf = Math.max(0.2, Math.min(1, 1 - 0.33 * (waterNeed(mul) - carts * cartEff(waterKm))));
-  const need = TREAT.resheet.per * mul * wf, supply = trucks * truckM3(haul);
+  const need = TREAT.resheet.per * mul * wf, supply = trucks * truckM3(haul, loaded);
   return { mul, wf, out: mul * wf, need, supply, sheetRate: Math.max(1, Math.min(need, supply)), gf: Math.min(1, supply / need) };
 }
 
@@ -100,6 +120,21 @@ export function planCounts(p: PlanCtx, start: number): Counts {
     if (isRoad(m.type)) o[m.type]++;
   }
   return o;
+}
+
+/** Your loaders free by a week, as planCounts counts the road gear. */
+export function loadersFree(p: PlanCtx, start: number): number {
+  return p.fleet.filter((m) => {
+    const mj = m.jobId ? p.jobs.find((j) => j.id === m.jobId) : undefined;
+    return m.type === 'loader' && m.status !== 'auction' && m.status !== 'listed' && m.status !== 'branch' && !(mj && (mj.kind === 'own' || jobEnds(p, mj) >= (start || p.week)));
+  }).length;
+}
+
+/** The plan's loader: how it would come, or null for none. Undefined in the prototype. */
+export function planLoader(p: PlanCtx, t: Pick<CouncilTender, 'close'>, pl: Plan): LoaderMode | null | undefined {
+  if (compat.prototype) return undefined;
+  if (!planHasLoader(pl)) return null;
+  return loadersFree(p, t.close + 1) > 0 ? 'own' : hm(pl, 'loader');
 }
 
 export function ownedCounts(fleet: readonly Machine[]): Counts {
@@ -176,6 +211,8 @@ export interface Plan {
   own?: Partial<Counts>;
   /** Programs: crew by crew. */
   prog?: { crews: ProgCrew[] };
+  /** A loader at the pit (the real game): 1 unless you take it off. */
+  loader?: number;
 }
 
 export interface CouncilTender {
@@ -236,12 +273,12 @@ export function roadUnits(rd: Quantities): number {
 export type Block = 'ok' | 'water' | 'gravel' | 'idle';
 
 /** Crew-days on one road for one crew (grading and gravel), and what's holding it up. */
-export function crewRoad(t: Pick<CouncilTender, 'subPace'>, c: Pick<ProgCrew, 'sub' | 'gr' | 'ro' | 'ca' | 'tr'>, rd: PlanRoad): { g: number; s: number; b: Block; fl: Flow | null } {
+export function crewRoad(t: Pick<CouncilTender, 'subPace'>, c: Pick<ProgCrew, 'sub' | 'gr' | 'ro' | 'ca' | 'tr'>, rd: PlanRoad, loaded = true): { g: number; s: number; b: Block; fl: Flow | null } {
   if (c.sub) {
     const pc = t.subPace || 0.85;
     return { g: gradeDays(rd) / pc, s: rd.resheet / (TREAT.resheet.per * pc), b: 'ok', fl: null };
   }
-  const fl = flow(Math.min(c.gr, c.ro), c.ca, c.tr, rd.water!, rd.haul!), g = gradeDays(rd) / fl.out, s = rd.resheet ? rd.resheet / fl.sheetRate : 0;
+  const fl = flow(Math.min(c.gr, c.ro), c.ca, c.tr, rd.water!, rd.haul!, loaded), g = gradeDays(rd) / fl.out, s = rd.resheet ? rd.resheet / fl.sheetRate : 0;
   const b: Block = fl.wf < 0.999 ? 'water' : rd.resheet && fl.gf < 0.95 ? 'gravel' : rd.resheet >= 600 && fl.supply > fl.need * 1.6 ? 'idle' : 'ok';
   return { g, s, b, fl };
 }
@@ -308,6 +345,8 @@ export interface CostBreakdown {
   site: number;
   subcrews: number;
   floats?: number;
+  /** The loader at the pit, on carting days (the real game). */
+  loader?: number;
 }
 
 /** What's holding a plan up. */
@@ -399,6 +438,7 @@ export function progEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned: Partial<
   const res: CrewResult[] = [];
   let allUsed: string[] = [], casualsN = 0, ownTrucks = 0, hiredTrucks = 0, cdAll = 0, gAll = 0, sAll = 0, floatsN = 0;
   const assigned: Record<number, number> = {};
+  const ld = planLoader(p, t, pl), loaded = ld !== null;
   crews.forEach((cr, i) => {
     const R: CrewResult = { i, roads: [], days: 0, sheet: 0, floats: 0, wk: 0, wet: 0, day: 0, sheetDay: 0, week: 0 };
     let at: { x?: number; y?: number } = { x: 0, y: 0 };
@@ -407,7 +447,7 @@ export function progEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned: Partial<
       if (!rd) continue;
       assigned[ri0] = 1;
       const fd = cr.seq.indexOf(ri0) > 0 && roadDist(at, rd) > FLOAT_KM ? FLOAT_DAYS : 0;
-      const x = crewRoad(t, cr, rd), ideal = crewRoad(t, { sub: false, gr: cr.gr, ro: cr.ro, ca: 4, tr: 12 }, rd);
+      const x = crewRoad(t, cr, rd, loaded), ideal = crewRoad(t, { sub: false, gr: cr.gr, ro: cr.ro, ca: 4, tr: 12 }, rd);
       R.roads.push({ ri: ri0, start: R.days + fd, days: x.g + x.s, g: x.g, s: x.s, b: x.b, lost: cr.sub ? 0 : Math.max(0, x.g + x.s - ideal.g - ideal.s), fl: x.fl, float: fd });
       R.days += fd + x.g + x.s;
       R.sheet += x.s;
@@ -471,6 +511,11 @@ export function progEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned: Partial<
   });
   const wks = res.reduce((a, x) => Math.max(a, x.wk), 0), wetWks = res.reduce((a, x) => Math.max(a, x.wet), 0);
   c.site = SITE_WEEK * wks;
+  // one loader at the pit serves every crew: it works the days any of them are carting
+  if (ld !== undefined) {
+    const mine = res.filter((R) => !crews[R.i]!.sub), carting = Math.min(mine.reduce((a, R) => Math.max(a, R.days), 0), mine.reduce((a, R) => a + R.sheet, 0));
+    c.loader = ld ? Math.round(carting * (loaderDay(ld).cost + (ld === 'own' ? wearDay : 0))) : 0;
+  }
   let total = 0;
   for (const k of Object.keys(c) as (keyof CostBreakdown)[]) total += c[k]!;
   const un = t.roads.map((_, i) => i).filter((i) => !assigned[i]);
@@ -523,7 +568,7 @@ export function planEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned?: Partial
   });
   if (pl.prog && t.major) return progEval(p, t, pl, owned, people);
   const G = pl.graders || 1, R = pl.rollers || 1, N = pl.crews;
-  const pit = t.pits[pl.pit]!, fl = flow(crewMul(pl), pl.carts, pl.trucks, t.waterKm, pit.haul), q = t.q;
+  const ld = planLoader(p, t, pl), pit = t.pits[pl.pit]!, fl = flow(crewMul(pl), pl.carts, pl.trucks, t.waterKm, pit.haul, ld !== null), q = t.q;
   let gDays = gradeDays(q) / fl.out, sDays = q.resheet / fl.sheetRate;
   // Subbie crews work alongside yours; the work splits by pace.
   const SC = Math.min(pl.subs || 0, t.subAvail || 0), U = gradeDays(q) + q.resheet / TREAT.resheet.per, rho = U / Math.max(0.01, gDays + sDays);
@@ -563,6 +608,7 @@ export function planEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned?: Partial
     site: SITE_WEEK * wks,
     subcrews: Math.round(SC * perCrew * (t.subRate || 0)),
   };
+  if (ld !== undefined) c.loader = ld && q.resheet ? Math.round(sheetDays * (loaderDay(ld).cost + (ld === 'own' ? wearDay : 0))) : 0;
   let total = 0;
   for (const k of Object.keys(c) as (keyof CostBreakdown)[]) total += c[k]!;
   const method = wks <= t.weeks - 1 ? 6 : wks <= t.weeks ? 3 : 0;
@@ -585,10 +631,11 @@ export function planEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned?: Partial
 export function stdPlan(p: PlanCtx, t: CouncilTender): { pl: Plan; e: PlanEval } {
   let best: { pl: Plan; e: PlanEval } | null = null;
   for (const pit of [0, 1]) {
-    for (const mode of ['dry', 'wet'] as const) {
+    for (const mode of ['dry', 'wet'] as const) for (const loader of compat.prototype ? [undefined] : [1, 0]) {
       const pl: Plan = { crews: t.stdCrews || 2, graders: 1, rollers: 1, carts: 1, trucks: 1, pit, hm: { grader: mode, roller: mode, cart: mode } };
+      if (loader !== undefined) Object.assign(pl, { loader, hm: { ...pl.hm, loader: mode } });
       while (pl.carts < 4 && flow(1, pl.carts, 1, t.waterKm, t.pits[pit]!.haul).wf < 1) pl.carts++;
-      while (pl.trucks < 8 && flow(1, pl.carts, pl.trucks, t.waterKm, t.pits[pit]!.haul).gf < 1) pl.trucks++;
+      while (pl.trucks < 8 && flow(1, pl.carts, pl.trucks, t.waterKm, t.pits[pit]!.haul, loader !== 0).gf < 1) pl.trucks++;
       const e = planEval(p, t, pl, { grader: 2, roller: 1, cart: 2, truck: 1 }, [{ id: 'a', role: 'grader' }, { id: 'b', role: 'grader' }, { id: 'c', role: 'roller' }]);
       if (!best || e.cost < best.e.cost) best = { pl, e };
     }
