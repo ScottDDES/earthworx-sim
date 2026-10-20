@@ -6,11 +6,12 @@ import {
   BULK_TYPES, ERP_SETUP, ERP_WEEK, erpOk, BR_FLOAT, BR_MGR, BR_RENT, BR_SETUP, BR_SLOTS, GPS_COST, MGR, ROLES, SKILLS, TOWNS, WHS_SYS, YARDS, YARD_ORDER,
   bigNoWsm, brCrews, brMachines, brProfit, brTown, canBranch, fitPer, fitters, forecast, lastInc, machineAlerts, machineName,
   mgrOf, mgrUnlocked, monthIdx, nextWhs, odLimit, premParts, recentInc, riskMult, svcCost, unlocked, value, whsNp, fleetValue, wages,
-  game, type Machine, type MachineType, type YardId, play,
+  compat, game, type Machine, type MachineType, type YardId, play,
 } from '@engine';
 import { ERP_NAME, alertText } from '@engine/text/office';
 import { jobTitle } from '@engine/text/work';
 import { MachineIcon, WeatherIcon } from '../Icon';
+import { FuelCard } from './Fuel';
 import { MONTHS, f, fk } from '../format';
 
 type Career = game.Career;
@@ -514,6 +515,7 @@ export function YardTab({ c, act, go }: { c: Career; act: Act; go: Go }) {
       <Forecast c={c} />
       <Alerts c={c} act={act} />
       <YardCard c={c} act={act} />
+      {!compat.prototype && <FuelCard c={c} act={act} />}
       <BranchCard c={c} act={act} />
       <Fleet c={c} act={act} onSell={setSelling} />
       <People c={c} act={act} />

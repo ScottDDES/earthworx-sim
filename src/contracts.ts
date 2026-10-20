@@ -22,6 +22,7 @@ import { LD_WEEK, MOB, RETAIN, TREAT } from './tenders';
 import { LD_OWN } from './council';
 import type { TownId } from './towns';
 import type { YardId } from './yards';
+import { fuelUse } from './fuel';
 
 /** The parts of a career contracts touch. */
 export interface ContractBiz extends Biz {
@@ -571,18 +572,22 @@ export function ownDay(rand: Rand, b: ContractBiz, j: Job, rep: WeekReport, w: W
   let cost = active * (j.fuelCrew != null ? (j.fuelCrew as number) : (j.graders as number) * TYPES.grader.fuel + (j.rollers as number) * TYPES.roller.fuel + (j.carts as number) * TYPES.cart.fuel)
     + Math.round(((j.casualDay as number) + ((j.subDay as number) || 0)) * share);
   const truckDay = ((crews * (j.trucks as number) - (j.ownTrucks as number)) * TRUCK_DAY + (j.ownTrucks as number) * TYPES.truck.fuel + (j.truckCasualDay as number)) / crews;
+  let fuel = active * (j.fuelCrew != null ? (j.fuelCrew as number) : (j.graders as number) * TYPES.grader.fuel + (j.rollers as number) * TYPES.roller.fuel + (j.carts as number) * TYPES.cart.fuel);
   for (let c = 0; c < active; c++) {
     if ((j.gLeft as number) > 0) j.gLeft = (j.gLeft as number) - fl.out * gpsMul(b, j);
     else if ((j.sLeft as number) > 0) {
       const placed = Math.min(j.sLeft as number, fl.sheetRate);
       j.sLeft = (j.sLeft as number) - placed;
       cost += truckDay + placed * (j.royalty as number);
+      fuel += ((j.ownTrucks as number) * TYPES.truck.fuel) / crews;
     }
   }
   j.done += active;
   rep.worked += active;
   b.bank -= cost;
   rep.costs += cost;
+  // a council contract: rise and fall pays most of a diesel jump back
+  fuelUse(b, fuel, true);
   for (const id of j.ownedIds as string[]) {
     const m = mach(b, id);
     if (m && m.down === 0 && (m.type !== 'truck' || sheeting)) wearAndBreak(rand, b, m, w, events);
@@ -615,6 +620,7 @@ function subDay(rand: Rand, b: ContractBiz, j: Job, m: Machine, wet: boolean, re
   }
   b.bank -= j.dayCost as number;
   rep.costs += j.dayCost as number;
+  fuelUse(b, TYPES.grader.fuel + TYPES.roller.fuel + (j.cart2Id ? 2 : 1) * TYPES.cart.fuel);
   for (const x of crew) if (x!.down === 0) wearAndBreak(rand, b, x!, w, events);
   if (j.done >= j.days) j.finished = true;
 }

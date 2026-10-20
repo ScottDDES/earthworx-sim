@@ -29,6 +29,7 @@ export * from './branch';
 export * from './cards';
 export * from './advisory';
 export * from './bulk';
+export * from './fuel';
 export * from './sums';
 export * from './career';
 // The whole game, as one namespace: game.newCareer, game.endWeek, game.buy, ...

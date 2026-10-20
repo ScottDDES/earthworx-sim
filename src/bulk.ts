@@ -12,6 +12,7 @@ import { TOWNS } from './towns';
 import { invoice, uid, type Biz, type Job, type WeekReport } from './hire';
 import { compactorRate, damVolume, pushedSpread, scraperCycle, scraperRate, waterCartRate, waterNeeded, type DamPit } from './sums';
 import { note } from './diary';
+import { fuelUse } from './fuel';
 
 const round = (n: number, to: number) => Math.round(n / to) * to;
 
@@ -665,6 +666,7 @@ export function damDay(rand: Rand, b: B, j: Job, wet: boolean, w: WorkshopCtx, r
   rep.costs += cost;
   j.spent = (j.spent || 0) + cost;
   book(b.acc, 'jobCosts', cost);
+  fuelUse(b, going.reduce((a, m) => a + TYPES[m.type].fuel, 0));
   if ((j.m3 as number) >= (j.truth as number)) finishJob(rand, b, j, rep, events);
 }
 

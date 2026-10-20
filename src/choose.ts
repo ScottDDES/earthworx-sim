@@ -5,7 +5,8 @@
 // happened (result). Screens turn all three into words with text/cardView.ts.
 
 import { mRef, news, note } from './diary';
-import { stream, room, hasCrew, tax, tickets, mood, premiumNow, type Career } from './game';
+import { stream, room, hasCrew, tax, tickets, mood, premiumNow, costIdx, type Career } from './game';
+import { dieselLevy, loadOf, orderFuel, pumpPrice } from './fuel';
 import { hashN, pick, seedRand, type Rand } from './rng';
 import { lateChase, lateFriendly, latePark, lateWait, release, stars, type Job } from './hire';
 import { TOWNS } from './towns';
@@ -215,6 +216,13 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       data.sub = compat.prototype || !hj || !['wet', 'council', 'private'].includes(hj.kind) ? null
         : c.staff.find((x) => x !== p && !x.jobId && x.off === 0 && ROLES[x.role].drives.includes(hj.type))?.name ?? null;
       return [o('home', () => hurtHome(p)), o('cover', () => hurtCover(st, p)), o('keepGoing', () => { const hurt = hurtKeepGoing(r(), st, p); if (hurt) note(c, { k: 'badBack', name: p.name }); return hurt; }), ...(compat.prototype ? [] : [o('advisory', () => hurtAdvisory(st, p))])];
+    }
+    case 'dieselWar': {
+      const F = c.fuel, ci = costIdx(c);
+      if (!F || !F.war) return null;
+      const load = F.tank && !F.order ? loadOf(F, c.week, false, ci) : null;
+      Object.assign(data, { pump: pumpPrice(F, c.week, ci), tank: F.tank, L: Math.round(F.L), order: F.order, load: load && load.L > 0 ? load : null });
+      return [...(data.load ? [o('fill', () => orderFuel(st, false, ci))] : []), o('levy', () => dieselLevy(st)), o('wear', () => {})];
     }
     case 'xmas': {
       Object.assign(data, { cost: xmasCost(c.staff.length), staff: c.staff.length });

@@ -224,6 +224,12 @@ export function cardView(c: Career, q: Career['queue'][number], d: DrawnCard): C
       put('no', 'Say no', 'It\'s not allowed to be cleared, and the fine would land on you as well as them. They might ring someone else for their next dam.');
       put('take', 'Take it · ' + f(D.cash) + ' cash', 'Three days on the dozer, hourly, cash in hand. If it comes out over the next year: a fine of about ' + f(D.fine) + ' and track record −3.');
       return out('Bulk and Ag', 'A job off the books', 'A grazier rang. They want a patch of scrub pushed over on the back of the place: country you know is mapped as not to be cleared. Hourly rate, cash, no paperwork. "Nobody goes out there."');
+    case 'dieselWar':
+      if (D.load) put('fill', 'Get a load in now · ' + f(D.load.cost), 'Half a tank, ' + D.load.L.toLocaleString('en-AU') + ' litres at $' + D.load.at.toFixed(2) + ' a litre, before it climbs further. Rationed: it takes two weeks to come.');
+      put('levy', 'Ask your clients for a fuel levy', 'They pay back about half the rise on your fuel until it settles. Not everyone likes being asked: track record −1.');
+      put('wear', 'Wear it', 'Pay what diesel costs. Council contracts pay most of the rise back anyway (rise and fall). Farmers and private clients don\'t.');
+      return out('News', 'Diesel through the roof', 'War has broken out overseas, and diesel is up to $' + D.pump.toFixed(2) + ' a litre at the pump. The fuel companies say it will keep climbing for a fortnight. Loads are rationed: half loads only, and two weeks to come. '
+        + (D.tank ? 'Your tank has ' + D.L.toLocaleString('en-AU') + ' litres in it' + (D.order ? ', and a load is on its way.' : '.') : 'You\'re buying it at the pump.'));
     case 'xmas':
       put('party', 'Christmas party at the pub · ' + f(D.cost.party), 'A proper night out for the crew and their partners. They\'ll be talking about it for weeks.');
       put('bbq', 'A slab and a barbie in the yard · ' + f(D.cost.bbq), 'Friday arvo, sausages and a few beers. Better than nothing.');
@@ -393,6 +399,7 @@ function line(c: Career, k: string, id: string, D: Record<string, any>, R: any):
     case 'wetclay': return id === 'wait' ? 'Stood the spread down for two days to let it dry.' : 'Pushed on. The layers this week went in heavy and soft.';
     case 'leak': return id === 'fix' ? 'Back out there with a spread. Fixed properly this time: ' + f(D.fix) + '.' : D.farm + ' isn\'t happy, and neither are the neighbours who heard about it.';
     case 'redzone': return id === 'take' ? f(D.cash) + ' in an envelope. Don\'t mention it.' : 'Said no. They didn\'t sound surprised.';
+    case 'dieselWar': return id === 'fill' ? 'Ordered: half a tank, here in two weeks.' : id === 'levy' ? 'Most clients grumbled and paid. One said they\'d remember it.' : 'You\'ll wear it. The fuel bill is going to hurt for a while.';
     case 'xmas': return id === 'party' ? 'Great night. A few sore heads on Saturday, and the crew is still talking about it.' : id === 'bbq' ? 'Good arvo. Everyone heads off for the break in good spirits.' : 'Everyone just knocked off on Friday. Nobody said much.';
     case 'breakin':
       if (id === 'claim') return 'Claim paid. Premiums are up for a while.';

@@ -15,6 +15,7 @@ import { relAdd } from './relations';
 import { int, pick, type Rand } from './rng';
 import { compat, shuffled } from './compat';
 import { isBulk } from './machines';
+import { fuelIdle, fuelUse } from './fuel';
 import { SKILLS, ROLES, type Person } from './staff';
 import { TOWNS, type TownId } from './towns';
 import { forecast, type WeatherCtx } from './weather';
@@ -143,6 +144,8 @@ export interface Biz {
   jlog?: JobLog[];
   /** The district map, once made (map.ts). */
   dmap?: DistrictMap;
+  /** The bulk fuel tank and the diesel price (fuel.ts). */
+  fuel?: import('./fuel').FuelBook;
 }
 
 export interface JobLog {
@@ -498,6 +501,11 @@ export function hireDay(rand: Rand, b: Biz, j: Job, d: number, wet: boolean, w: 
       return true;
     }
     if (j.mob && j.mob.w === b.week && d <= j.mob.d) return true;
+    // your tank's dry: work you fuel yourself waits on the fuel truck today
+    if (fuelIdle(b, d) && (j.fuelPaid || ((j.kind === 'sub' || j.kind === 'own') && j.state !== 'subbed'))) {
+      if (!wet) rep.lost++;
+      return true;
+    }
     // contracts run their own day (contracts.ts), inside the same cost wrapper
     if (j.state === 'subbed' || j.kind === 'own') {
       if (!contract) return false;
@@ -544,6 +552,7 @@ export function hireDay(rand: Rand, b: Biz, j: Job, d: number, wet: boolean, w: 
     if (j.fuelPaid) {
       b.bank -= TYPES[j.type].fuel;
       rep.costs += TYPES[j.type].fuel;
+      fuelUse(b, TYPES[j.type].fuel);
     }
     const p = person(b, j.who), wm = p ? SKILLS[p.skill].wear : 1;
     if (m.down === 0) {

@@ -11,6 +11,8 @@ import { HC_WEEKS } from '../office';
 import { jobTitle } from './work';
 import { LTI_MACHINES, LTI_STORIES } from './safety';
 import { UNLOCK_TEXT } from './career';
+import { fuelLine } from './fuel';
+import { ERP_NAME } from './office';
 
 const f = (n: number) => (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-AU');
 const s = (n: number) => (n > 1 ? 's' : '');
@@ -34,6 +36,7 @@ export function eventText(c: Career, r: Report, e: any): string | null {
     case 'missedUs': return 'The rain missed you on ' + DAYS[e.d] + ' (' + e.mm + ' mm). A full day in.';
     // jobs and contracts
     case 'damWon': case 'damLost': case 'damLapsed': case 'damStarted': case 'damDone': case 'damGone': case 'damPassed': case 'damFailed': case 'redzoneFound': case 'burnWait': case 'burnt': case 'devClaim': case 'devBust': return bulkLine(e, e.jobId ? title(e.jobId) : undefined);
+    case 'fuelIn': case 'fuelAuto': case 'fuelDry': case 'fuelStolen': case 'warOver': return fuelLine(e, DAYS, ERP_NAME);
     case 'breakdown': return 'Your ' + TYPES[e.type as keyof typeof TYPES].short + ' broke down.';
     case 'terminated': return e.client + ' terminated ' + title(e.jobId) + ': you never started it. Track record −3, and they won\'t use you for six months.';
     case 'subPulled': return e.name + ' pulled their crew off ' + title(e.jobId) + ' for a week to finish a private job.';

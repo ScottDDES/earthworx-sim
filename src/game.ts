@@ -22,6 +22,7 @@ import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium a
 import { compat } from './compat';
 import { buyAttachment, bulkStart, bulkWeek, damDay, doable, genEnquiry, sendQuote, setPrecon, type Attachment, setRate, survey, type BulkBook, type BulkEvent } from './bulk';
 import { ERP_SETUP, PRICE_CHECK_FEE, erpOk, priceBand } from './advisory';
+import { buyTank, cancelFuel, fuelIdle, fuelSettle, fuelStart, fuelWeek, orderFuel, setAuto, type FuelBook, type FuelEvent, type TankId } from './fuel';
 import { BID_ODDS, rvOHFor } from './rivals';
 import { accept as acceptOffer, askWait as askWaitHire, barred, coverOff, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
 import { relWeek } from './relations';
@@ -72,6 +73,8 @@ export interface Career {
   youBlocked: number;
   /** Running the DDES ERP. */
   erp?: boolean;
+  /** The bulk fuel tank and the diesel price (the real game). */
+  fuel?: FuelBook;
   /** Expansion packs switched on. Bulk and Ag is behind a test switch until it's sold as a pack. */
   packs?: { bulk?: boolean };
   /** A bulk earthworks start. */
@@ -206,6 +209,22 @@ export function buyErp(c: Career): boolean {
   c.bank -= ERP_SETUP;
   c.erp = true;
   return true;
+}
+
+/** Put in a bulk fuel tank (or a bigger one). A new one comes with a load in it. */
+export function buyFuelTank(c: Career, t: TankId): boolean {
+  return buyTank(c as never, t, costIdx(c));
+}
+/** Order a load of diesel: fill the tank, or half a tank. It comes next week (two weeks while rationed). */
+export function orderDiesel(c: Career, full: boolean): boolean {
+  return orderFuel(c as never, full, costIdx(c));
+}
+export function cancelDiesel(c: Career): void {
+  cancelFuel(c as never);
+}
+/** The operations manager keeps the tank topped up. */
+export function fuelAuto(c: Career, on: boolean): void {
+  setAuto(c as never, on);
 }
 
 /**
@@ -664,7 +683,7 @@ export function endWeek(c: Career): Report | null {
   if (c.phase !== 'play' || c.queue.length) return null;
   const rand = stream(c), d = diff(c), wx = { town: c.town, wxStart: c.wxStart };
   const rep: Report = { week: c.week, rain: 0, mm: 0, worked: 0, lost: 0, invoiced: 0, paid: 0, costs: 0, events: [], tix: [], days: [] };
-  const ev = rep.events as (ContractEvent | WorkshopEvent | SafetyEvent | RainCallEvent | BankCallEvent | ShockEvent | HardcoreEvent | SaleEvent | RivalEvent | MapEvent | CloseEvent | CouncilEvent | BranchEvent | TaxEvent | HireEvent | WeekEvent | BulkEvent)[];
+  const ev = rep.events as (ContractEvent | WorkshopEvent | SafetyEvent | RainCallEvent | BankCallEvent | ShockEvent | HardcoreEvent | SaleEvent | RivalEvent | MapEvent | CloseEvent | CouncilEvent | BranchEvent | TaxEvent | HireEvent | WeekEvent | BulkEvent | FuelEvent)[];
   const BK = { pays: 0, odi: 0, lc: 0, li: 0 };
   Object.defineProperty(rep, 'jobs', { value: Object.fromEntries(c.jobs.map((j) => [j.id, j])), enumerable: false });
 
@@ -675,6 +694,7 @@ export function endWeek(c: Career): Report | null {
   const downDays: Record<string, number> = {};
   startWeek(c);
   if (!compat.prototype) coverOff(c as never);
+  fuelStart(c as never, ev as FuelEvent[]);
   if (c.packs?.bulk) bulkStart(c as never, ev as BulkEvent[]);
   // Christmas: the whole district knocks off for two weeks, and contract deadlines move with it
   const shut = !compat.prototype && shutWeek(c.week);
@@ -699,7 +719,11 @@ export function endWeek(c: Career): Report | null {
     rep.days.push({ wet, mm: rainMm(wx, dayOffset(c.week, day)) });
     const w = wctx(c);
     for (const j of c.jobs) {
-      if (j.kind === 'bulk') damDay(rand, c as never, j, wet, w, rep, ev as BulkEvent[]);
+      if (j.kind === 'bulk') {
+        // the tank's dry: the spread waits on the fuel truck today
+        if (fuelIdle(c, day) && !wet && j.state === 'running' && !j.finished) rep.lost++;
+        else damDay(rand, c as never, j, wet, w, rep, ev as BulkEvent[]);
+      }
       else jobDay(rand, c as never, j, day, wet, w, rep, downDays, ev as ContractEvent[]);
     }
     endOfDay(c as never, day, ev as ContractEvent[]);
@@ -721,6 +745,7 @@ export function endWeek(c: Career): Report | null {
   rep.costs += safetyWeek(rand, c as never, rep.worked, d, c.queue, ev as SafetyEvent[]);
   for (const j of c.jobs) if ((j.stood ?? 0) > 0) j.stood!--;
 
+  rep.costs += fuelSettle(worldRand(c, 'fuel'), c as never, costIdx(c), ev as FuelEvent[]);
   const over = overheads(c);
   c.bank -= over;
   rep.costs += over;
@@ -805,6 +830,7 @@ export function endWeek(c: Career): Report | null {
   c.offers = genOffers(wr, c as never, fmul(c), c.won, c.won2);
   c.market = genMarket(wr, { week: c.week, won: c.won, mood: mood(c), rivSell: c.rivSell, clear: c.clear }, () => uid(c));
   bulkMarket(c);
+  fuelWeek(worldRand(c, 'diesel'), c as never, costIdx(c), ev as FuelEvent[]);
   if (c.packs?.bulk) bulkWeek(worldRand(c, 'bulk-enq'), c as never, fmul(c), ev as BulkEvent[], rep.mm);
   genTenders(wr, c as never, canTender((t) => owns(c, t), c.rep, c.whs.sys), mood(c), fmul(c));
   if (compat.prototype || !barred(c as never, TOWNS[c.town].council)) {

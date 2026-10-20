@@ -2,10 +2,10 @@
 // A business that's run its own contract, with a fleet, a few hands, and a council package and a flood
 // recovery program out to tender. ?demo=bulk is the same business with the Bulk and Ag pack on and some of its gear.
 
-import { genCouncil, genEnquiry, genMajor, newAccounts, newMachine, seedRand, uid, game, type MachineType } from '@engine';
+import { genCouncil, genEnquiry, genMajor, newAccounts, newFuel, newMachine, seedRand, uid, game, type MachineType } from '@engine';
 
 export function demoCareer(kind: string): game.Career | null {
-  if (kind !== 'council' && kind !== 'bulk') return null;
+  if (kind !== 'council' && kind !== 'bulk' && kind !== 'fuel' && kind !== 'war') return null;
   const c = game.newCareer({ co: 'Demo Earthmoving', loan: 350000, town: 'gdi' }, 20261017);
   const rand = seedRand(7);
   c.phase = 'play';
@@ -35,6 +35,19 @@ export function demoCareer(kind: string): game.Career | null {
     game.setPack(c, 'bulk', true);
     c.bulk = { enq: [genEnquiry(seedRand(31), c as never, 1, 'turkeyNest'), genEnquiry(seedRand(44), c as never, 1, 'channel'), genEnquiry(seedRand(52), c as never, 1, 'laser')], att: { rake: true } };
     c.bulk.enq[1]!.surveyed = true;
+  }
+  if (kind === 'fuel' || kind === 'war') {
+    // a 30,000 litre tank running low, the price climbing with a war on, and an ops manager on the books
+    c.staff.push({ id: uid(c), name: 'Marg', role: 'ops', skill: 'solid', wage: 3000, off: 0, jobId: null });
+    const F = newFuel();
+    Object.assign(F, { tank: 'mid', L: 6400, avg: 1.97, last: 1450, walk: 1.02, auto: false, war: { from: 57, to: 66, peak: 1.45 } });
+    F.hist = [2.08, 2.11, 2.13, 2.1, 2.07, 2.09, 2.12, 2.14, 2.11, 2.09, 2.1, 2.12, 2.16, 2.62, 2.92, 3.1];
+    c.fuel = F;
+    if (kind === 'war') {
+      Object.assign(F, { war: { from: 60, to: 69, peak: 1.45 }, L: 11800 });
+      F.hist = F.hist.slice(0, 13).concat([2.53]);
+      c.queue.push({ k: 'dieselWar' });
+    }
   }
   return c;
 }

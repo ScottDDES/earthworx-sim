@@ -1,5 +1,7 @@
 NEW: the Bulk and Ag pack, free in the beta. When you start a new career, choose Bulk earthworks: you start with a dozer or an excavator instead of a grader, and farmers and developers ring on the Work tab about dams, channels, contour banks, clearing, laser levelling, shed pads and bulk earthworks. Or start on Roads and add bulk work alongside (Career tab).
 
-Also new: DDES Advisory on every safety decision and to check tender prices; ProActive by DDES for regional depots; a Christmas shutdown; type your own margin; council suspensions now stop council work; free drivers cover for injured ones; clearer incident and buy-out cards; Run on handles the small stuff.
+Also new: diesel. Put a bulk fuel tank in your yard (Yard tab) and buy loads cheaper than the pump, but keep it topped up: run dry and your machines sit idle waiting on the fuel truck. The price moves every week, and a war overseas can send it through the roof. An operations manager can keep the tank full for you.
+
+And: DDES Advisory on every safety decision and to check tender prices; ProActive by DDES for regional depots; a Christmas shutdown; type your own margin; council suspensions now stop council work; free drivers cover for injured ones; clearer incident and buy-out cards; Run on handles the small stuff.
 
 Tell us: do the bulk rates and job speeds feel right against real work? Anything that reads wrong, adds up wrong or doesn't fit your screen? Screenshot it and tap Share Beta Feedback.
