@@ -3,7 +3,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   BULK_OFF, CALLOUT, buyTank, orderFuel, DIESEL_BASE, RISE_FALL, TANKS, compat, choose, drawCard, fuelIdle, fuelSettle, fuelStart, fuelWeek, game, hashN, newAccounts,
-  newFuel, pumpPrice, seedRand, warMul, TYPES, dayHours, type FuelBook, type FuelEvent,
+  newFuel, pumpPrice, seedRand, warMul, TYPES, dayHours, genEnquiry, type FuelBook, type FuelEvent,
 } from '../src';
 
 type FB = Parameters<typeof fuelStart>[0];
@@ -184,5 +184,15 @@ describe('the hire schedule', () => {
     expect(TYPES.grader).toMatchObject({ name: 'Grader 12M', wet: 1665, fuel: 570, dry: 5100, sub: 2230 });
     expect(dayHours()).toBe(9);
     compat.prototype = false;
+  });
+
+  it('bulk work pays about 10% more in the real game, and your starting price moves with it', () => {
+    const c = game.newCareer({ co: 'Dirt', loan: 180000, town: 'gdi', path: 'bulk' }, 4);
+    const ask = (proto: boolean) => { compat.prototype = proto; const e = genEnquiry(seedRand(9), JSON.parse(JSON.stringify(c)), 1, 'turkeyNest'); compat.prototype = false; return e; };
+    const was = ask(true), now = ask(false);
+    expect(now.budget / was.budget).toBeGreaterThan(1.05);
+    expect(now.budget / was.budget).toBeLessThan(1.15);
+    expect(now.rate).toBeCloseTo(was.rate * 1.1, 1);
+    expect(TYPES.d6).toMatchObject({ wet: 1900, fuel: 700, sub: 2600 });
   });
 });

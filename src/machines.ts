@@ -67,7 +67,7 @@ const RATES: Partial<Record<MachineType, { wet: number; withFuel: number; dry: n
   roller: { wet: 150, withFuel: 200, dry: 2500 },
   cart: { wet: 140, withFuel: 200, dry: 2500 },
   truck: { wet: 170, withFuel: 220, dry: 2750 },
-  d6: { wet: 150, withFuel: 200, dry: 6500 },
+  d6: { wet: 190, withFuel: 260, dry: 6500 },
   d8: { wet: 250, withFuel: 370, dry: 8000 },
   d9: { wet: 300, withFuel: 450, dry: 10000 },
   d10: { wet: 380, withFuel: 520, dry: 12500 },

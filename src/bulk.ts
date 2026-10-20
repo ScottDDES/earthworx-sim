@@ -51,6 +51,8 @@ export const SHRINK = 0.1;
 export const MOIST_ADD = 3;
 export const CART_TRIP = 25;
 export const SURVEY_COST = 2000;
+/** The real game's going rates for bulk work sit 10% over the prototype's, in step with the hire schedule and the 10-hour day. */
+export const PRICE_LIFT = 1.1;
 /** A labour-hire operator for a seat none of your crew can fill. */
 export const BULK_CASUAL = 650;
 /** Weeks an enquiry waits for your price, and weeks a won job waits for a spread before the client goes elsewhere. */
@@ -171,7 +173,8 @@ export function genEnquiry(rand: Rand, b: B, fmul: number, only?: BulkKind): Far
     let x = rand() * pool.reduce((a, k) => a + KINDS[k].odds, 0);
     for (const k of pool) if ((x -= KINDS[k].odds) < 0) { kind = k; break; }
   }
-  const mkt = 0.92 + 0.08 * fmul, place = pick(rand, TOWNS[b.town].places);
+  const lift = compat.prototype ? 1 : PRICE_LIFT, mkt = (0.92 + 0.08 * fmul) * lift, place = pick(rand, TOWNS[b.town].places);
+  const yourRate = (r: number) => { const s = rateStep({ kind }); return Math.round((r * lift) / s) * s; };
   const base = { id: uid(b), kind, place, week: b.week } as const;
   const noise = (lo: number, hi: number) => lo + rand() * (hi - lo);
   if (isDam(kind)) {
@@ -186,12 +189,12 @@ export function genEnquiry(rand: Rand, b: B, fmul: number, only?: BulkKind): Far
     const budget = round(vol * (kind === 'ringTank' ? noise(2.6, 3.6) : noise(3.8, 5.2)) * mkt, 500);
     const tested = rand() < TESTED_SHARE;
     const haul = kind === 'ringTank' ? int(rand, 15, 40) * 10 : int(rand, 6, 20) * 10;
-    return { ...base, farm: pick(rand, FARMS), dam, haul, vol, truth, survey, budget: tested ? round(budget * (1 + TESTED_PREMIUM), 500) : budget, tested, rate: (kind === 'ringTank' ? 2.9 : 4.2) + (tested ? 0.5 : 0) };
+    return { ...base, farm: pick(rand, FARMS), dam, haul, vol, truth, survey, budget: tested ? round(budget * (1 + TESTED_PREMIUM), 500) : budget, tested, rate: Math.round(yourRate((kind === 'ringTank' ? 2.9 : 4.2) + (tested ? 0.5 : 0)) * 100) / 100 };
   }
   const farm = kind === 'dev' ? pick(rand, DEVS) : pick(rand, FARMS);
   const make = (vol: number, truthMul: number, perUnit: number, rate: number, haul: number, extra: Partial<FarmEnquiry> = {}): FarmEnquiry => {
     const truth = Math.round(vol * truthMul * 100) / 100, survey = Math.round(truth * noise(0.97, 1.03) * 100) / 100;
-    return { ...base, farm, haul, vol, truth, survey, budget: round(vol * perUnit * mkt, 100), rate, ...extra };
+    return { ...base, farm, haul, vol, truth, survey, budget: round(vol * perUnit * mkt, 100), rate: Math.round(yourRate(rate) * 100) / 100, ...extra };
   };
   switch (kind) {
     case 'laser': {
