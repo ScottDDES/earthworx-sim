@@ -6,7 +6,7 @@
 
 import { monthIdx } from './calendar';
 import { compat, onCompat } from './compat';
-import { TYPES, isRoad, type Machine, type MachineType, type RoadType } from './machines';
+import { RT, TYPES, isRoad, type Machine, type MachineType, type RoadType } from './machines';
 import { fillRoles, type CrewFill, type Person, type Role } from './staff';
 import { MOB, STD_CREW_DAY, TREAT, gradeDays, type Quantities } from './tenders';
 import { TOWNS, type TownId } from './towns';
@@ -37,6 +37,25 @@ export function cartLoads(km: number): number {
  */
 export function truckM3(haul: number, loaded = true): number {
   return (15 * 540) / ((loaded || compat.prototype ? 20 : 50) + haul * 2);
+}
+
+/**
+ * A roadtrain's m³ a day: 30 m³ a load, 30 minutes to load and tip both trailers (80 waiting on the pit's loader),
+ * 2.5 minutes a km. As many single side tippers as one roadtrain is worth on a haul.
+ */
+export function rtM3(haul: number, loaded = true): number {
+  return (30 * 540) / ((loaded ? 30 : 80) + haul * 2.5);
+}
+export function rtWorth(haul: number, loaded = true): number {
+  return rtM3(haul, loaded) / truckM3(haul, loaded);
+}
+
+/** Your roadtrains free by a week: they go on before the single side tippers. */
+export function rtFree(p: PlanCtx, start: number): number {
+  return p.fleet.filter((m) => {
+    const mj = m.jobId ? p.jobs.find((j) => j.id === m.jobId) : undefined;
+    return m.type === 'truck' && m.rt && m.status !== 'auction' && m.status !== 'listed' && m.status !== 'branch' && !(mj && (mj.kind === 'own' || jobEnds(p, mj) >= (start || p.week)));
+  }).length;
 }
 
 /** A labour-hire operator on the loader. */
@@ -273,12 +292,12 @@ export function roadUnits(rd: Quantities): number {
 export type Block = 'ok' | 'water' | 'gravel' | 'idle';
 
 /** Crew-days on one road for one crew (grading and gravel), and what's holding it up. */
-export function crewRoad(t: Pick<CouncilTender, 'subPace'>, c: Pick<ProgCrew, 'sub' | 'gr' | 'ro' | 'ca' | 'tr'>, rd: PlanRoad, loaded = true): { g: number; s: number; b: Block; fl: Flow | null } {
+export function crewRoad(t: Pick<CouncilTender, 'subPace'>, c: Pick<ProgCrew, 'sub' | 'gr' | 'ro' | 'ca' | 'tr'>, rd: PlanRoad, loaded = true, rts = 0): { g: number; s: number; b: Block; fl: Flow | null } {
   if (c.sub) {
     const pc = t.subPace || 0.85;
     return { g: gradeDays(rd) / pc, s: rd.resheet / (TREAT.resheet.per * pc), b: 'ok', fl: null };
   }
-  const fl = flow(Math.min(c.gr, c.ro), c.ca, c.tr, rd.water!, rd.haul!, loaded), g = gradeDays(rd) / fl.out, s = rd.resheet ? rd.resheet / fl.sheetRate : 0;
+  const fl = flow(Math.min(c.gr, c.ro), c.ca, c.tr + (rts ? rts * (rtWorth(rd.haul!, loaded) - 1) : 0), rd.water!, rd.haul!, loaded), g = gradeDays(rd) / fl.out, s = rd.resheet ? rd.resheet / fl.sheetRate : 0;
   const b: Block = fl.wf < 0.999 ? 'water' : rd.resheet && fl.gf < 0.95 ? 'gravel' : rd.resheet >= 600 && fl.supply > fl.need * 1.6 ? 'idle' : 'ok';
   return { g, s, b, fl };
 }
@@ -439,15 +458,18 @@ export function progEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned: Partial<
   let allUsed: string[] = [], casualsN = 0, ownTrucks = 0, hiredTrucks = 0, cdAll = 0, gAll = 0, sAll = 0, floatsN = 0;
   const assigned: Record<number, number> = {};
   const ld = planLoader(p, t, pl), loaded = ld !== null;
+  let rtLeft = rtFree(p, start);
   crews.forEach((cr, i) => {
     const R: CrewResult = { i, roads: [], days: 0, sheet: 0, floats: 0, wk: 0, wet: 0, day: 0, sheetDay: 0, week: 0 };
+    const rts = cr.sub ? 0 : Math.min(cr.tr, left.truck, rtLeft);
+    rtLeft -= rts;
     let at: { x?: number; y?: number } = { x: 0, y: 0 };
     for (const ri0 of cr.seq) {
       const rd = t.roads[ri0];
       if (!rd) continue;
       assigned[ri0] = 1;
       const fd = cr.seq.indexOf(ri0) > 0 && roadDist(at, rd) > FLOAT_KM ? FLOAT_DAYS : 0;
-      const x = crewRoad(t, cr, rd, loaded), ideal = crewRoad(t, { sub: false, gr: cr.gr, ro: cr.ro, ca: 4, tr: 12 }, rd);
+      const x = crewRoad(t, cr, rd, loaded, rts), ideal = crewRoad(t, { sub: false, gr: cr.gr, ro: cr.ro, ca: 4, tr: 12 }, rd);
       R.roads.push({ ri: ri0, start: R.days + fd, days: x.g + x.s, g: x.g, s: x.s, b: x.b, lost: cr.sub ? 0 : Math.max(0, x.g + x.s - ideal.g - ideal.s), fl: x.fl, float: fd });
       R.days += fd + x.g + x.s;
       R.sheet += x.s;
@@ -495,9 +517,9 @@ export function progEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned: Partial<
       allUsed = allUsed.concat(fr.used);
       casualsN += fr.casuals;
       R.day = fuelDay + fr.casualDay + subDay;
-      R.sheetDay = (cr.tr - ot) * TRUCK_DAY + ot * TYPES.truck.fuel + fr.truckCasualDay;
+      R.sheetDay = (cr.tr - ot) * TRUCK_DAY + ot * TYPES.truck.fuel + rts * (RT.fuel - TYPES.truck.fuel) + fr.truckCasualDay;
       R.week = hireWeek;
-      c.fuel += Math.round(R.days * fuelDay + R.sheet * ot * TYPES.truck.fuel);
+      c.fuel += Math.round(R.days * fuelDay + R.sheet * (ot * TYPES.truck.fuel + rts * (RT.fuel - TYPES.truck.fuel)));
       c.labour += Math.round(R.days * fr.casualDay + R.sheet * fr.truckCasualDay);
       c.subbies += Math.round(R.days * subDay);
       c.trucks += Math.round(R.sheet * (cr.tr - ot) * TRUCK_DAY);
@@ -568,7 +590,9 @@ export function planEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned?: Partial
   });
   if (pl.prog && t.major) return progEval(p, t, pl, owned, people);
   const G = pl.graders || 1, R = pl.rollers || 1, N = pl.crews;
-  const ld = planLoader(p, t, pl), pit = t.pits[pl.pit]!, fl = flow(crewMul(pl), pl.carts, pl.trucks, t.waterKm, pit.haul, ld !== null), q = t.q;
+  const ld = planLoader(p, t, pl), pit = t.pits[pl.pit]!, q = t.q;
+  const ownT = Math.min(owned.truck || 0, pl.crews * pl.trucks), rts = Math.min(ownT, rtFree(p, t.close + 1));
+  const fl = flow(crewMul(pl), pl.carts, pl.trucks + (rts ? (rts * (rtWorth(pit.haul, ld !== null) - 1)) / pl.crews : 0), t.waterKm, pit.haul, ld !== null);
   let gDays = gradeDays(q) / fl.out, sDays = q.resheet / fl.sheetRate;
   // Subbie crews work alongside yours; the work splits by pace.
   const SC = Math.min(pl.subs || 0, t.subAvail || 0), U = gradeDays(q) + q.resheet / TREAT.resheet.per, rho = U / Math.max(0.01, gDays + sDays);
@@ -597,7 +621,7 @@ export function planEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned?: Partial
   const crew = fillRoles({ grader: need.grader - wet.grader!, roller: need.roller - wet.roller!, cart: need.cart - wet.cart!, truck: ownTrucks }, people);
   const wearDay = round(120 * YARDS[p.yard].svc, 10), casuals = crew.casuals;
   const c: CostBreakdown = {
-    fuel: Math.round(perCrew * fuelDay + sheetDays * ownTrucks * TYPES.truck.fuel),
+    fuel: Math.round(perCrew * fuelDay + sheetDays * (ownTrucks * TYPES.truck.fuel + rts * (RT.fuel - TYPES.truck.fuel))),
     labour: Math.round(perCrew * crew.casualDay + sheetDays * crew.truckCasualDay),
     wear: Math.round(perCrew * ownUsed * wearDay + sheetDays * ownTrucks * wearDay),
     hire: hireWeek * wks,

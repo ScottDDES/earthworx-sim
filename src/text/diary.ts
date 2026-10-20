@@ -22,7 +22,7 @@ const QNAME: Record<number, string> = { 6: 'April to June', 9: 'July to Septembe
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const MGR_ROLE: Record<string, string> = { ops: 'operations manager', wsm: 'workshop manager' };
 
-const label = (m: MRef) => (m.multi ? 'Multi-tyre roller' : TYPES[m.type].name) + ', ' + m.year;
+const label = (m: MRef) => (m.multi ? 'Multi-tyre roller' : m.rt ? 'Roadtrain side tipper' : TYPES[m.type].name) + ', ' + m.year;
 const title = (j: JobRef) => jobTitle(j as Job);
 const ctitle = (t: { n: number }) => councilTitle({ ...t, roads: Array(t.n) } as never);
 const town = (t: string) => TOWNS[t as keyof typeof TOWNS].name;
@@ -133,6 +133,7 @@ export function diaryText(c: Career, e: any): string {
     case 'letGo': return 'Let ' + e.name + " go with a week's pay.";
     case 'fixedProperly': return 'Fixed the ' + e.part + ' on the ' + short(e.type) + ' properly (' + f(e.cost) + ').';
     case 'gps': return 'Fitted GPS machine control to the ' + label(e.m) + ' (' + f(e.cost) + ').';
+    case 'roadtrain': return 'Put a second trailer and dolly behind the ' + label(e.m) + ': it\'s a roadtrain now (' + f(e.cost) + ').';
     case 'whsSetUp': return 'Set up ' + WHS_SYS[e.sys]!.n + ' (' + f(e.cost) + ').';
     // the bank
     case 'insolventWeek': return 'Trading insolvent, week ' + e.weeks + ' of ' + HC_WEEKS + '.';

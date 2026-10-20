@@ -8,10 +8,10 @@ import type { Machine } from './machines';
 /** Enough of a job to name it after it's gone. */
 export type JobRef = Pick<Job, 'kind' | 'type' | 'client' | 'place' | 'nm'> & { major?: boolean; prestige?: boolean };
 /** Enough of a machine to name it after it's gone. */
-export type MRef = Pick<Machine, 'type' | 'year'> & { multi?: boolean };
+export type MRef = Pick<Machine, 'type' | 'year'> & { multi?: boolean; rt?: boolean };
 
 export const jobRef = (j: JobRef): JobRef => ({ kind: j.kind, type: j.type, client: j.client, place: j.place, nm: j.nm, major: j.major, prestige: j.prestige });
-export const mRef = (m: MRef): MRef => (m.multi ? { type: m.type, year: m.year, multi: true } : { type: m.type, year: m.year });
+export const mRef = (m: MRef): MRef => (m.multi ? { type: m.type, year: m.year, multi: true } : m.rt ? { type: m.type, year: m.year, rt: true } : { type: m.type, year: m.year });
 
 /** One thing that happened. k says what; the rest is what the words need. */
 export type DiaryEvent = { k: string; [x: string]: unknown };

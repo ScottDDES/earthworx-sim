@@ -110,6 +110,8 @@ export interface Listing {
   /** The rival selling it. */
   who?: string;
   multi?: boolean;
+  /** A roadtrain side tipper. */
+  rt?: boolean;
   /** A rival short of cash, selling cheap. */
   distress?: boolean;
   price: number;
@@ -243,6 +245,16 @@ export function genLoaderListings(rand: Rand, week: number, mood: Mood, nextId: 
   return [m];
 }
 
+/** The real game: now and then a roadtrain side tipper comes up. */
+export function genRoadtrainListings(rand: Rand, week: number, mood: Mood, nextId: () => string): Listing[] {
+  if (rand() > 0.3) return [];
+  const type = 'truck' as const, yr = yearOf(week), year = int(rand, 2006, 2020), cond = int(rand, 45, 86);
+  const seller: Seller = rand() < 0.45 ? 'dealer' : 'private', claimed = seller === 'dealer' ? cond : Math.min(92, cond + int(rand, 0, 14));
+  const m: Listing = { id: nextId(), type, rt: true, year, cond, claimed, hours: (yr - year) * int(rand, 650, 900), seller, revealed: seller === 'dealer', price: 0 };
+  m.price = round(value({ type, year, cond: claimed, rt: true }, week) * (seller === 'dealer' ? 1.12 : 0.95) * MOODS[mood].pm, 500);
+  return [m];
+}
+
 // ---------- buying ----------
 
 export const INSPECT_COST = 600;
@@ -313,6 +325,7 @@ export function buyListing(rand: Rand, b: Buyer, id: string, fin: boolean, room:
   const m = newMachine(rand, machineId, l.type, l.year, l.cond, l.hours) as Machine & { paid?: number; paidWk?: number };
   if (l.seller === 'dealer') m.warranty = b.week + WARRANTY_WEEKS;
   m.multi = !!l.multi;
+  if (l.rt) m.rt = true;
   m.paid = l.price;
   m.paidWk = b.week;
   b.fleet.push(m);

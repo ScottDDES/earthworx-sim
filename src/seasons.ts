@@ -23,7 +23,7 @@ import { coachOff, coachOk, runOn } from './coach';
 import { note } from './diary';
 
 /** Bump whenever the simulation changes, so older scores aren't checked against new rules. */
-export const SIM_VER = 7; // 7: a loader at the gravel pit. 6: Scott's hire schedule on a 10-hour day, and the 627. 5: bulk fuel and the diesel price. 2: Run on answers small cards itself. 3: playtest fixes (council bans, cover, Christmas). 4: DDES Advisory on WHS and tenders, the DDES ERP
+export const SIM_VER = 8; // 8: roadtrains. 7: a loader at the gravel pit. 6: Scott's hire schedule on a 10-hour day, and the 627. 5: bulk fuel and the diesel price. 2: Run on answers small cards itself. 3: playtest fixes (council bans, cover, Christmas). 4: DDES Advisory on WHS and tenders, the DDES ERP
 
 export type SeasonId = 'wet2010' | 'dry2019' | 'prog2022';
 
@@ -150,7 +150,7 @@ const GAME_MOVES = [
   'fixProperly', 'hammer', 'handOnNow', 'hireBranchManager', 'hireCand', 'hireManager', 'inspectListing', 'letGo', 'moveYard', 'open',
   'openBranchDepot', 'openProgram', 'orderDiesel', 'payLoanDown', 'priceCheck', 'programAct', 'retireNow', 'ringAround', 'sellMachine', 'sendToBranch', 'service',
   'setHireMode', 'setMargin', 'setOverheadShare', 'setPlan', 'subOut', 'submitBid', 'submitCouncil', 'takeBack', 'toggleTalks',
-  'unlistMachine', 'upgradeSafety', 'withdrawBid',
+  'unlistMachine', 'upgradeRoadtrain', 'upgradeSafety', 'withdrawBid',
 ] as const;
 /** And the rest: answering a card, running quiet weeks on, and the coach. */
 const OTHER_MOVES = ['choose', 'runOn', 'coachOk', 'coachOff'] as const;

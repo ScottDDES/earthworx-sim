@@ -11,12 +11,12 @@ import {
   driverOff, freeDriver, freeMachine, freeUp, hireDay, invoice, jobCost, jobDone, release, seat,
   type Biz, type HireEvent, type Job, type WeekReport,
 } from './hire';
-import { GPS_MUL, TYPES, breakdown, breaks, wear, type Machine, type MachineType, type WorkshopCtx } from './machines';
+import { GPS_MUL, RT, TYPES, breakdown, breaks, wear, type Machine, type MachineType, type WorkshopCtx } from './machines';
 import { mapDone, type DistrictMap } from './map';
-import { FLOAT_DAYS, FLOAT_KM, FLOAT_MOVE, SITE_WEEK, TRUCK_DAY, crewMul, crewPeople, flow, hm, loaderDay, roadDist, subRate, weeksFor, type LoaderMode, type PlanCtx } from './planning';
+import { FLOAT_DAYS, FLOAT_KM, FLOAT_MOVE, SITE_WEEK, TRUCK_DAY, crewMul, crewPeople, flow, hm, loaderDay, roadDist, rtWorth, subRate, weeksFor, type LoaderMode, type PlanCtx } from './planning';
 import { relAdd } from './relations';
 import { int, type Rand } from './rng';
-import { shuffled } from './compat';
+import { compat, shuffled } from './compat';
 import { ROLES, fillRoles, type Person } from './staff';
 import { LD_WEEK, MOB, RETAIN, TREAT } from './tenders';
 import { LD_OWN } from './council';
@@ -276,7 +276,8 @@ export function staffOwn(b: ContractBiz, dayNow: number | null): void {
     const cap = j.ownCap as Record<string, number> | null;
     for (const k of ['grader', 'roller', 'cart', 'truck'] as const) {
       const c = cap && cap[k] != null ? Math.min(need[k]!, cap[k]!) : need[k]!;
-      const free = b.fleet.filter((m) => m.type === k && m.status === 'idle' && m.down === 0).slice(0, c);
+      // roadtrains go on first: they cart the most
+      const free = b.fleet.filter((m) => m.type === k && m.status === 'idle' && m.down === 0).sort((x, y) => (y.rt ? 1 : 0) - (x.rt ? 1 : 0)).slice(0, c);
       for (const m of free) {
         m.status = 'job';
         m.jobId = j.id;
@@ -421,8 +422,14 @@ export function finishPts(b: Biz, j: Job): number {
   return (g && gG * 2 >= g ? 1 : 0) + (ro && rM * 2 >= ro ? 1 : 0);
 }
 
-export function ownFlow(j: Job, loaded = j.ldr !== null) {
-  return flow(crewMul(j as { graders?: number; rollers?: number }), j.carts as number, j.trucks as number, j.waterKm as number, j.haul as number, loaded);
+export function ownFlow(j: Job, loaded = j.ldr !== null, rts = (j.ownRT as number) || 0) {
+  const crews = (j.crews as number) || 1, extra = rts ? (rts * (rtWorth(j.haul as number, loaded) - 1)) / crews : 0;
+  return flow(crewMul(j as { graders?: number; rollers?: number }), j.carts as number, (j.trucks as number) + extra, j.waterKm as number, j.haul as number, loaded);
+}
+
+/** Roadtrains carting today: your own on the job, not broken down. */
+function rtsGoing(b: ContractBiz, ids: readonly string[]): number {
+  return ids.filter((id) => { const m = mach(b, id); return m && m.rt && m.down === 0; }).length;
 }
 
 /**
@@ -522,7 +529,7 @@ export function progDay(rand: Rand, b: ContractBiz, j: Job, rep: WeekReport, w: 
         frac -= fu;
         continue;
       }
-      const rd = c.q[c.k]!, fl = c.sub ? null : flow(Math.min(c.gr, c.ro), c.ca, c.tr, rd.water!, rd.haul!, loaded), dayc = c.sub ? (j.subRate as number) || 0 : c.day;
+      const rts = c.sub ? 0 : rtsGoing(b, c.mids || []), rd = c.q[c.k]!, fl = c.sub ? null : flow(Math.min(c.gr, c.ro), c.ca, c.tr + (rts ? rts * (rtWorth(rd.haul!, loaded) - 1) : 0), rd.water!, rd.haul!, loaded), dayc = c.sub ? (j.subRate as number) || 0 : c.day;
       if (rd.g > 1e-6) {
         const gr = c.sub ? pace : fl!.out * crewGps(b, c), ug = Math.min(frac, rd.g / gr);
         rd.g -= gr * ug;
@@ -608,11 +615,14 @@ export function ownDay(rand: Rand, b: ContractBiz, j: Job, rep: WeekReport, w: W
     return;
   }
   rep.lost += crews - active;
-  const loaded = loaderOn(b, j), fl = ownFlow(j, loaded), share = active / crews, sheeting = (j.gLeft as number) <= 0;
+  const rts = compat.prototype ? 0 : rtsGoing(b, j.ownedIds as string[]);
+  if (!compat.prototype) j.ownRT = rts;
+  const loaded = loaderOn(b, j), fl = ownFlow(j, loaded, rts), share = active / crews, sheeting = (j.gLeft as number) <= 0;
   let carted = false;
   let cost = active * (j.fuelCrew != null ? (j.fuelCrew as number) : (j.graders as number) * TYPES.grader.fuel + (j.rollers as number) * TYPES.roller.fuel + (j.carts as number) * TYPES.cart.fuel)
     + Math.round(((j.casualDay as number) + ((j.subDay as number) || 0)) * share);
-  const truckDay = ((crews * (j.trucks as number) - (j.ownTrucks as number)) * TRUCK_DAY + (j.ownTrucks as number) * TYPES.truck.fuel + (j.truckCasualDay as number)) / crews;
+  const rtFuel = rts * (RT.fuel - TYPES.truck.fuel);
+  const truckDay = ((crews * (j.trucks as number) - (j.ownTrucks as number)) * TRUCK_DAY + (j.ownTrucks as number) * TYPES.truck.fuel + rtFuel + (j.truckCasualDay as number)) / crews;
   let fuel = active * (j.fuelCrew != null ? (j.fuelCrew as number) : (j.graders as number) * TYPES.grader.fuel + (j.rollers as number) * TYPES.roller.fuel + (j.carts as number) * TYPES.cart.fuel);
   for (let c = 0; c < active; c++) {
     if ((j.gLeft as number) > 0) j.gLeft = (j.gLeft as number) - fl.out * gpsMul(b, j);
@@ -620,7 +630,7 @@ export function ownDay(rand: Rand, b: ContractBiz, j: Job, rep: WeekReport, w: W
       const placed = Math.min(j.sLeft as number, fl.sheetRate);
       j.sLeft = (j.sLeft as number) - placed;
       cost += truckDay + placed * (j.royalty as number);
-      fuel += ((j.ownTrucks as number) * TYPES.truck.fuel) / crews;
+      fuel += ((j.ownTrucks as number) * TYPES.truck.fuel + rtFuel) / crews;
       carted = true;
     }
   }

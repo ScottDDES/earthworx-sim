@@ -6,8 +6,8 @@ import { bankWeek, newLoan, weeklyRepay, type Loan } from './bank';
 import { yearOf } from './calendar';
 import { DIFFICULTY, costIdx as costIdxOf, difficultyOf, type Difficulty } from './difficulty';
 import { book, newAccounts, type Accounts } from './ledger';
-import { GPS_COST, TYPES, isBulk, newMachine, serviced, svcCost, value, type Machine } from './machines';
-import { MOODS, fmul as fmulOf, genBulkListings, genLoaderListings, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, unlist, inspect as inspectL, bid as bidL, hammer as hammerL, type HammerResult, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
+import { GPS_COST, RT_COST, TYPES, isBulk, newMachine, serviced, svcCost, value, type Machine } from './machines';
+import { MOODS, fmul as fmulOf, genBulkListings, genLoaderListings, genRoadtrainListings, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, unlist, inspect as inspectL, bid as bidL, hammer as hammerL, type HammerResult, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
 import { fromState, hashN, int, pick, seedRand, type Rand } from './rng';
 import { mkRivals, rivalsWeek, type Rival, type RivalEvent } from './rivals';
 import { newWhs, safetyWeek, upgradeWhs, type SafetyEvent, type Whs } from './safety';
@@ -349,6 +349,7 @@ function bulkMarket(c: Career): void {
 /** A loader for the gravel pit, now and then (the real game). */
 function loaderMarket(c: Career): void {
   if (!compat.prototype && c.market) c.market.listings.push(...genLoaderListings(worldRand(c, 'loader'), c.week, mood(c), () => uid(c)));
+  if (!compat.prototype && c.market) c.market.listings.push(...genRoadtrainListings(worldRand(c, 'roadtrain'), c.week, mood(c), () => uid(c)));
 }
 
 /** Switch an expansion pack on or off (a test switch for now; never in a leaderboard season). */
@@ -591,6 +592,17 @@ export function fitGps(c: Career, id: string): boolean {
   tcAdd(c as never, 'gps');
   tickets(c);
   note(c, { k: 'gps', m: mRef(m), cost: GPS_COST });
+  return true;
+}
+
+/** A second trailer and dolly behind a side tipper: a roadtrain (the real game). */
+export function upgradeRoadtrain(c: Career, id: string): boolean {
+  const m = c.fleet.find((x) => x.id === id);
+  if (compat.prototype || !m || m.type !== 'truck' || m.rt || m.status === 'auction' || m.status === 'listed' || c.bank < RT_COST) return false;
+  c.bank -= RT_COST;
+  book(c.acc, 'capital', RT_COST);
+  m.rt = true;
+  note(c, { k: 'roadtrain', m: mRef(m), cost: RT_COST });
   return true;
 }
 

@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import {
-  COUNCIL_TERMS, PRICE_CHECK_FEE, FLOAT_KM, FLOAT_MOVE, LD_OWN, TRUCK_DAY, TYPES, awayCounts, cartEff, hm, loadersFree, npOf, odLimit, planCounts, planHasLoader, roadUnits, stars, subRate, truckM3, weeksFor, game,
+  COUNCIL_TERMS, PRICE_CHECK_FEE, FLOAT_KM, FLOAT_MOVE, LD_OWN, TRUCK_DAY, TYPES, awayCounts, cartEff, hm, loadersFree, npOf, odLimit, planCounts, planHasLoader, rtFree, roadUnits, stars, subRate, truckM3, weeksFor, game,
   type CouncilTender, type PlanEval, type ProgOp, play,
 } from '@engine';
 import { CREW_COL, bottText, issueText } from '@engine/text/plan';
@@ -65,7 +65,7 @@ function Stepper({ label, sub, val, onDown, onUp }: { label: string; sub: string
 
 /** Who supplies the plant: your own machines first (as many as you choose), the rest dry hire or subbie plant. */
 function Plant({ c, t, e, act }: { c: Career; t: CouncilTender; e: PlanEval; act: Act }) {
-  const av = planCounts(game.planCtx(c), t.close + 1), pl = t.pl, N = pl.crews;
+  const av = planCounts(game.planCtx(c), t.close + 1), pl = t.pl, N = pl.crews, rts = rtFree(game.planCtx(c), t.close + 1);
   const per: Record<string, number> = { grader: pl.graders || 1, roller: pl.rollers || 1, cart: pl.carts, truck: pl.trucks };
   return (
     <>
@@ -82,6 +82,7 @@ function Plant({ c, t, e, act }: { c: Career; t: CouncilTender; e: PlanEval; act
                 <button type="button" className="btn" style={{ minHeight: 40, padding: '0 12px' }} disabled={!(use < Math.min(a, need))} onClick={() => act((x) => play.setPlan(x, t.id, 'own:' + k, 1))}>+</button>
               </span>
             </div>
+            {k === 'truck' && rts > 0 && <div className="tiny muted">{Math.min(rts, use)} of yours {Math.min(rts, use) === 1 ? 'is a roadtrain' : 'are roadtrains'}: they go on first and cart about half as much again.</div>}
             {rest > 0 && (k === 'truck' ? <div className="tiny muted">{rest} hired with drivers at {f(TRUCK_DAY)} a day, only on resheeting days.</div> : (
               <div className="seg">
                 <button type="button" className={wet ? '' : 'on'} onClick={() => act((x) => play.setHireMode(x, t.id, k, 'dry'))}>Dry hire · {f(TYPES[k].dry)}/wk</button>

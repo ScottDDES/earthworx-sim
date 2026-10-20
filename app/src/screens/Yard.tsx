@@ -6,7 +6,7 @@ import {
   BULK_TYPES, ERP_SETUP, ERP_WEEK, erpOk, BR_FLOAT, BR_MGR, BR_RENT, BR_SETUP, BR_SLOTS, GPS_COST, MGR, ROLES, SKILLS, TOWNS, WHS_SYS, YARDS, YARD_ORDER,
   bigNoWsm, brCrews, brMachines, brProfit, brTown, canBranch, fitPer, fitters, forecast, lastInc, machineAlerts, machineName,
   mgrOf, mgrUnlocked, monthIdx, nextWhs, odLimit, premParts, recentInc, riskMult, svcCost, unlocked, value, whsNp, fleetValue, wages,
-  compat, game, type Machine, type MachineType, type YardId, play,
+  RT_COST, compat, game, type Machine, type MachineType, type YardId, play,
 } from '@engine';
 import { ERP_NAME, alertText } from '@engine/text/office';
 import { jobTitle } from '@engine/text/work';
@@ -198,7 +198,7 @@ function MachineCard({ c, m, act, onSell, onClose }: { c: Career; m: Machine; ac
   const paid = m as Machine & { paid?: number; paidWk?: number }, B = c.branch;
   return (
     <div className="card">
-      <div className="mhead"><MachineIcon type={m.type} /><div className="grow"><b>{machineName(m)}</b>{m.gps && <> <span className="chip c-rain">GPS</span></>}<span className="tiny muted">{m.year} model</span></div>{statusChip(m)}</div>
+      <div className="mhead"><MachineIcon type={m.type} /><div className="grow"><b>{machineName(m)}</b>{m.gps && <> <span className="chip c-rain">GPS</span></>}{m.rt && <span className="tiny muted" style={{ display: 'block' }}>A second trailer: carts about half as much again a day as a single, on more fuel.</span>}<span className="tiny muted">{m.year} model</span></div>{statusChip(m)}</div>
       {onClose && <button type="button" className="btn" onClick={onClose}>Close</button>}
       {j && <div className="small muted">{jobTitle(j)}</div>}
       {m.status === 'listed' && m.sale ? <div className="small muted">Listed at {f((m.sale as { price: number }).price)}. Sells in about {(m.sale as { weeks: number }).weeks} weeks.</div> : null}
@@ -217,6 +217,7 @@ function MachineCard({ c, m, act, onSell, onClose }: { c: Career; m: Machine; ac
         <button type="button" className="btn" disabled={!(c.bank + odLimit(c) >= cost && m.status !== 'auction' && m.status !== 'listed')} onClick={() => act((x) => play.service(x, m.id))}>Service · {f(cost)}</button>
         {m.band && <button type="button" className="btn" disabled={c.bank < m.band.fix} onClick={() => act((x) => play.fixProperly(x, m.id))}>Fix properly · {fk(m.band.fix)}</button>}
         {c.won && m.type === 'grader' && !m.gps && m.status !== 'auction' && m.status !== 'listed' && <button type="button" className="btn" disabled={c.bank < GPS_COST} onClick={() => act((x) => play.fitGps(x, m.id))}>Fit GPS · {fk(GPS_COST)}</button>}
+        {!compat.prototype && m.type === 'truck' && !m.rt && m.status !== 'auction' && m.status !== 'listed' && <button type="button" className="btn" disabled={c.bank < RT_COST} onClick={() => act((x) => play.upgradeRoadtrain(x, m.id))}>Make it a roadtrain · {fk(RT_COST)}</button>}
         {m.status === 'idle' && <button type="button" className="btn" onClick={onSell}>Sell</button>}
         {B && m.status === 'idle' && m.down === 0 && brMachines(c.fleet).length < BR_SLOTS && <button type="button" className="btn" disabled={c.bank < BR_FLOAT} onClick={() => act((x) => play.sendToBranch(x, m.id))}>Send to {TOWNS[B.town].name} · {fk(BR_FLOAT)}</button>}
         {m.status === 'branch' && <button type="button" className="btn" disabled={c.bank < BR_FLOAT || game.room(c) <= 0} onClick={() => act((x) => play.bringHome(x, m.id))}>Bring home · {fk(BR_FLOAT)}</button>}

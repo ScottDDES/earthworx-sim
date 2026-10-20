@@ -148,6 +148,8 @@ export interface Machine {
   jobId: string | null;
   sale: unknown;
   gps?: boolean;
+  /** A side tipper pulling a second trailer: a roadtrain (the real game). */
+  rt?: boolean;
   /** A roller fitted with rubber tyres. */
   multi?: boolean;
   band?: Bandaid | null;
@@ -161,6 +163,10 @@ export const SVC_EVERY = 250;
 export const GPS_COST = 85000;
 /** GPS machine control: a grader gets 7% more done a day. */
 export const GPS_MUL = 1.07;
+/** A second trailer and dolly turn a side tipper into a roadtrain. */
+export const RT_COST = 95000;
+/** A roadtrain's day: Scott's schedule, $210 an hour wet, $290 with your fuel, $3,500 a week dry, on a 10-hour day. */
+export const RT = { wet: 2100, fuel: 800, sub: 2900, dry: 3500 };
 
 const round = (n: number, to: number) => Math.round(n / to) * to;
 
@@ -168,8 +174,8 @@ export function newMachine(rand: Rand, id: string, type: MachineType, year: numb
   return { id, type, year, cond, hours, svcAt: hours - int(rand, 0, 120), status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null };
 }
 
-export function machineName(m: Pick<Machine, 'type' | 'multi'>): string {
-  return m.multi ? 'Multi-tyre roller' : TYPES[m.type].name;
+export function machineName(m: Pick<Machine, 'type' | 'multi'> & { rt?: boolean }): string {
+  return m.multi ? 'Multi-tyre roller' : m.rt ? 'Roadtrain side tipper' : TYPES[m.type].name;
 }
 
 /** What it's worth on its own: 8% a year off the new price (never below 20%), then condition takes up to 40% off that. */
@@ -179,9 +185,9 @@ export function baseValue(m: Pick<Machine, 'type' | 'year' | 'cond'>, week: numb
 }
 
 /** What it's worth with its extras: GPS keeps half its cost, multi-tyres add 10%. */
-export function value(m: Pick<Machine, 'type' | 'year' | 'cond' | 'gps' | 'multi'>, week: number): number {
+export function value(m: Pick<Machine, 'type' | 'year' | 'cond' | 'gps' | 'multi'> & { rt?: boolean }, week: number): number {
   const b = baseValue(m, week);
-  return b + (m.gps ? round(GPS_COST * 0.5, 500) : 0) + (m.multi ? round(b * 0.1, 500) : 0);
+  return b + (m.gps ? round(GPS_COST * 0.5, 500) : 0) + (m.multi ? round(b * 0.1, 500) : 0) + (m.rt ? round(RT_COST * 0.6, 500) : 0);
 }
 
 export function hoursSinceService(m: Machine): number {
