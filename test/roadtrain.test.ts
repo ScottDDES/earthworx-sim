@@ -1,15 +1,15 @@
 // Roadtrains: a side tipper with a second trailer (the real game only).
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { RT_COST, choose, compat, game, genCouncil, planEval, rtM3, rtWorth, seedRand, signOwn, truckM3, value, type CouncilTender, type Machine } from '../src';
+import { RT_COST, RT_HIRE_DAY, TRUCK_DAY, choose, setPlan, compat, game, genCouncil, planEval, rtM3, rtWorth, seedRand, signOwn, truckM3, value, type CouncilTender, type Machine } from '../src';
 
 const truck = (id: string, rt = false): Machine => ({ id, type: 'truck', year: 2016, cond: 85, hours: 9000, svcAt: 9000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null, ...(rt ? { rt: true } : {}) });
 
-function withTender(seed: number, rts: boolean) {
+function withTender(seed: number, rts: boolean, own = true) {
   const c = game.newCareer({ co: 'Haul Test', loan: 350000, town: 'gdi' }, seed);
   game.open(c);
   c.won = c.won2 = true;
-  c.fleet.push(truck('T1', rts), truck('T2', rts));
+  if (own) c.fleet.push(truck('T1', rts), truck('T2', rts));
   for (let g = 0; g < 200 && !c.ctenders.some((t) => t.q.resheet > 2000 && !t.major); g++) genCouncil(seedRand(seed * 1000 + g), c as never, game.planCtx(c), 1);
   const t = c.ctenders.find((x) => x.q.resheet > 2000 && !x.major)!;
   t.pl.trucks = 1;
@@ -65,6 +65,19 @@ describe('roadtrains', () => {
 
   it('on the job they get the gravel in sooner', () => {
     const a = withTender(6, false), b = withTender(6, true);
+    const ja = work(a.c, a.t), jb = work(b.c, b.t);
+    expect(ja.finished && jb.finished).toBe(true);
+    expect(jb.done).toBeLessThan(ja.done * 0.92);
+  });
+
+  it('the hired trucks can be roadtrains: dearer a day, more gravel in, and the job gets done sooner', () => {
+    const a = withTender(6, false, false), b = withTender(6, false, false);
+    setPlan(game.planCtx(b.c), b.t, 'rtHire', 1);
+    expect(b.t.pl.rtHire).toBe(1);
+    const ea = planEval(game.planCtx(a.c), a.t, a.t.pl), eb = planEval(game.planCtx(b.c), b.t, b.t.pl);
+    expect(eb.hiredTrucks).toBeGreaterThan(0);
+    expect(eb.sDays).toBeLessThan(ea.sDays * 0.9);
+    expect(eb.c.trucks / eb.sDays).toBeCloseTo((ea.c.trucks / ea.sDays) * (RT_HIRE_DAY / TRUCK_DAY), -1);
     const ja = work(a.c, a.t), jb = work(b.c, b.t);
     expect(ja.finished && jb.finished).toBe(true);
     expect(jb.done).toBeLessThan(ja.done * 0.92);

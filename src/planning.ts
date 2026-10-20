@@ -19,6 +19,12 @@ export const WATER_STD_KM = 6;
 /** A side tipper and driver hired in for a day, your fuel: the prototype's rate, then Scott's schedule on a 10-hour day. */
 export let TRUCK_DAY = 1860;
 onCompat(() => { TRUCK_DAY = compat.prototype ? 1860 : 2200; });
+/** A roadtrain and driver hired in for a day (the real game): Scott's $290 an hour with fuel, on a 10-hour day. */
+export const RT_HIRE_DAY = 2900;
+/** The hired trucks on a plan are roadtrains (the real game, when you pick them). */
+export const rtHired = (pl: { rtHire?: number }) => !compat.prototype && (pl.rtHire ?? 0) > 0;
+/** A hired truck's day: a single or a roadtrain. */
+export const hiredDay = (pl: { rtHire?: number }) => (rtHired(pl) ? RT_HIRE_DAY : TRUCK_DAY);
 export const SITE_WEEK = 1200;
 /** Floats: roads further apart than this need the gear floated, costing this much and half a day. */
 export const FLOAT_KM = 12;
@@ -232,6 +238,8 @@ export interface Plan {
   prog?: { crews: ProgCrew[] };
   /** A loader at the pit (the real game): 1 unless you take it off. */
   loader?: number;
+  /** Hire roadtrains rather than single side tippers (the real game): 1 for roadtrains. */
+  rtHire?: number;
 }
 
 export interface CouncilTender {
@@ -461,8 +469,8 @@ export function progEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned: Partial<
   let rtLeft = rtFree(p, start);
   crews.forEach((cr, i) => {
     const R: CrewResult = { i, roads: [], days: 0, sheet: 0, floats: 0, wk: 0, wet: 0, day: 0, sheetDay: 0, week: 0 };
-    const rts = cr.sub ? 0 : Math.min(cr.tr, left.truck, rtLeft);
-    rtLeft -= rts;
+    const ownRts = cr.sub ? 0 : Math.min(cr.tr, left.truck, rtLeft), rts = ownRts + (cr.sub || !rtHired(pl) ? 0 : Math.max(0, cr.tr - Math.min(cr.tr, left.truck)));
+    rtLeft -= ownRts;
     let at: { x?: number; y?: number } = { x: 0, y: 0 };
     for (const ri0 of cr.seq) {
       const rd = t.roads[ri0];
@@ -517,12 +525,12 @@ export function progEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned: Partial<
       allUsed = allUsed.concat(fr.used);
       casualsN += fr.casuals;
       R.day = fuelDay + fr.casualDay + subDay;
-      R.sheetDay = (cr.tr - ot) * TRUCK_DAY + ot * TYPES.truck.fuel + rts * (RT.fuel - TYPES.truck.fuel) + fr.truckCasualDay;
+      R.sheetDay = (cr.tr - ot) * hiredDay(pl) + ot * TYPES.truck.fuel + ownRts * (RT.fuel - TYPES.truck.fuel) + fr.truckCasualDay;
       R.week = hireWeek;
-      c.fuel += Math.round(R.days * fuelDay + R.sheet * (ot * TYPES.truck.fuel + rts * (RT.fuel - TYPES.truck.fuel)));
+      c.fuel += Math.round(R.days * fuelDay + R.sheet * (ot * TYPES.truck.fuel + ownRts * (RT.fuel - TYPES.truck.fuel)));
       c.labour += Math.round(R.days * fr.casualDay + R.sheet * fr.truckCasualDay);
       c.subbies += Math.round(R.days * subDay);
-      c.trucks += Math.round(R.sheet * (cr.tr - ot) * TRUCK_DAY);
+      c.trucks += Math.round(R.sheet * (cr.tr - ot) * hiredDay(pl));
       c.hire += hireWeek * R.wk;
       c.wear += Math.round(R.days * ownUsed * wearDay);
       c.floats! += R.floats * FLOAT_MOVE;
@@ -592,7 +600,8 @@ export function planEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned?: Partial
   const G = pl.graders || 1, R = pl.rollers || 1, N = pl.crews;
   const ld = planLoader(p, t, pl), pit = t.pits[pl.pit]!, q = t.q;
   const ownT = Math.min(owned.truck || 0, pl.crews * pl.trucks), rts = Math.min(ownT, rtFree(p, t.close + 1));
-  const fl = flow(crewMul(pl), pl.carts, pl.trucks + (rts ? (rts * (rtWorth(pit.haul, ld !== null) - 1)) / pl.crews : 0), t.waterKm, pit.haul, ld !== null);
+  const allRts = rts + (rtHired(pl) ? pl.crews * pl.trucks - ownT : 0);
+  const fl = flow(crewMul(pl), pl.carts, pl.trucks + (allRts ? (allRts * (rtWorth(pit.haul, ld !== null) - 1)) / pl.crews : 0), t.waterKm, pit.haul, ld !== null);
   let gDays = gradeDays(q) / fl.out, sDays = q.resheet / fl.sheetRate;
   // Subbie crews work alongside yours; the work splits by pace.
   const SC = Math.min(pl.subs || 0, t.subAvail || 0), U = gradeDays(q) + q.resheet / TREAT.resheet.per, rho = U / Math.max(0.01, gDays + sDays);
@@ -626,7 +635,7 @@ export function planEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned?: Partial
     wear: Math.round(perCrew * ownUsed * wearDay + sheetDays * ownTrucks * wearDay),
     hire: hireWeek * wks,
     subbies: Math.round(perCrew * subDay),
-    trucks: Math.round(sheetDays * hiredTrucks * TRUCK_DAY),
+    trucks: Math.round(sheetDays * hiredTrucks * hiredDay(pl)),
     royalty: Math.round(q.resheet * pit.royalty),
     mob: pl.crews * 2 * MOB,
     site: SITE_WEEK * wks,
@@ -655,11 +664,13 @@ export function planEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned?: Partial
 export function stdPlan(p: PlanCtx, t: CouncilTender): { pl: Plan; e: PlanEval } {
   let best: { pl: Plan; e: PlanEval } | null = null;
   for (const pit of [0, 1]) {
-    for (const mode of ['dry', 'wet'] as const) for (const loader of compat.prototype ? [undefined] : [1, 0]) {
+    for (const mode of ['dry', 'wet'] as const) for (const loader of compat.prototype ? [undefined] : [1, 0]) for (const rtHire of compat.prototype ? [undefined] : [0, 1]) {
       const pl: Plan = { crews: t.stdCrews || 2, graders: 1, rollers: 1, carts: 1, trucks: 1, pit, hm: { grader: mode, roller: mode, cart: mode } };
       if (loader !== undefined) Object.assign(pl, { loader, hm: { ...pl.hm, loader: mode } });
+      if (rtHire) pl.rtHire = 1;
+      const worth = rtHire ? rtWorth(t.pits[pit]!.haul, loader !== 0) : 1;
       while (pl.carts < 4 && flow(1, pl.carts, 1, t.waterKm, t.pits[pit]!.haul).wf < 1) pl.carts++;
-      while (pl.trucks < 8 && flow(1, pl.carts, pl.trucks, t.waterKm, t.pits[pit]!.haul, loader !== 0).gf < 1) pl.trucks++;
+      while (pl.trucks < 8 && flow(1, pl.carts, pl.trucks * worth, t.waterKm, t.pits[pit]!.haul, loader !== 0).gf < 1) pl.trucks++;
       const e = planEval(p, t, pl, { grader: 2, roller: 1, cart: 2, truck: 1 }, [{ id: 'a', role: 'grader' }, { id: 'b', role: 'grader' }, { id: 'c', role: 'roller' }]);
       if (!best || e.cost < best.e.cost) best = { pl, e };
     }

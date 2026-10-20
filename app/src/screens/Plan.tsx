@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import {
-  COUNCIL_TERMS, PRICE_CHECK_FEE, FLOAT_KM, FLOAT_MOVE, LD_OWN, TRUCK_DAY, TYPES, awayCounts, cartEff, hm, loadersFree, npOf, odLimit, planCounts, planHasLoader, rtFree, roadUnits, stars, subRate, truckM3, weeksFor, game,
+  COUNCIL_TERMS, PRICE_CHECK_FEE, RT_HIRE_DAY, compat, FLOAT_KM, FLOAT_MOVE, LD_OWN, TRUCK_DAY, TYPES, awayCounts, cartEff, hm, loadersFree, npOf, odLimit, planCounts, planHasLoader, rtFree, roadUnits, stars, subRate, truckM3, weeksFor, game,
   type CouncilTender, type PlanEval, type ProgOp, play,
 } from '@engine';
 import { CREW_COL, bottText, issueText } from '@engine/text/plan';
@@ -83,7 +83,15 @@ function Plant({ c, t, e, act }: { c: Career; t: CouncilTender; e: PlanEval; act
               </span>
             </div>
             {k === 'truck' && rts > 0 && <div className="tiny muted">{Math.min(rts, use)} of yours {Math.min(rts, use) === 1 ? 'is a roadtrain' : 'are roadtrains'}: they go on first and cart about half as much again.</div>}
-            {rest > 0 && (k === 'truck' ? <div className="tiny muted">{rest} hired with drivers at {f(TRUCK_DAY)} a day, only on resheeting days.</div> : (
+            {rest > 0 && (k === 'truck' ? (compat.prototype ? <div className="tiny muted">{rest} hired with drivers at {f(TRUCK_DAY)} a day, only on resheeting days.</div> : (
+              <>
+                <div className="seg">
+                  <button type="button" className={pl.rtHire ? '' : 'on'} onClick={() => pl.rtHire && act((x) => play.setPlan(x, t.id, 'rtHire', -1))}>Singles · {f(TRUCK_DAY)}/day</button>
+                  <button type="button" className={pl.rtHire ? 'on' : ''} onClick={() => !pl.rtHire && act((x) => play.setPlan(x, t.id, 'rtHire', 1))}>Roadtrains · {f(RT_HIRE_DAY)}/day</button>
+                </div>
+                <div className="tiny muted">{rest} hired with drivers and fuel, only on resheeting days.{pl.rtHire ? ' A roadtrain carts about half as much again as a single on a normal haul, less with no loader at the pit.' : ''}</div>
+              </>
+            )) : (
               <div className="seg">
                 <button type="button" className={wet ? '' : 'on'} onClick={() => act((x) => play.setHireMode(x, t.id, k, 'dry'))}>Dry hire · {f(TYPES[k].dry)}/wk</button>
                 <button type="button" className={wet ? 'on' : ''} onClick={() => act((x) => play.setHireMode(x, t.id, k, 'wet'))}>Subbie + operator · {f(subRate(k))}/day</button>

@@ -12,7 +12,7 @@ import { int, pick, type Rand } from './rng';
 import { compat, shuffled } from './compat';
 import { rvOHFor, rvWin, whoPrices } from './rivals';
 import {
-  autoPlan, hm, newCrew, planCounts, planEval, planHasLoader, progRun, stdPlan, subCrewTerms, tidyCrew,
+  autoPlan, hm, newCrew, planCounts, planEval, planHasLoader, progRun, rtHired, stdPlan, subCrewTerms, tidyCrew,
   type CouncilTender, type Counts, type PlanCtx, type PlanEval, type PlanRoad,
 } from './planning';
 import { RETAIN, gradeDays, npOf, ohShareDefault, tbs, type NonPrice, type Standing, type Tenderer } from './tenders';
@@ -261,6 +261,7 @@ export function signOwn(st: CouncilWorld & { jobs: Job[] }, p: PlanCtx, t: Counc
   j.gravel = j.s0;
   // the real game: a loader at the pit (dry or wet if none of yours is free when it starts), or none
   if (!compat.prototype) j.ldr = planHasLoader(pl) && t.q.resheet > 0 ? hm(pl, 'loader') : null;
+  if (rtHired(pl)) j.rtHire = true;
   st.jobs.push(j);
   st.ownWon = (st.ownWon || 0) + 1;
   mapWork(st.dmap!, t.roads.map((x) => x.mapId).filter(Boolean) as string[], j);
@@ -275,11 +276,11 @@ export function pullOutCouncil(st: { rep: number }): void {
 
 // ---------- changing a plan (each change clears your price) ----------
 
-export type PlanKey = 'subs' | 'crews' | 'graders' | 'rollers' | 'carts' | 'trucks' | 'pit' | 'loader';
+export type PlanKey = 'subs' | 'crews' | 'graders' | 'rollers' | 'carts' | 'trucks' | 'pit' | 'loader' | 'rtHire';
 
 /** Nudge a plan setting within its limits; 'own:grader' etc. caps how many of your own you put on it. */
 export function setPlan(p: PlanCtx, t: CouncilTender, k: PlanKey | `own:${string}`, d: number): void {
-  const lim: Record<PlanKey, [number, number]> = { subs: [0, t.subAvail || 0], crews: [1, t.major ? 6 : 3], graders: [1, 2], rollers: [1, 2], carts: [1, 4], trucks: [1, 8], pit: [0, 1], loader: [0, 1] };
+  const lim: Record<PlanKey, [number, number]> = { subs: [0, t.subAvail || 0], crews: [1, t.major ? 6 : 3], graders: [1, 2], rollers: [1, 2], carts: [1, 4], trucks: [1, 8], pit: [0, 1], loader: [0, 1], rtHire: [0, 1] };
   if (t.pl.graders == null) {
     t.pl.graders = 1;
     t.pl.rollers = 1;
