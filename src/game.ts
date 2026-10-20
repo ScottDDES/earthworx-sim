@@ -20,7 +20,7 @@ import { genMgrApplicants, hireMgr as hireMgrPerson, mgrIs, mgrOf, mgrTraitsWeek
 import { afterService, fitterWeek, wsmWeek, type WorkshopEvent } from './workshop';
 import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium as premiumOf } from './overheads';
 import { compat } from './compat';
-import { buyAttachment, bulkStart, bulkWeek, damDay, sendQuote, setPrecon, type Attachment, setRate, survey, type BulkBook, type BulkEvent } from './bulk';
+import { buyAttachment, bulkStart, bulkWeek, damDay, doable, genEnquiry, sendQuote, setPrecon, type Attachment, setRate, survey, type BulkBook, type BulkEvent } from './bulk';
 import { ERP_SETUP, PRICE_CHECK_FEE, erpOk, priceBand } from './advisory';
 import { BID_ODDS, rvOHFor } from './rivals';
 import { accept as acceptOffer, askWait as askWaitHire, barred, coverOff, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
@@ -47,6 +47,8 @@ export interface Setup {
   hc?: boolean;
   /** Start with the Bulk and Ag pack on. */
   bulk?: boolean;
+  /** Start on the roads (a grader first) or as a bulk earthworks outfit (a dozer or excavator first; needs the pack). */
+  path?: 'roads' | 'bulk';
 }
 
 /** A whole career. Fields are added by the parts of the game that use them. */
@@ -72,6 +74,11 @@ export interface Career {
   erp?: boolean;
   /** Expansion packs switched on. Bulk and Ag is behind a test switch until it's sold as a pack. */
   packs?: { bulk?: boolean };
+  /** A bulk earthworks start. */
+  path?: 'roads' | 'bulk';
+  bulkDone?: number;
+  devDone?: number;
+  testsPassed?: number;
   /** The Bulk and Ag pack's farm enquiries. */
   bulk?: BulkBook;
   youJob: string | null;
@@ -251,6 +258,17 @@ export function tickets(c: Career): string[] {
 // ---------- starting a career ----------
 
 /** The machines for sale on day one: a few graders, rollers and a cart, dealers and private. */
+/** A bulk outfit's first machines: an old excavator is the cheapest way in; a dozer does the most. */
+export function bulkStarters(rand: Rand): Listing[] {
+  const mk = (t: Machine['type'], y: number, seller: 'dealer' | 'private', cond: number, hide: number): Listing => {
+    const hours = (2027 - y) * int(rand, 700, 850), claimed = Math.min(92, cond + hide);
+    return { id: 'L' + t + y, type: t, year: y, cond, hours, seller, revealed: seller === 'dealer', claimed,
+      price: Math.round((value({ type: t, year: y, cond: claimed }, 1) * (seller === 'dealer' ? 1.12 : 0.95)) / 500) * 500 };
+  };
+  return [mk('excavator', 2005, 'private', 58, 7), mk('excavator', 2012, 'dealer', 76, 0), mk('d6', 2003, 'private', 55, 8), mk('d6', 2009, 'dealer', 70, 0),
+    mk('d8', 2006, 'private', 60, 6), mk('padfoot', 2008, 'private', 62, 6), mk('moxycart', 2007, 'private', 58, 7), mk('moxy', 2008, 'private', 60, 6)];
+}
+
 export function starterListings(rand: Rand): Listing[] {
   const mk = (t: Machine['type'], y: number, seller: 'dealer' | 'private', cond: number, hide: number): Listing => {
     const hours = (2027 - y) * int(rand, 700, 850), claimed = Math.min(92, cond + hide);
@@ -274,7 +292,8 @@ export function newCareer(setup: Setup, seed: number, wxStart?: number): Career 
     cbLast: 0, cbSeen: {}, rivals: mkRivals(rand, setup.town), tenders: [], subsWon: 0, subsDone: 0, lds: 0, won2: false, seenWin2: false,
     ctenders: [], ownWon: 0, ownDone: 0, ownLate: 0, won3: false, seenWin3: false,
   } as unknown as Career;
-  c.market = { listings: starterListings(rand), lot: null as never };
+  const bulkStart = setup.path === 'bulk';
+  c.market = { listings: bulkStart ? bulkStarters(seedRand(seed ^ 0x2b8c1d)) : starterListings(rand), lot: null as never };
   c.news = [];
   c.rivSell = [];
   c.clear = [];
@@ -295,7 +314,10 @@ export function newCareer(setup: Setup, seed: number, wxStart?: number): Career 
   c.youJob = null;
   c.coach = { i: 0, at: 1 };
   c.tabs = {};
-  if (setup.bulk) setPack(c, 'bulk', true);
+  if (bulkStart) {
+    c.path = 'bulk';
+    c.packs = { bulk: true };
+  } else if (setup.bulk) setPack(c, 'bulk', true);
   note(c, { k: 'started', co: c.co, town: c.town, loan: setup.loan });
   return c;
 }
@@ -339,6 +361,11 @@ export function open(c: Career): void {
   c.offers = genOffers(rand, c as never, fmul(c), c.won, c.won2);
   c.market = genMarket(rand, { week: c.week, won: c.won, mood: mood(c), rivSell: c.rivSell, clear: c.clear }, () => uid(c));
   bulkMarket(c);
+  // a bulk outfit opens with a couple of calls about work its gear can do
+  if (c.path === 'bulk') {
+    const br = worldRand(c, 'bulk-open'), can = doable(c as never);
+    c.bulk = { ...(c.bulk || { enq: [] }), enq: [genEnquiry(br, c as never, fmul(c), can.length ? pick(br, can) : undefined), genEnquiry(br, c as never, fmul(c), can.length ? pick(br, can) : undefined)] };
+  }
   genTenders(rand, c as never, canTender((t) => owns(c, t), c.rep, c.whs.sys), mood(c), fmul(c));
   note(c, { k: 'open' });
   coachTick(c);
@@ -453,7 +480,7 @@ export function nextGeneration(prev: Career, seed: number, wxStart?: number): Ca
   const u = prev.soldUp as { legacy?: boolean; week: number; walk: number; stage: number; peak?: number } | undefined;
   if (!u || !u.legacy) return null;
   const gen = (prev.gen || 1) + 1, gift = inherit(u.walk);
-  const c = newCareer({ co: prev.co, loan: prev.loanStart || 180000, town: prev.town, hc: !!prev.hardcore }, seed, wxStart);
+  const c = newCareer({ co: prev.co, loan: prev.loanStart || 180000, town: prev.town, hc: !!prev.hardcore, path: prev.path, bulk: !!prev.packs?.bulk }, seed, wxStart);
   c.gen = gen;
   c.dyn = [...((prev.dyn as Generation[]) || []), { gen: prev.gen || 1, weeks: u.week, walk: u.walk, stage: u.peak || u.stage }];
   c.bank += gift;

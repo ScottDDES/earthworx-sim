@@ -6,7 +6,7 @@ import { cardView, resultText, type CardView } from '@engine/text/cardView';
 import { MOODS, TOWNS, alertMachines, canRunOn, coachOff, coachOk, coachOn, coachStep, runOn, tabIsNew, tabSeen, tabShown, whyNot, type Handled, type RunStop, type RunSummary, choose, dayOffset, drawCard, forecast, gstInBank, monthIdx, recordDate, yearOf, game, play } from '@engine';
 import { docketLines, docketStamps } from '@engine/text/docket';
 import { TICKET_TEXT } from '@engine/text/career';
-import { COACH_TEXT, RUN_STOP, handledLine, nextGoal } from '@engine/text/coach';
+import { BULK_COACH_TEXT, COACH_TEXT, RUN_STOP, handledLine, nextGoal } from '@engine/text/coach';
 import { COACH } from '@engine';
 import { Mentor } from '../Mentor';
 import { Icon, WeatherIcon } from '../Icon';
@@ -206,7 +206,7 @@ function ComingNext({ name }: { name: string }) {
 function CoachCard({ c, tab, act, go }: { c: Career; tab: Tab; act: Act; go: (t: Tab) => void }) {
   const step = coachStep(c);
   if (!step) return null;
-  const T = COACH_TEXT[step.id];
+  const T = (c.path === 'bulk' ? BULK_COACH_TEXT : COACH_TEXT)[step.id];
   return (
     <div className="card coach">
       <div className="row"><span className="sub grow">Getting started · {c.coach!.i + 1} of {COACH.length}</span><button type="button" className="linkbtn" onClick={() => act((x) => play.coachOff(x))}>Skip the tips</button></div>

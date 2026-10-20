@@ -14,6 +14,7 @@ import { mapDone, type DistrictMap } from './map';
 import { relAdd } from './relations';
 import { int, pick, type Rand } from './rng';
 import { compat, shuffled } from './compat';
+import { isBulk } from './machines';
 import { SKILLS, ROLES, type Person } from './staff';
 import { TOWNS, type TownId } from './towns';
 import { forecast, type WeatherCtx } from './weather';
@@ -213,7 +214,13 @@ export function genOffers(rand: Rand, b: Biz, fmul: number, won: boolean, won2: 
     // suspended by the council: it rings someone else (the prototype keeps offering council work)
     if (kind === 'council' && !compat.prototype && barred(b, T.council)) kind = 'private';
     const y = rand();
-    const type: MachineType = kind === 'council' || kind === 'private' ? 'grader' : y < 0.6 ? 'grader' : y < 0.8 ? 'roller' : y < 0.95 || !owns(b, 'truck') ? 'cart' : 'truck';
+    let type: MachineType = kind === 'council' || kind === 'private' ? 'grader' : y < 0.6 ? 'grader' : y < 0.8 ? 'roller' : y < 0.95 || !owns(b, 'truck') ? 'cart' : 'truck';
+    // a bulk outfit with no grader: head contractors ring to hire its dozers, excavators and the like instead
+    const bulkGear = (b as { path?: string }).path === 'bulk' && !owns(b, 'grader') ? b.fleet.filter((m) => isBulk(m.type) && m.status !== 'auction').map((m) => m.type) : [];
+    if (bulkGear.length && contractors.length) {
+      if (kind === 'council' || kind === 'private') kind = 'wet';
+      type = pick(rand, bulkGear);
+    }
     const place = pick(rand, T.places), id = uid(b), Ty = TYPES[type];
     if (kind === 'wet') {
       const client = pick(rand, contractors), days = int(rand, 8, 20), rate = round(Ty.wet * rf * (0.92 + rand() * 0.16), 50);

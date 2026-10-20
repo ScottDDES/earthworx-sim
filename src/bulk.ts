@@ -153,7 +153,7 @@ export interface BulkBook {
   /** Attachments you own. */
   att?: Partial<Record<Attachment, boolean>>;
 }
-export type BulkState = Biz & { bulk?: BulkBook; won2?: boolean };
+export type BulkState = Biz & { bulk?: BulkBook; won2?: boolean; bulkDone?: number; devDone?: number; testsPassed?: number };
 type B = BulkState;
 
 const FARMS = ['Kelly', 'Hartigan', 'Morrow', 'Fitzgerald', 'Lucas', 'Pearce', 'Doyle', 'McCann', 'Walsh', 'Brennan'] as const;
@@ -182,7 +182,7 @@ export function genEnquiry(rand: Rand, b: B, fmul: number, only?: BulkKind): Far
     const budget = round(vol * (kind === 'ringTank' ? noise(2.6, 3.6) : noise(3.8, 5.2)) * mkt, 500);
     const tested = rand() < TESTED_SHARE;
     const haul = kind === 'ringTank' ? int(rand, 15, 40) * 10 : int(rand, 6, 20) * 10;
-    return { ...base, farm: pick(rand, FARMS), dam, haul, vol, truth, survey, budget: tested ? round(budget * (1 + TESTED_PREMIUM), 500) : budget, tested, rate: (kind === 'ringTank' ? 3.1 : 4.5) + (tested ? 0.5 : 0) };
+    return { ...base, farm: pick(rand, FARMS), dam, haul, vol, truth, survey, budget: tested ? round(budget * (1 + TESTED_PREMIUM), 500) : budget, tested, rate: (kind === 'ringTank' ? 2.9 : 4.2) + (tested ? 0.5 : 0) };
   }
   const farm = kind === 'dev' ? pick(rand, DEVS) : pick(rand, FARMS);
   const make = (vol: number, truthMul: number, perUnit: number, rate: number, haul: number, extra: Partial<FarmEnquiry> = {}): FarmEnquiry => {
@@ -341,6 +341,8 @@ export function bulkWeek(rand: Rand, b: B, fmul: number, events: BulkEvent[], mm
       S.enq = S.enq.filter((x) => x !== e);
       if (rand() < yesOdds(e)) {
         const j = bulkJob(b, e);
+        // the gear's booked the moment they say yes, before a hire job can take it
+        startOne(b, j, events);
         events.push({ k: 'damWon', jobId: j.id, price: e.quoted });
         note(b, { k: 'damWon', farm: e.farm, place: e.place, dk: e.kind, price: e.quoted });
       } else {
@@ -360,7 +362,17 @@ export function bulkWeek(rand: Rand, b: B, fmul: number, events: BulkEvent[], mm
       note(b, { k: 'damGone', farm: j.client, place: j.place, dk: j.dk });
     }
   }
-  if (S.enq.filter((e) => !e.quoted).length < 3 && rand() < 0.5) S.enq.push(genEnquiry(rand, b, fmul));
+  if (S.enq.filter((e) => !e.quoted).length < 3 && rand() < 0.5) {
+    // half the time it's work your gear can already do, so a small outfit isn't left looking at jobs it can't touch
+    const can = doable(b);
+    S.enq.push(genEnquiry(rand, b, fmul, can.length && rand() < 0.5 ? pick(rand, can) : undefined));
+  }
+}
+
+/** The kinds of work the yard could start today, gear and attachments both. */
+export function doable(b: Pick<B, 'fleet' | 'bulk' | 'won2'>): BulkKind[] {
+  const ms = b.fleet.filter((m) => m.status !== 'auction');
+  return (Object.keys(KINDS) as BulkKind[]).filter((k) => (!KINDS[k].big || b.won2) && workRate(ms, { dk: k, haul: 200, per: 3 }, b.bulk?.att).perHour > 0);
 }
 
 function enq(b: B, id: string): FarmEnquiry | undefined {
@@ -549,36 +561,39 @@ export function seatPlan(b: Pick<B, 'staff' | 'youJob'>, ms: readonly Pick<Machi
 
 /** Monday: a waiting job takes its spread if there's enough to make a start; a running one picks up anything freed. */
 export function bulkStart(b: B, events: BulkEvent[]): void {
-  for (const j of b.jobs) {
-    if (j.kind !== 'bulk' || j.finished || (j.state !== 'waiting' && j.state !== 'running')) continue;
-    const mine = b.fleet.filter((m) => m.jobId === j.id);
-    const add = freeFor(b, j.dk as BulkKind);
-    if (j.state === 'waiting' && workRate(mine.concat(add), j as never, b.bulk?.att).perHour <= 0) continue;
-    for (const m of add) {
-      m.status = 'job';
-      m.jobId = j.id;
+  for (const j of b.jobs) startOne(b, j, events);
+}
+
+/** Take a job's spread (and start it, if there's enough to make a start). Called on Monday, and the moment a job's won. */
+function startOne(b: B, j: Job, events: BulkEvent[]): void {
+  if (j.kind !== 'bulk' || j.finished || (j.state !== 'waiting' && j.state !== 'running')) return;
+  const mine = b.fleet.filter((m) => m.jobId === j.id);
+  const add = freeFor(b, j.dk as BulkKind);
+  if (j.state === 'waiting' && workRate(mine.concat(add), j as never, b.bulk?.att).perHour <= 0) return;
+  for (const m of add) {
+    m.status = 'job';
+    m.jobId = j.id;
+  }
+  const all = mine.concat(add);
+  // seat the crew afresh each week: whoever's free and can drive it
+  for (const p of b.staff) if (p.jobId === j.id) p.jobId = null;
+  if (b.youJob === j.id) b.youJob = null;
+  const sp = seatPlan(b, all, j.id);
+  for (const [, who] of Object.entries(sp.crew)) {
+    if (who === 'you') b.youJob = j.id;
+    else if (who !== 'casual') {
+      const p = b.staff.find((x) => x.id === who);
+      if (p) p.jobId = j.id;
     }
-    const all = mine.concat(add);
-    // seat the crew afresh each week: whoever's free and can drive it
-    for (const p of b.staff) if (p.jobId === j.id) p.jobId = null;
-    if (b.youJob === j.id) b.youJob = null;
-    const sp = seatPlan(b, all, j.id);
-    for (const [, who] of Object.entries(sp.crew)) {
-      if (who === 'you') b.youJob = j.id;
-      else if (who !== 'casual') {
-        const p = b.staff.find((x) => x.id === who);
-        if (p) p.jobId = j.id;
-      }
-    }
-    j.crew = sp.crew;
-    j.spread = all.map((m) => m.id);
-    if (j.state === 'waiting') {
-      j.state = 'running';
-      j.started = b.week;
-      if (j.dk === 'dev') j.due = b.week + (j.weeks as number);
-      events.push({ k: 'damStarted', jobId: j.id });
-      note(b, { k: 'damStarted', farm: j.client, place: j.place, dk: j.dk });
-    }
+  }
+  j.crew = sp.crew;
+  j.spread = all.map((m) => m.id);
+  if (j.state === 'waiting') {
+    j.state = 'running';
+    j.started = b.week;
+    if (j.dk === 'dev') j.due = b.week + (j.weeks as number);
+    events.push({ k: 'damStarted', jobId: j.id });
+    note(b, { k: 'damStarted', farm: j.client, place: j.place, dk: j.dk });
   }
 }
 
@@ -678,6 +693,8 @@ function finishJob(rand: Rand, b: B, j: Job, rep: WeekReport, events: BulkEvent[
   const kind = j.dk as BulkKind;
   endJob(b, j);
   j.earned = j.fixed as number;
+  b.bulkDone = (b.bulkDone || 0) + 1;
+  if (kind === 'dev') b.devDone = (b.devDone || 0) + 1;
   if (kind === 'dev') {
     // the last claim, the retention back, less damages if you're late
     devClaim(b, j, events, true);
@@ -695,6 +712,7 @@ function finishJob(rand: Rand, b: B, j: Job, rep: WeekReport, events: BulkEvent[
   if (j.tested) {
     if (rand() < passOdds(q)) {
       b.rep += 1;
+      b.testsPassed = (b.testsPassed || 0) + 1;
       events.push({ k: 'damPassed', jobId: j.id });
     } else {
       const cost = round((j.fixed as number) * REWORK, 100);

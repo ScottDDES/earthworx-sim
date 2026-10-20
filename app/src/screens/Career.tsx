@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { BETA } from '../channel';
 import { MOODS, TICKETS, inherit, TIER, canBuyOut, checks, checks2, checks3, checks4, checks5, ownedCounts, rung, rvForm, rvPhase, stars, game, play } from '@engine';
-import { STEPS, TICKET_CATS, TICKET_TEXT, checkWords, districtForm, starTxt } from '@engine/text/career';
+import { TICKET_CATS, TICKET_TEXT, checkWords, districtForm, starTxt, stepsFor } from '@engine/text/career';
 import { diaryLines } from '@engine/text/diary';
 import { sfx } from '../sound';
 import { f, fk } from '../format';
@@ -62,7 +62,7 @@ function Ladder({ c }: { c: Career }) {
   const [all, setAll] = useState(false);
   const rg = rung(c as never), st = { ...c, owned: ownedCounts(c.fleet) };
   const ok: Record<number, boolean[]> = { 3: checks(c as never), 4: checks2(c as never), 5: checks3(c as never), 7: checks4(c as never), 8: checks5(c as never) };
-  const later = STEPS.length - (rg + 1);
+  const STEPS = stepsFor(c.path), later = STEPS.length - (rg + 1);
   return (
     <div className="card">
       {STEPS.map((s, i) => {
@@ -196,7 +196,7 @@ export function CareerTab({ c, act, onNew, saves }: { c: Career; act: Act; onNew
         <div className="card">
           <div className="row"><b className="grow">The family business</b><span className="chip c-dark">GENERATION {c.gen}</span></div>
           {(c.dyn as game.Generation[] | undefined || []).map((d) => (
-            <div key={d.gen} className="kv"><span>Generation {d.gen} <span className="tiny muted">{STEPS[d.stage - 1]?.t ?? ''}</span></span><span className="num">{d.weeks} wks · {fk(d.walk)}</span></div>
+            <div key={d.gen} className="kv"><span>Generation {d.gen} <span className="tiny muted">{stepsFor(c.path)[d.stage - 1]?.t ?? ''}</span></span><span className="num">{d.weeks} wks · {fk(d.walk)}</span></div>
           ))}
           <div className="tiny muted">What each generation built before handing it on.</div>
         </div>

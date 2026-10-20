@@ -1,6 +1,6 @@
 // Before opening: buy your first machine (a grader, at least), then open for business.
 
-import { TOWNS, YARDS, canFinance, finDeposit, fleetValue, lendCap, machineName, value, weeklyRepay, game, type Listing, play } from '@engine';
+import { TOWNS, YARDS, canFinance, isBulk, finDeposit, fleetValue, lendCap, machineName, value, weeklyRepay, game, type Listing, play } from '@engine';
 import { MachineIcon } from '../Icon';
 import { f } from '../format';
 import { TopBar } from './Game';
@@ -43,7 +43,7 @@ export function ListingCard({ c, m, act, shop = false }: { c: Career; m: Listing
 }
 
 export function ShopScreen({ c, act }: { c: Career; act: (fn: (c: Career) => unknown) => void }) {
-  const hasGrader = game.owns(c, 'grader');
+  const bulk = c.path === 'bulk', hasGrader = game.owns(c, 'grader'), canOpen = bulk ? c.fleet.some((m) => isBulk(m.type)) : hasGrader;
   return (
     <>
       <TopBar c={c} />
@@ -51,7 +51,7 @@ export function ShopScreen({ c, act }: { c: Career; act: (fn: (c: Career) => unk
         <main>
           <div>
             <h2 style={{ fontSize: 24 }}>Buy your first machine</h2>
-            <div className="small muted">Most of the work around {TOWNS[c.town].name} needs a grader. Keep some cash back: the first payments can take weeks to come in.</div>
+            <div className="small muted">{bulk ? 'An old excavator is the cheapest way in: channels, and hire work by the day. A dozer does more: dams, contour banks, clearing.' : 'Most of the work around ' + TOWNS[c.town].name + ' needs a grader.'} Keep some cash back: the first payments can take weeks to come in.</div>
           </div>
           {c.fleet.length > 0 && (
             <div className="card">
@@ -64,7 +64,7 @@ export function ShopScreen({ c, act }: { c: Career; act: (fn: (c: Career) => unk
       </div>
       <div className="dock">
         <div className="wrap">
-          <button type="button" className="big" disabled={!hasGrader} onClick={() => act((x) => play.open(x))}>{hasGrader ? 'Open for business' : 'Buy a grader to start'}</button>
+          <button type="button" className="big" disabled={!canOpen} onClick={() => act((x) => play.open(x))}>{canOpen ? 'Open for business' : bulk ? 'Buy a machine to start' : 'Buy a grader to start'}</button>
         </div>
       </div>
     </>

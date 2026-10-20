@@ -21,6 +21,7 @@ export function SetupScreen({ onStart, saves }: { onStart: (s: game.Setup) => vo
   const [loan, setLoan] = useState(180000);
   const [hc, setHc] = useState(false);
   const [bulk, setBulk] = useState(BETA);
+  const [path, setPath] = useState<'roads' | 'bulk'>('roads');
   const [town, setTown] = useState<TownId>('gdi');
 
   if (step === 0) {
@@ -62,13 +63,27 @@ export function SetupScreen({ onStart, saves }: { onStart: (s: game.Setup) => vo
         </button>
         <div className="small note">{hc ? 'Hardcore: no second chances. You\'ll get a warning the first week you\'re under water.' : 'Miss three repayments and the bank takes your best machine. You keep going with what\'s left.'}</div>
         {BETA && (
-          <button type="button" className={'pick' + (bulk ? ' on' : '')} aria-pressed={bulk} onClick={() => setBulk(!bulk)}>
-            <span className="row" style={{ width: '100%' }}>
-              <b className="grow" style={{ fontSize: 16 }}>Bulk and Ag pack{bulk && <span className="chip c-job" style={{ marginLeft: 6, verticalAlign: 2 }}>ON</span>}</b>
-              <span className="small muted">Free in the beta</span>
-            </span>
-            <span className="small muted">Dozers, scrapers and moxies; farmers and developers ringing about dams, levelling, channels, clearing and bulk earthworks. Your road work carries on as well.</span>
-          </button>
+          <>
+            <div className="row"><span className="sub grow">What kind of outfit?</span></div>
+            <button type="button" className={'pick' + (path === 'roads' ? ' on' : '')} aria-pressed={path === 'roads'} onClick={() => setPath('roads')}>
+              <b style={{ fontSize: 16 }}>Roads</b>
+              <span className="small muted">Start with a grader. Hire work, council day labour and private jobs, then flood recovery subcontracts and council contracts.</span>
+            </button>
+            <button type="button" className={'pick' + (path === 'bulk' ? ' on' : '')} aria-pressed={path === 'bulk'} onClick={() => setPath('bulk')}>
+              <b style={{ fontSize: 16 }}>Bulk earthworks</b>
+              <span className="tiny" style={{ color: 'var(--teal)', fontWeight: 700 }}>Bulk and Ag pack · free in the beta</span>
+              <span className="small muted">Start with a dozer or an excavator. Farm dams, channels, contour banks, clearing and laser levelling, then developers' bulk earthworks.</span>
+            </button>
+            {path === 'roads' && (
+              <button type="button" className={'pick' + (bulk ? ' on' : '')} aria-pressed={bulk} onClick={() => setBulk(!bulk)}>
+                <span className="row" style={{ width: '100%' }}>
+                  <b className="grow" style={{ fontSize: 16 }}>Add bulk work later{bulk && <span className="chip c-job" style={{ marginLeft: 6, verticalAlign: 2 }}>ON</span>}</b>
+                  <span className="small muted">{bulk ? 'Tap to turn off' : 'Off'}</span>
+                </span>
+                <span className="small muted">Dozers and scrapers in the Market and farmers ringing on the Work tab, alongside your road work.</span>
+              </button>
+            )}
+          </>
         )}
         <button type="button" className="big" onClick={() => setStep(1)}>Next: pick your base</button>
         {Object.keys(slotMetaAll()).length > 0 && <SlotsCard saves={saves} />}
@@ -91,7 +106,7 @@ export function SetupScreen({ onStart, saves }: { onStart: (s: game.Setup) => vo
       ))}
       <div className="btns"><button type="button" className="btn" onClick={() => setStep(0)}>Back</button></div>
       <div className="small muted" style={{ textAlign: 'center' }}>{fk(loan)} loan + $40k savings = {fk(loan + 40000)} in the bank to buy your first machine.</div>
-      <button type="button" className="big" onClick={() => onStart({ co, loan, town, hc, bulk: BETA && bulk })}>Take the {fk(loan)} loan and set up in {TOWNS[town].name}</button>
+      <button type="button" className="big" onClick={() => onStart({ co, loan, town, hc, bulk: BETA && bulk, path: BETA ? path : 'roads' })}>Take the {fk(loan)} loan and set up in {TOWNS[town].name}</button>
     </div>
   );
 }

@@ -62,7 +62,28 @@ export const STEPS: { t: string; d: string; u?: string }[] = [
   { t: 'Prestige contractor', d: 'The state roads department lets whole-area programs to a few certified outfits with the depot to run them. Better rates, bigger scale, and the big firms bidding against you.' },
 ];
 
+/** A bulk earthworks outfit's ladder, step for step with the road one. */
+export const BULK_STEPS: { t: string; d: string; u?: string }[] = [
+  { t: 'Owner-operator', d: 'One machine and you on it. Hire it out by the day, or price farmers\' jobs it can do.' },
+  { t: 'Small fleet', d: 'Two or more machines, or an operator on the payroll.', u: 'SWMS and a WHS plan' },
+  { t: 'Ready for tested work', d: 'Something to move dirt, something to roll it and water to do it with. Engineered jobs want all three.', u: 'buying on finance, a depot with a workshop and a fitter, toolbox talks, a full IMS' },
+  { t: 'Bulk contractor', d: 'Dams, banks, channels and clearing finished and paid for.' },
+  { t: 'Engineered work', d: 'A name for walls that pass. Developers start ringing about bulk earthworks.', u: 'developers\' bulk earthworks, an operations manager, a regional depot, ISO 45001' },
+  { t: 'Major earthworks contractor', d: 'A scraper spread, and a developer\'s job behind you.', u: 'a plant hub, a branch depot in the other town' },
+  { t: 'Earthmoving heavyweight', d: 'Three developers\' jobs delivered.' },
+  { t: 'Prestige contractor', d: 'Five developers\' jobs, certified to ISO 45001, run from a plant hub.' },
+];
+
+/** The ladder for the outfit you started: roads or bulk. */
+export function stepsFor(path?: string): { t: string; d: string; u?: string }[] {
+  return path === 'bulk' ? BULK_STEPS : STEPS;
+}
+
 export interface LadderState {
+  path?: string;
+  bulkDone?: number;
+  devDone?: number;
+  testsPassed?: number;
   rep: number;
   subsDone?: number;
   ownDone?: number;
@@ -74,6 +95,16 @@ export interface LadderState {
 /** What each step needs, ticked off: step 3 (index 2) onwards. ok is from the engine's checks. */
 export function checkWords(step: number, st: LadderState, ok: boolean[]): { t: string; ok: boolean }[] {
   const o = st.owned, m = (n: number | undefined, k: number) => Math.min(n || 0, k);
+  if (st.path === 'bulk') {
+    const B: Record<number, string[]> = {
+      3: ['Own something to move dirt (a dozer, scraper or excavator), a compactor and a water cart', '1 star of track record (' + Math.min(st.rep, 5) + ' of 5 points)', 'No missed loan repayments', 'SWMS and a WHS plan (Yard, Safety)'],
+      4: ['Finish 3 bulk jobs (' + m(st.bulkDone, 3) + ' of 3)', 'Pass a compaction test (' + m(st.testsPassed, 1) + ' of 1)', '2 stars of track record (' + Math.min(st.rep, 12) + ' of 12 points)'],
+      5: ['Finish a developer\'s bulk earthworks (' + m(st.devDone, 1) + ' of 1)', 'Own a scraper spread: 2 scrapers, a dozer, a compactor and a water cart'],
+      7: ['Finish 3 developers\' jobs (' + m(st.devDone, 3) + ' of 3)'],
+      8: ['Finish 5 developers\' jobs (' + m(st.devDone, 5) + ' of 5)', 'Certified to ISO 45001', 'Run from a plant hub'],
+    };
+    return (B[step] ?? []).map((t, i) => ({ t, ok: !!ok[i] }));
+  }
   const T: Record<number, string[]> = {
     3: ['Own a grader, roller and water cart', '1 star of track record (' + Math.min(st.rep, 5) + ' of 5 points)', 'No missed loan repayments', 'SWMS and a WHS plan (Yard, Safety)'],
     4: ['Finish 3 subcontracts (' + m(st.subsDone, 3) + ' of 3)', '2 stars of track record (' + Math.min(st.rep, 12) + ' of 12 points)'],

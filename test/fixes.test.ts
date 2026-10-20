@@ -1,7 +1,7 @@
 // The fixes after the port: where the real game does better than the prototype.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, ATTACH, coverOff, dayQuality, drawCard, game, genEnquiry, genOffers, isBulk, leakOdds, passOdds, pricingVol, REDZONE_CASH, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot } from '../src';
+import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, ATTACH, coverOff, dayQuality, doable, drawCard, rung, game, genEnquiry, genOffers, isBulk, leakOdds, passOdds, pricingVol, REDZONE_CASH, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot } from '../src';
 
 describe('a fair shuffle', () => {
   beforeAll(() => { compat.prototype = false; });
@@ -600,5 +600,65 @@ describe('Bulk and Ag in the beta: on from the start', () => {
     const off = game.newCareer({ co: 'Beta Earthmoving', loan: 180000, town: 'gdi' }, 99);
     expect(off.packs?.bulk).toBeFalsy();
     expect(off.market!.listings.some((m) => isBulk(m.type))).toBe(false);
+  });
+});
+
+describe('Starting as a bulk earthworks outfit', () => {
+  beforeAll(() => { compat.prototype = false; });
+  afterAll(() => { compat.prototype = true; });
+
+  const bulkCareer = (seed: number, loan = 180000) => game.newCareer({ co: 'Dirt Earthmoving', loan, town: 'gdi', path: 'bulk' }, seed);
+
+  it('opens with bulk gear for sale, no grader needed, and a couple of calls about work it can do', () => {
+    const c = bulkCareer(1);
+    expect(c.path).toBe('bulk');
+    expect(c.packs?.bulk).toBe(true);
+    expect(c.market!.listings.every((m) => isBulk(m.type))).toBe(true);
+    const ex = c.market!.listings.filter((m) => m.type === 'excavator').sort((a, b) => a.price - b.price)[0]!;
+    // the cheapest way in is affordable on the smallest loan
+    expect(ex.price).toBeLessThan(40000 + 60000);
+    expect(game.buy(c, ex.id)).toBeTruthy();
+    game.open(c);
+    expect(c.bulk!.enq.length).toBe(2);
+    expect(c.bulk!.enq.every((e) => e.kind === 'channel')).toBe(true);
+    // hire work rings for the excavator, not for graders it doesn't have
+    expect(c.offers.length).toBeGreaterThan(0);
+    expect(c.offers.filter((o) => o.kind !== 'dry' || !o.enq).every((o) => o.type === 'excavator')).toBe(true);
+  });
+
+  it('a bulk career climbs its own ladder: ready for tested work without a grader', () => {
+    const c = bulkCareer(2, 350000);
+    for (const t of ['d6', 'padfoot', 'moxycart'] as const) c.fleet.push({ id: 'x' + t, type: t, year: 2015, cond: 80, hours: 9000, svcAt: 9000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null });
+    c.phase = 'play';
+    expect(rung(c as never)).toBe(2);
+    c.rep = 6;
+    c.whs.sys = 1;
+    expect(rung(c as never)).toBe(3);
+    c.bulkDone = 1;
+    expect(rung(c as never)).toBe(4);
+    // and a road career with the same gear is still waiting on a grader
+    const road = { ...c, path: 'roads' };
+    expect(rung(road as never)).toBe(2);
+  });
+
+  it('a bulk outfit can play two years from an excavator and make a living', () => {
+    let alive = 0, jobs = 0;
+    for (let seed = 1; seed <= 8; seed++) {
+      const c = bulkCareer(seed, 180000);
+      const ex = c.market!.listings.filter((m) => m.type === 'excavator' || m.type === 'd6').sort((a, b) => b.price - a.price).find((m) => m.price < c.bank - 40000)!;
+      game.buy(c, ex.id);
+      game.open(c);
+      for (let w = 0; w < 104 && c.phase === 'play'; w++) {
+        for (const e of c.bulk?.enq ?? []) if (!e.quoted && doable(c as never).includes(e.kind) && !c.jobs.some((j) => j.kind === 'bulk' && !j.finished)) game.damQuote(c, e.id);
+        for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0);
+        for (const o of c.offers.slice()) game.accept(c, o.id);
+        for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0);
+        game.endWeek(c);
+      }
+      if (c.phase === 'play') alive++;
+      jobs += c.bulkDone || 0;
+    }
+    expect(alive).toBeGreaterThanOrEqual(6);
+    expect(jobs).toBeGreaterThan(8);
   });
 });

@@ -41,36 +41,79 @@ export interface Ladder {
   tixNew?: string[];
   /** Week each unlock was first seen. */
   unl?: Record<string, number>;
+  /** Started as a bulk earthworks outfit rather than on the roads. */
+  path?: 'roads' | 'bulk';
+  bulkDone?: number;
+  devDone?: number;
+  testsPassed?: number;
 }
 
 function owns(st: Ladder, t: string): boolean {
   return st.fleet.some((m) => m.type === t && m.status !== 'auction');
 }
 
+const isBulkPath = (st: Ladder) => st.path === 'bulk';
+const ownsAny = (st: Ladder, ts: readonly string[]) => st.fleet.some((m) => ts.includes(m.type) && m.status !== 'auction');
+const DIRT = ['d6', 'd8', 'd9', 'd10', 'pull', 's623', 's631', 's637', 's651', 's657', 'excavator'];
+const SCRAPERS = ['pull', 's623', 's631', 's637', 's651', 's657'];
+const DOZERS = ['d6', 'd8', 'd9', 'd10'];
+const COMPACTORS = ['padfoot', 'c815', 'c825'];
+const WATER = ['cart', 'moxycart'];
+
+/** A bulk outfit's ladder, step by step: what each step asks (the road ladder's checks, for a bulk start). */
+export function bulkChecks(st: Ladder, step: 3 | 4 | 5 | 7 | 8): boolean[] {
+  const n = (ts: readonly string[]) => st.fleet.filter((m) => ts.includes(m.type) && m.status !== 'auction').length;
+  switch (step) {
+    // ready for tested work: something to move dirt, a compactor, water, a star, square with the bank, SWMS
+    case 3: return [ownsAny(st, DIRT) && ownsAny(st, COMPACTORS) && ownsAny(st, WATER), st.rep >= 5, st.loan.missed === 0, st.whs.sys >= 1];
+    // engineered work: 3 bulk jobs, a compaction test passed, two stars
+    case 4: return [(st.bulkDone || 0) >= 3, (st.testsPassed || 0) >= 1, stars(st.rep) >= 2];
+    // major earthworks: a developer's job finished, and a scraper spread
+    case 5: return [(st.devDone || 0) >= 1, n(SCRAPERS) >= 2 && n(DOZERS) >= 1 && n(COMPACTORS) >= 1 && n(WATER) >= 1];
+    case 7: return [(st.devDone || 0) >= 3];
+    default: return [(st.devDone || 0) >= 5, st.whs.sys >= 3, st.yard === 'hub'];
+  }
+}
+
 /** Ready to subcontract: a grader, roller and water cart, a star, no missed repayments, SWMS. */
 export function checks(st: Ladder): boolean[] {
+  if (isBulkPath(st)) return bulkChecks(st, 3);
   return [owns(st, 'grader') && owns(st, 'roller') && owns(st, 'cart'), st.rep >= 5, st.loan.missed === 0, st.whs.sys >= 1];
 }
 /** Your own contract: 3 subcontracts finished and two stars. */
 export function checks2(st: Ladder): boolean[] {
+  if (isBulkPath(st)) return bulkChecks(st, 4);
   return [(st.subsDone || 0) >= 3, stars(st.rep) >= 2];
 }
 /** Regional contractor: 2 council contracts finished and two full crews owned. */
 export function checks3(st: Ladder): boolean[] {
+  if (isBulkPath(st)) return bulkChecks(st, 5);
   const o = ownedCounts(st.fleet);
   return [(st.ownDone || 0) >= 2, o.grader >= 2 && o.roller >= 2 && o.cart >= 2];
 }
 /** Flood recovery contractor: a program delivered by 30 June. */
 export function checks4(st: Ladder): boolean[] {
+  if (isBulkPath(st)) return bulkChecks(st, 7);
   return [(st.majorDone || 0) >= 1];
 }
 /** Prestige contractor: 2 programs, ISO 45001, a plant hub, and a state road program delivered. */
 export function checks5(st: Ladder): boolean[] {
+  if (isBulkPath(st)) return bulkChecks(st, 8);
   return [(st.majorDone || 0) >= 2, st.whs.sys >= 3, st.yard === 'hub', (st.prestigeDone || 0) >= 1];
 }
 
 /** Where you are on the ladder, 1 to 8. */
 export function rung(st: Ladder): number {
+  if (isBulkPath(st)) {
+    if (st.won3 && checks5(st).every(Boolean)) return 8;
+    if (st.won3 && checks4(st).every(Boolean)) return 7;
+    if ((st.bulkDone || 0) > 0 && checks2(st).every(Boolean) && checks3(st).every(Boolean)) return 6;
+    if ((st.bulkDone || 0) > 0 && checks2(st).every(Boolean)) return 5;
+    if ((st.bulkDone || 0) > 0 && checks(st).every(Boolean)) return 4;
+    if (checks(st).every(Boolean)) return 3;
+    if (st.fleet.length >= 2 || st.staff.length) return 2;
+    return 1;
+  }
   if (st.won3 && (st.prestigeDone || 0) >= 1) return 8;
   if (st.won3 && (st.majorDone || 0) >= 1) return 7;
   if (st.won2 && (st.ownWon || 0) > 0 && checks3(st).every(Boolean)) return 6;

@@ -2,12 +2,12 @@
 // Hardcore. A handed-on business can carry on as the next generation.
 
 import { TICKETS, game } from '@engine';
-import { STEPS } from '@engine/text/career';
+import { stepsFor } from '@engine/text/career';
 import { MachineIcon } from '../Icon';
 import { f } from '../format';
 
 const DIFF = (loan: number) => (!loan ? '—' : loan <= 100000 ? 'Hard' : loan >= 300000 ? 'Easy' : 'Normal');
-const stage = (n: number) => STEPS[Math.max(1, n || 1) - 1]?.t ?? '';
+const stage = (n: number, path?: string) => stepsFor(path)[Math.max(1, n || 1) - 1]?.t ?? '';
 
 type Sold = { to: string; week: number; price: number; walk: number; fleet: number; earned: number; stage: number; peak?: number; retired?: boolean; legacy?: boolean };
 type Bust = { week: number; nw: number; fleet: number; earned: number; tix: number; stage: number; peak?: number };
@@ -25,7 +25,7 @@ export function EndScreen({ c, onNew, onNextGen }: { c: game.Career; onNew: () =
         <div className="card">
           <div className="kv"><span>Difficulty</span><span>{DIFF(c.loanStart)}, hardcore</span></div>
           <div className="kv"><span>Weeks you lasted</span><span className="num">{u.week}</span></div>
-          <div className="kv"><span>Furthest stage</span><span>{stage(u.peak || u.stage)}</span></div>
+          <div className="kv"><span>Furthest stage</span><span>{stage(u.peak || u.stage, c.path)}</span></div>
           <div className="kv"><span>Machines lost</span><span className="num">{u.fleet}</span></div>
           <div className="kv"><span>Earned over the career</span><span className="num">{f(u.earned)}</span></div>
           <div className="kv"><span>Tickets</span><span className="num">{u.tix} of {TICKETS.length}</span></div>
@@ -46,7 +46,7 @@ export function EndScreen({ c, onNew, onNextGen }: { c: game.Career; onNew: () =
       <div className="card">
         <div className="kv"><span>Difficulty</span><span>{DIFF(c.loanStart)}</span></div>
         <div className="kv"><span>Weeks in business</span><span className="num">{u.week}</span></div>
-        <div className="kv"><span>Furthest stage</span><span>{stage(u.peak || u.stage)}</span></div>
+        <div className="kv"><span>Furthest stage</span><span>{stage(u.peak || u.stage, c.path)}</span></div>
         <div className="kv"><span>Machines handed over</span><span className="num">{u.fleet}</span></div>
         <div className="kv"><span>Sale price</span><span className="num">{f(u.price)}</span></div>
         <div className="kv"><span>Earned over the career</span><span className="num">{f(u.earned)}</span></div>
