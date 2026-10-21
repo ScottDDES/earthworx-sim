@@ -195,9 +195,9 @@ function PackageSheet({ c, t, act, onClose }: { c: Career; t: CouncilTender; act
         <div className="sub">{t.major ? 'Flood recovery program' : 'Council tender'} · closes end of week {t.close}</div>
         <h2>{councilTitle(t)}</h2>
         <div className="card">
-          <div className="row tiny muted"><span className="grow">Road</span><span style={{ width: 48, textAlign: 'right' }}>Heavy</span><span style={{ width: 54, textAlign: 'right' }}>Medium</span><span style={{ width: 48, textAlign: 'right' }}>Light</span><span style={{ width: 64, textAlign: 'right' }}>Resheet</span></div>
+          <div className="roadgrid tiny muted"><span>Road</span><span>Heavy</span><span>Medium</span><span>Light</span><span>Resheet</span></div>
           {t.roads.slice(0, allRoads ? 999 : 8).map((x, i) => (
-            <div key={i} className="row small"><span className="grow">{x.name}{!compat.prototype && !rtRoad(x.name) && <span className="tiny muted" style={{ display: 'block' }}>Singles only</span>}</span><span className="num" style={{ width: 48, textAlign: 'right' }}>{x.hfg}</span><span className="num" style={{ width: 54, textAlign: 'right' }}>{x.mfg}</span><span className="num" style={{ width: 48, textAlign: 'right' }}>{x.lfg || 0}</span><span className="num" style={{ width: 64, textAlign: 'right' }}>{x.resheet.toLocaleString('en-AU')} m³</span></div>
+            <div key={i} className="roadgrid small"><span>{x.name}{!compat.prototype && !rtRoad(x.name) && <span className="tiny muted" style={{ display: 'block' }}>Singles only</span>}</span><span className="num">{x.hfg}</span><span className="num">{x.mfg}</span><span className="num">{x.lfg || 0}</span><span className="num">{x.resheet.toLocaleString('en-AU')} m³</span></div>
           ))}
           {t.roads.length > 8 && <button type="button" className="btn" onClick={() => setAllRoads(!allRoads)}>{allRoads ? 'Show fewer roads' : 'Show all ' + t.roads.length + ' roads'}</button>}
           <div className="tiny muted">{t.weeks} weeks allowed from the start, then {f(LD_OWN)} a week in damages. The council pays monthly claims in {COUNCIL_TERMS} weeks, less 5% retention. Water point {t.waterKm} km from the work.</div>

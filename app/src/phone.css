@@ -18,3 +18,19 @@ body{margin:0}
 :root { --ad-h: 0px; }
 .ad-on .dock { bottom: calc(var(--ad-h) + env(safe-area-inset-bottom, 0px)); padding-bottom: 0; }
 .ad-on body { padding-bottom: calc(170px + var(--ad-h) + env(safe-area-inset-bottom, 0px)); }
+
+/* A council package's road table: the name takes what's left and wraps inside its own column. */
+.roadgrid { display: grid; grid-template-columns: minmax(76px, 1fr) 38px 50px 34px 66px; gap: 5px; align-items: center; }
+.roadgrid > span { min-width: 0; overflow-wrap: break-word; }
+.roadgrid > span:not(:first-child) { text-align: right; }
+
+/* Short phones (iPhone SE and the like): a slimmer dock so the game gets more of the screen. */
+@media (max-height: 700px) {
+  .dock .wrap { gap: 5px; padding-block: 7px 3px; }
+  .dock .goal { padding-block: 4px; min-height: 36px; margin-bottom: 0; font-size: 13px; }
+  .tab { min-height: 42px; font-size: 10.5px; gap: 1px; }
+  .tab svg.i { width: 19px; height: 19px; }
+  .endrow .big { min-height: 46px; }
+  .runon { min-height: 46px; }
+  body { padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px)); }
+}
