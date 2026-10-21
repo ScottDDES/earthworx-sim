@@ -1,7 +1,7 @@
 // The public board's rules: nicknames, company names, and what a score post must look like.
 
 import { describe, expect, it } from 'vitest';
-import { allowedOrigin, cleanCo, cleanName, readPost } from '../server/src/rules';
+import { allowedOrigin, cleanCo, cleanName, readPost, readReport } from '../server/src/rules';
 
 describe('the board', () => {
   it('takes ordinary nicknames, tidied', () => {
@@ -33,6 +33,12 @@ describe('the board', () => {
     expect(readPost({ ...good, v: '1' }).ok).toBe(false);
     expect(readPost({ ...good, name: 'x' }).ok).toBe(false);
     expect(readPost('score: 1000000').ok).toBe(false);
+  });
+
+  it('reads a report of a name, and refuses one that names no row or no player', () => {
+    expect(readReport({ id: 12, player: 'abcdef0123456789abcd' })).toEqual({ ok: true, id: 12, player: 'abcdef0123456789abcd' });
+    for (const bad of [{ id: 0, player: 'abcdef0123456789abcd' }, { id: 1.5, player: 'abcdef0123456789abcd' }, { id: '3', player: 'abcdef0123456789abcd' }, { id: 3, player: 'short' }, { id: 3 }, null, 'report'])
+      expect(readReport(bad).ok, JSON.stringify(bad)).toBe(false);
   });
 
   it('lets the apps and the web version call the board, and nobody else', () => {

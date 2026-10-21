@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS scores (
   v        INTEGER NOT NULL,          -- the engine version it was replayed on
   moves    INTEGER NOT NULL,          -- how many moves the recording had
   at       INTEGER NOT NULL,          -- when it was posted (ms)
-  hidden   INTEGER NOT NULL DEFAULT 0, -- 1 = taken off the board by the owner
+  hidden   INTEGER NOT NULL DEFAULT 0, -- 1 = taken off the board by the owner, 2 = by players' reports
   PRIMARY KEY (season, player)
 );
 CREATE INDEX IF NOT EXISTS scores_board ON scores (season, v, hidden, score DESC);
@@ -21,3 +21,10 @@ CREATE TABLE IF NOT EXISTS posts (
   at  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS posts_ip ON posts (ip, at);
+
+CREATE TABLE IF NOT EXISTS reports (
+  row  INTEGER NOT NULL,               -- the scores row reported (its rowid)
+  by   TEXT    NOT NULL,               -- sha-256 of the reporter's device id: one report each
+  at   INTEGER NOT NULL,
+  PRIMARY KEY (row, by)
+);

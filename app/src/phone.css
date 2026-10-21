@@ -34,3 +34,6 @@ body{margin:0}
   .runon { min-height: 46px; }
   body { padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px)); }
 }
+
+/* report a name on the board: a small flag, big enough to tap */
+.lb-flag{flex:none;align-self:center;width:34px;height:34px;margin:-6px -6px -6px 0;border:0;background:none;color:var(--muted);font-size:15px;cursor:pointer}

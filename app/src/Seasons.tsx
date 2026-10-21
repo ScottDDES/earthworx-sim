@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { SEASONS, TOWNS, seasonDef, seasonScore, game, type SeasonId, type SeasonState } from '@engine';
-import { BOARD_URL, getBoard, postScore, savedName, type Board } from './board';
+import { BOARD_URL, blocked, getBoard, postScore, reportName, savedName, type Board } from './board';
 import { SEASON_TEXT } from '@engine/text/seasons';
 import { MachineIcon } from './Icon';
 import { seasonSaved } from './store';
@@ -77,6 +77,8 @@ function PostScore({ c }: { c: game.Career }) {
   const [msg, setMsg] = useState('');
   const [posted, setPosted] = useState(false);
   const [board, setBoard] = useState<Board | null>(null);
+  const [hide, setHide] = useState<number[]>(blocked);
+  const [asking, setAsking] = useState<number | null>(null);
   useEffect(() => {
     if (BOARD_URL) getBoard(S.id).then(setBoard).catch(() => {});
   }, [S.id]);
@@ -111,13 +113,28 @@ function PostScore({ c }: { c: game.Career }) {
         <div className="card">
           <div className="sub">The board · {SEASON_TEXT[S.id].n}</div>
           {!board.rows.length && <div className="small muted">Nobody's on the board for this season yet.</div>}
-          {board.rows.map((r, i) => (
-            <div key={i} className={'lb' + (i === 0 ? ' first' : '')} style={board.me && board.me.at === r.at && board.me.name === r.name ? { fontWeight: 700 } : undefined}>
-              <span className="rank">{i + 1}</span>
-              <div className="who"><b>{r.name}</b><span className="tiny muted">{r.co} · {r.week} weeks</span></div>
-              <b className="num">{signed(r.score)}</b>
-            </div>
-          ))}
+          {board.rows.map((r, i) => {
+            const mine = board.me?.id === r.id;
+            if (!mine && hide.includes(r.id)) return null;
+            return (
+              <div key={r.id}>
+                <div className={'lb' + (i === 0 ? ' first' : '')} style={mine ? { fontWeight: 700 } : undefined}>
+                  <span className="rank">{i + 1}</span>
+                  <div className="who"><b>{r.name}</b><span className="tiny muted">{r.co} · {r.week} weeks</span></div>
+                  <b className="num">{signed(r.score)}</b>
+                  {!mine && <button type="button" className="lb-flag" aria-label={'Report ' + r.name} onClick={() => setAsking(asking === r.id ? null : r.id)}>⚑</button>}
+                </div>
+                {asking === r.id && (
+                  <div className="row small" style={{ gap: 8, padding: '4px 0 8px 38px' }}>
+                    <span className="grow">Report this name as offensive? It's hidden for you straight away.</span>
+                    <button type="button" className="btn" onClick={() => { void reportName(r.id); setHide(blocked()); setAsking(null); }}>Report</button>
+                    <button type="button" className="btn" onClick={() => setAsking(null)}>Cancel</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {board.rows.length > 0 && <div className="tiny muted">Tap ⚑ to report a name.</div>}
           {board.me && board.me.rank > board.rows.length && <div className="small">You: #{board.me.rank}, {signed(board.me.score)}</div>}
         </div>
       )}

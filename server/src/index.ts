@@ -3,11 +3,13 @@
 //   GET  /v1/board/:season[?player=id]   the top scores on the current engine version (and your own place)
 //   POST /v1/scores                      { season, player, name, co, v, moves }: the server plays the moves again
 //                                        with the game's own engine, and the score it works out is the one kept
+//   POST /v1/report                      { id, player }: someone reports a name. Enough different players and it
+//                                        comes off the board until the owner looks
 //
 // Nobody can post a score, only moves: whatever the moves earn is the score. Each player keeps their best.
 
 import { SIM_VER, replaySeason, seasonDef } from '../../src/seasons';
-import { BOARD_ROWS, MAX_BODY, POSTS_PER_HOUR, allowedOrigin, hash, readPost } from './rules';
+import { BOARD_ROWS, MAX_BODY, POSTS_PER_HOUR, REPORTS_TO_HIDE, allowedOrigin, hash, readPost, readReport } from './rules';
 
 interface Env {
   DB: D1Database;
@@ -22,6 +24,7 @@ const json = (req: Request, body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...cors(req) } });
 
 interface Row {
+  id: number;
   name: string;
   co: string;
   score: number;
@@ -31,12 +34,12 @@ interface Row {
 
 async function board(req: Request, env: Env, season: string, player: string | null) {
   if (!seasonDef(season)) return json(req, { error: 'No such season.' }, 404);
-  const top = await env.DB.prepare('SELECT name, co, score, week, at FROM scores WHERE season = ? AND v = ? AND hidden = 0 ORDER BY score DESC, at ASC LIMIT ?')
+  const top = await env.DB.prepare('SELECT rowid AS id, name, co, score, week, at FROM scores WHERE season = ? AND v = ? AND hidden = 0 ORDER BY score DESC, at ASC LIMIT ?')
     .bind(season, SIM_VER, BOARD_ROWS).all<Row>();
   let me: (Row & { rank: number }) | null = null;
   if (player && /^[A-Za-z0-9-]{16,64}$/.test(player)) {
     const id = await hash(player);
-    const mine = await env.DB.prepare('SELECT name, co, score, week, at FROM scores WHERE season = ? AND player = ? AND v = ? AND hidden = 0').bind(season, id, SIM_VER).first<Row>();
+    const mine = await env.DB.prepare('SELECT rowid AS id, name, co, score, week, at FROM scores WHERE season = ? AND player = ? AND v = ? AND hidden = 0').bind(season, id, SIM_VER).first<Row>();
     if (mine) {
       const above = await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE season = ? AND v = ? AND hidden = 0 AND (score > ? OR (score = ? AND at < ?))')
         .bind(season, SIM_VER, mine.score, mine.score, mine.at).first<{ n: number }>();
@@ -44,6 +47,37 @@ async function board(req: Request, env: Env, season: string, player: string | nu
     }
   }
   return json(req, { season, v: SIM_VER, rows: top.results, me });
+}
+
+/** A few posts (scores and reports together) an hour from any one address. Logs this one if it's allowed. */
+async function busy(req: Request, env: Env, now: number): Promise<boolean> {
+  const ip = await hash(req.headers.get('CF-Connecting-IP') || 'unknown');
+  const recent = await env.DB.prepare('SELECT COUNT(*) AS n FROM posts WHERE ip = ? AND at > ?').bind(ip, now - 3600_000).first<{ n: number }>();
+  if ((recent?.n ?? 0) >= POSTS_PER_HOUR) return true;
+  await env.DB.prepare('INSERT INTO posts (ip, at) VALUES (?, ?)').bind(ip, now).run();
+  return false;
+}
+
+/** Someone reports a name. One report per player per row; enough of them hides it (hidden = 2) until the owner looks. */
+async function report(req: Request, env: Env) {
+  let body: unknown;
+  try {
+    body = JSON.parse((await req.text()).slice(0, 2000));
+  } catch {
+    return json(req, { error: 'Not a report.' }, 400);
+  }
+  const r = readReport(body);
+  if (!r.ok) return json(req, { error: r.why }, 400);
+  const now = Date.now();
+  if (await busy(req, env, now)) return json(req, { error: 'Too many from here. Try again in an hour.' }, 429);
+  const row = await env.DB.prepare('SELECT player FROM scores WHERE rowid = ?').bind(r.id).first<{ player: string }>();
+  if (!row) return json(req, { error: "That name isn't on the board." }, 404);
+  const by = await hash(r.player);
+  if (by === row.player) return json(req, { ok: true });
+  await env.DB.prepare('INSERT OR IGNORE INTO reports (row, by, at) VALUES (?, ?, ?)').bind(r.id, by, now).run();
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM reports WHERE row = ?').bind(r.id).first<{ n: number }>();
+  if ((n?.n ?? 0) >= REPORTS_TO_HIDE) await env.DB.prepare('UPDATE scores SET hidden = 2 WHERE rowid = ? AND hidden = 0').bind(r.id).run();
+  return json(req, { ok: true });
 }
 
 async function post(req: Request, env: Env) {
@@ -63,11 +97,8 @@ async function post(req: Request, env: Env) {
   if (!seasonDef(p.season)) return json(req, { error: 'No such season.' }, 404);
   if (p.v !== SIM_VER) return json(req, { error: 'This score is from another version of the game. Update the app to post scores.', v: SIM_VER }, 409);
 
-  // a few posts an hour from any one address
-  const now = Date.now(), ip = await hash(req.headers.get('CF-Connecting-IP') || 'unknown');
-  const recent = await env.DB.prepare('SELECT COUNT(*) AS n FROM posts WHERE ip = ? AND at > ?').bind(ip, now - 3600_000).first<{ n: number }>();
-  if ((recent?.n ?? 0) >= POSTS_PER_HOUR) return json(req, { error: 'Too many scores posted from here. Try again in an hour.' }, 429);
-  await env.DB.prepare('INSERT INTO posts (ip, at) VALUES (?, ?)').bind(ip, now).run();
+  const now = Date.now();
+  if (await busy(req, env, now)) return json(req, { error: 'Too many scores posted from here. Try again in an hour.' }, 429);
 
   // the only score that counts is the one the moves earn
   const rep = replaySeason(p.season, p.moves, p.co);
@@ -101,6 +132,7 @@ export default {
       const m = url.pathname.match(/^\/v1\/board\/([a-z0-9]+)$/);
       if (req.method === 'GET' && m) return await board(req, env, m[1]!, url.searchParams.get('player'));
       if (req.method === 'POST' && url.pathname === '/v1/scores') return await post(req, env);
+      if (req.method === 'POST' && url.pathname === '/v1/report') return await report(req, env);
       if (req.method === 'GET' && url.pathname === '/') return json(req, { board: 'Earthworx Sim', v: SIM_VER });
       return json(req, { error: 'Not found.' }, 404);
     } catch (e) {

@@ -15,6 +15,8 @@ export const MAX_BODY = 300_000;
 export const POSTS_PER_HOUR = 20;
 /** Rows on the board. */
 export const BOARD_ROWS = 50;
+/** Different players reporting one name take it off the board until the owner looks (scripts/board-admin.sh reports). */
+export const REPORTS_TO_HIDE = 3;
 
 // Words that keep a name off the board. Kept short and plain; the owner can hide anything else by hand.
 const BLOCKED = ['fuck', 'shit', 'cunt', 'nigg', 'nazi', 'hitler', 'wank', 'slut', 'whore', 'retard', 'bitch', 'twat', 'faggot', 'rapist', 'kkk'];
@@ -59,6 +61,15 @@ export function readPost(body: unknown): { ok: true; post: Post } | { ok: false;
   const n = cleanName(b.name);
   if (!n.ok) return n;
   return { ok: true, post: { season: b.season, player: b.player, name: n.name, co: cleanCo(b.co), v: b.v, moves: b.moves } };
+}
+
+/** A report of a name on the board: which row, and who's reporting it (their device id, hashed before it's kept). */
+export function readReport(body: unknown): { ok: true; id: number; player: string } | { ok: false; why: string } {
+  if (!body || typeof body !== 'object') return { ok: false, why: 'Not a report.' };
+  const b = body as Record<string, unknown>;
+  if (typeof b.id !== 'number' || !Number.isInteger(b.id) || b.id < 1) return { ok: false, why: 'Which name?' };
+  if (typeof b.player !== 'string' || !/^[A-Za-z0-9-]{16,64}$/.test(b.player)) return { ok: false, why: 'No player id.' };
+  return { ok: true, id: b.id, player: b.player };
 }
 
 /** sha-256, hex. */
