@@ -186,13 +186,13 @@ describe('the hire schedule', () => {
     compat.prototype = false;
   });
 
-  it('bulk work pays about 10% more in the real game, and your starting price moves with it', () => {
+  it('bulk work pays about 21% more in the real game (10% and 10% again), and your starting price moves with it', () => {
     const c = game.newCareer({ co: 'Dirt', loan: 180000, town: 'gdi', path: 'bulk' }, 4);
     const ask = (proto: boolean) => { compat.prototype = proto; const e = genEnquiry(seedRand(9), JSON.parse(JSON.stringify(c)), 1, 'turkeyNest'); compat.prototype = false; return e; };
     const was = ask(true), now = ask(false);
-    expect(now.budget / was.budget).toBeGreaterThan(1.05);
-    expect(now.budget / was.budget).toBeLessThan(1.15);
-    expect(now.rate).toBeCloseTo(was.rate * 1.1, 1);
+    expect(now.budget / was.budget).toBeGreaterThan(1.15);
+    expect(now.budget / was.budget).toBeLessThan(1.27);
+    expect(now.rate).toBeCloseTo(was.rate * 1.21, 1);
     expect(TYPES.d6).toMatchObject({ wet: 1900, fuel: 700, sub: 2600 });
   });
 });

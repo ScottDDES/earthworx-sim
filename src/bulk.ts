@@ -51,8 +51,8 @@ export const SHRINK = 0.1;
 export const MOIST_ADD = 3;
 export const CART_TRIP = 25;
 export const SURVEY_COST = 2000;
-/** The real game's going rates for bulk work sit 10% over the prototype's, in step with the hire schedule and the 10-hour day. */
-export const PRICE_LIFT = 1.1;
+/** The real game's going rates for bulk work: 10% over the prototype's (in step with the hire schedule and the 10-hour day), then 10% more (Scott, 22 Oct). */
+export const PRICE_LIFT = 1.21;
 /** A labour-hire operator for a seat none of your crew can fill. */
 export const BULK_CASUAL = 650;
 /** Weeks an enquiry waits for your price, and weeks a won job waits for a spread before the client goes elsewhere. */
