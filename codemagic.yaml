@@ -20,6 +20,15 @@ workflows:
     triggering:
       events: [] # built by hand from Codemagic, not on every push
     scripts:
+      - name: Store builds only - no Google test ads
+        # a store build (VITE_CHANNEL=live) must carry the real AdMob app ID and ad units, never Google's test ones
+        script: |
+          set -e
+          # to test purchases before the AdMob IDs are in, start the build with ALLOW_TEST_ADS=1 (never one you submit)
+          if [ "$VITE_CHANNEL" = "live" ] && [ "$ALLOW_TEST_ADS" != "1" ]; then
+            if grep -q "ca-app-pub-3940256099942544" app/ios/App/App/Info.plist; then echo "Info.plist still has Google's TEST AdMob app ID"; exit 1; fi
+            if grep -q "const LIVE = IOS ? { reward: ''" app/src/ads.ts; then echo "app/src/ads.ts has no real iPhone ad unit IDs yet"; exit 1; fi
+          fi
       - name: Install the game's packages
         script: cd app && npm ci
       - name: Build the game
