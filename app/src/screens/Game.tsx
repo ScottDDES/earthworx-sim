@@ -11,6 +11,7 @@ import { COACH } from '@engine';
 import { Mentor } from '../Mentor';
 import { Icon, WeatherIcon } from '../Icon';
 import { sfx } from '../sound';
+import { showBanner, useAds, watchReward } from '../ads';
 import { useBackButton } from '../back';
 import { MONTHS, f, fk } from '../format';
 import { YardTab } from './Yard';
@@ -89,6 +90,7 @@ const PLAIN = new Set(['Tender result', 'Your branch', 'Tax office', 'Year in re
 /** The card at the front of the queue: what's happened, and your options. */
 function CardSheet({ c, act, onDone }: { c: Career; act: Act; onDone: (o: Outcome) => void }) {
   const q = c.queue[0]!;
+  const [adMsg, setAdMsg] = useState('');
   // drawing a card sets its seed the first time, so the same card always reads the same
   const d = drawCard(c, q);
   // a card that no longer applies just goes, once the screen has drawn
@@ -97,12 +99,25 @@ function CardSheet({ c, act, onDone }: { c: Career; act: Act; onDone: (o: Outcom
   });
   if (!d) return null;
   const v = cardView(c, q, d);
-  const pick = (i: number) => act((x) => {
+  // by id, not position: an ad choice can come or go while the card's open
+  const take = (id: string) => act((x) => {
+    const dx = drawCard(x, x.queue[0]!), i = dx ? dx.opts.findIndex((o) => o.id === id) : -1;
+    if (i < 0) return;
     // winning a tender gets the two bright notes
     if ((q.k === 'tresult' || q.k === 'cresult') && /^You won|^The council picked you/.test(v.title)) sfx('win', x.sound);
     const a = play.choose(x, i);
-    if (a) onDone({ tag: v.tag, title: v.title, chosen: v.opts[i]!.label, res: resultText(x, a) });
+    if (a) onDone({ tag: v.tag, title: v.title, chosen: v.opts.find((o) => o.id === id)!.label, res: resultText(x, a) });
   });
+  // an ad choice: the ad first, the reward only if they watched it through
+  const pick = (id: string) => {
+    if (!id.startsWith('ad')) return take(id);
+    setAdMsg('');
+    void watchReward().then((ok) => {
+      if (!ok) return setAdMsg("The ad didn't finish, so no reward this time. Pick another option, or try again in a minute.");
+      act((x) => { x.adsOn = true; });
+      take(id);
+    });
+  };
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label={v.title}>
       <div className="sheet curve">
@@ -113,8 +128,9 @@ function CardSheet({ c, act, onDone }: { c: Career; act: Act; onDone: (o: Outcom
         {q.k === 'bas' && <Mentor c={c} k="bas" act={act} />}
         {q.k === 'yearend' && <Mentor c={c} k="year" act={act} />}
         {(q.k === 'tresult' || q.k === 'cresult') && <Mentor c={c} k="score" act={act} />}
-        {v.opts.map((o, i) => (
-          <button key={o.id} type="button" className="choice" onClick={() => pick(i)}>
+        {adMsg && <div className="small" style={{ color: 'var(--rust)' }}>{adMsg}</div>}
+        {v.opts.map((o) => (
+          <button key={o.id} type="button" className="choice" onClick={() => pick(o.id)}>
             <b>{o.label}</b>
             <span>{o.sub}</span>
           </button>
@@ -230,6 +246,13 @@ export function GameScreen({ c, act, onNew, saves, saveFailed, demo }: { c: Care
   const runWeeks = () => act((x) => { const r = play.runOn(x); if (r) { weekSound(x, r); setReport(r); } });
   // a tab that hasn't appeared yet can't be open; looking at a new one clears its NEW badge
   const tab: Tab = tabShown(c, tab0) ? tab0 : 'yard';
+  // rewarded ads on offer when one's loaded (never in a season: the engine checks)
+  const ads = useAds();
+  c.adsOn = ads.ready;
+  // the banner: Market and Office only, never over a card or the docket
+  const banner = (tab === 'market' || tab === 'bank') && !report && !outcome && c.queue.length === 0;
+  useEffect(() => { void showBanner(banner); }, [banner]);
+  useEffect(() => () => { void showBanner(false); }, []);
   const setTab = (t: Tab) => setTab0(t);
   useEffect(() => { if (tabIsNew(c, tab)) act((x) => tabSeen(x, tab)); });
   useBackButton(tab, () => setTab('yard'));
@@ -291,7 +314,7 @@ export function GameScreen({ c, act, onNew, saves, saveFailed, demo }: { c: Care
           </nav>
         </div>
       </div>
-      {outcome ? <ResultSheet r={outcome} onClose={() => setOutcome(null)} /> : report ? <Docket c={c} r={report} onClose={() => setReport(null)} /> : c.queue.length > 0 && <CardSheet c={c} act={act} onDone={setOutcome} />}
+      {outcome ? <ResultSheet r={outcome} onClose={() => setOutcome(null)} /> : report ? <Docket c={c} r={report} onClose={() => setReport(null)} /> : c.queue.length > 0 && <CardSheet key={JSON.stringify(c.queue[0])} c={c} act={act} onDone={setOutcome} />}
     </>
   );
 }

@@ -137,6 +137,10 @@ export interface Career {
   tipsOff?: boolean;
   /** A season (a short scored game) and its recorded moves. */
   season?: import('./seasons').SeasonState;
+  /** The app has a rewarded ad ready (set by the app each time it opens; see ads.ts). */
+  adsOn?: boolean;
+  /** The week the ad top-up was last taken. */
+  adWk?: number;
   alog?: unknown[];
   rngSeed: string;
   rngA: number;

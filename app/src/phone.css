@@ -13,3 +13,8 @@ body{margin:0}
 .setup{padding-top:calc(28px + env(safe-area-inset-top,0px))}
 .mk{width:68px;text-align:center;font:inherit;font-weight:800;font-variant-numeric:tabular-nums;padding:8px 4px;border:1.5px solid var(--line,#DAD7CD);border-radius:8px;background:transparent;color:inherit}
 .mk:focus{outline:none;border-color:#FFC700}
+
+/* An ad banner along the bottom (phones, Market and Office tabs): the dock sits on top of it, the page clears both. */
+:root { --ad-h: 0px; }
+.ad-on .dock { bottom: calc(var(--ad-h) + env(safe-area-inset-bottom, 0px)); padding-bottom: 0; }
+.ad-on body { padding-bottom: calc(170px + var(--ad-h) + env(safe-area-inset-bottom, 0px)); }

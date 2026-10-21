@@ -14,6 +14,7 @@ import { compat } from './compat';
 import { REDZONE_CASH, REDZONE_FINE, leakArgue, leakFix, redzoneTake, wetClayPush, wetClayWait } from './bulk';
 import { ROLES } from './staff';
 import { bestFitter, mgrIs } from './managers';
+import { adFix, adOK, adPay } from './ads';
 import { TYPES, overdue, value } from './machines';
 import { lendCap } from './market';
 import { fleetValue } from './overheads';
@@ -148,6 +149,8 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       }
       out.push(o('mobile', () => breakFix(st, m, card, 'mobile')), o('dealer', () => breakFix(st, m, card, 'dealer')));
       if (j && j.kind !== 'dry' && !card.warranty) out.push(o('hireIn', () => breakFix(st, m, card, 'hireIn')));
+      // a rewarded ad: the mechanic's on us (always last, so Run on and bots never take it)
+      if (adOK(c) && !card.warranty) out.push(o('adFix', () => adFix(m)));
       return out;
     }
     case 'brtender':
@@ -204,7 +207,7 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       if (!x) return null;
       const onHire = c.jobs.find((y) => y.client === x.client);
       Object.assign(data, { x, onHire, weekly: c.loan.weekly, amt: x.amt });
-      return [o('chase', () => lateChase(st, x)), o('friendly', () => lateFriendly(st, x)), onHire ? o('park', () => latePark(st, x, onHire, [])) : o('wait', () => lateWait(r(), st, x))];
+      return [o('chase', () => lateChase(st, x)), o('friendly', () => lateFriendly(st, x)), onHire ? o('park', () => latePark(st, x, onHire, [])) : o('wait', () => lateWait(r(), st, x)), ...(adOK(c) ? [o('adPay', () => adPay(st, x))] : [])];
     }
     case 'clearing':
       Object.assign(data, { place: pick(cr, TOWNS[c.town].places), bank: c.bank });

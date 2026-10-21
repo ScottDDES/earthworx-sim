@@ -3,6 +3,8 @@
 
 import { useState } from 'react';
 import { BETA } from '../channel';
+import { buy, canBuy, hasBulk, restore, useShop } from '../shop';
+import { adPrivacyOptions, adsAvailable } from '../ads';
 import { MOODS, TICKETS, inherit, TIER, canBuyOut, checks, checks2, checks3, checks4, checks5, ownedCounts, rung, rvForm, rvPhase, stars, game, play } from '@engine';
 import { TICKET_CATS, TICKET_TEXT, checkWords, districtForm, starTxt, stepsFor } from '@engine/text/career';
 import { diaryLines } from '@engine/text/diary';
@@ -170,6 +172,46 @@ function ResetSheet({ c, slot, onYes, onNo }: { c: Career; slot: number; onYes: 
   );
 }
 
+/** The pack (free in the beta, bought in the store build), no ads, restore, and Google's ad choices. */
+function ShopRows({ c, act }: { c: Career; act: (fn: (c: Career) => unknown) => void }) {
+  const S = useShop();
+  const packOn = () => act((x) => game.setPack(x, 'bulk', !x.packs?.bulk));
+  return (
+    <>
+      {hasBulk() ? (
+        <div className="row">
+          <span className="grow"><b className="small">Bulk and Ag pack</b><br /><span className="tiny muted">{BETA ? 'Free in the beta. ' : ''}Dozers, scrapers and moxies in the Market; farmers and developers ringing on the Work tab.</span></span>
+          <button type="button" className={'btn' + (c.packs?.bulk ? ' dark' : '')} aria-pressed={!!c.packs?.bulk} onClick={packOn}>{c.packs?.bulk ? 'On' : 'Off'}</button>
+        </div>
+      ) : canBuy() ? (
+        <div className="row">
+          <span className="grow"><b className="small">Bulk and Ag pack</b><br /><span className="tiny muted">Farm dams, channels, clearing, laser levelling and developers' bulk earthworks, with dozers, scrapers and moxies. One purchase, every save.</span></span>
+          <button type="button" className="btn dark" disabled={S.busy} onClick={() => void buy('bulk').then((ok) => ok && act((x) => game.setPack(x, 'bulk', true)))}>{S.price.bulk ?? 'Buy'}</button>
+        </div>
+      ) : null}
+      {canBuy() && !S.owned.noads && (
+        <div className="row">
+          <span className="grow"><b className="small">No ads</b><br /><span className="tiny muted">Takes the banner off the Market and Office tabs. The ads you choose to watch for a reward stay on offer.</span></span>
+          <button type="button" className="btn dark" disabled={S.busy} onClick={() => void buy('noads')}>{S.price.noads ?? 'Buy'}</button>
+        </div>
+      )}
+      {canBuy() && (
+        <div className="row">
+          <span className="grow tiny muted">Bought these on another phone, or reinstalled?</span>
+          <button type="button" className="btn" disabled={S.busy} onClick={() => void restore()}>Restore purchases</button>
+        </div>
+      )}
+      {S.err && <div className="small" style={{ color: 'var(--rust)' }}>{S.err}</div>}
+      {adsAvailable() && (
+        <div className="row">
+          <span className="grow tiny muted">Ads are from Google.</span>
+          <button type="button" className="btn" onClick={() => void adPrivacyOptions()}>Ad choices</button>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function CareerTab({ c, act, onNew, saves }: { c: Career; act: Act; onNew: () => void; saves: Saves }) {
   const [retire, setRetire] = useState(false);
   const [wipe, setWipe] = useState(false);
@@ -233,12 +275,7 @@ export function CareerTab({ c, act, onNew, saves }: { c: Career; act: Act; onNew
           <span className="grow"><b className="small">Sound</b><br /><span className="tiny muted">A stamp for wins and tickets, a diesel turn-over each week.</span></span>
           <button type="button" className={'btn' + (c.sound ? ' dark' : '')} aria-pressed={!!c.sound} onClick={() => act((x) => { x.sound = !x.sound; sfx('win', x.sound); })}>{c.sound ? 'On' : 'Off'}</button>
         </div>
-        {!c.season && BETA && (
-          <div className="row">
-            <span className="grow"><b className="small">Bulk and Ag pack</b><br /><span className="tiny muted">Free in the beta. Dozers, scrapers and moxies in the Market; farmers and developers ringing on the Work tab.</span></span>
-            <button type="button" className={'btn' + (c.packs?.bulk ? ' dark' : '')} aria-pressed={!!c.packs?.bulk} onClick={() => act((x) => game.setPack(x, 'bulk', !x.packs?.bulk))}>{c.packs?.bulk ? 'On' : 'Off'}</button>
-          </div>
-        )}
+        {!c.season && <ShopRows c={c} act={act} />}
         <div className="tiny muted"><a href={PRIVACY_URL} target="_blank" rel="noopener">Privacy policy</a></div>
       </div>
       {c.won && c.phase === 'play' && (

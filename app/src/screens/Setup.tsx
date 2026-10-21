@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { BETA } from '../channel';
+import { buy, canBuy, hasBulk, useShop } from '../shop';
 import { SlotsCard, type Saves } from '../Slots';
 import { SeasonPicker } from '../Seasons';
 import { slotMetaAll } from '../store';
@@ -20,6 +21,8 @@ export function SetupScreen({ onStart, saves }: { onStart: (s: game.Setup) => vo
   const [co, setCo] = useState('Black Soil Earthmoving');
   const [loan, setLoan] = useState(180000);
   const [hc, setHc] = useState(false);
+  const S = useShop();
+  const own = hasBulk();
   const [bulk, setBulk] = useState(BETA);
   const [path, setPath] = useState<'roads' | 'bulk'>('roads');
   const [town, setTown] = useState<TownId>('gdi');
@@ -62,19 +65,19 @@ export function SetupScreen({ onStart, saves }: { onStart: (s: game.Setup) => vo
           <span className="small muted">One life. If what you own is worth less than what you owe for four weeks running, the business goes into administration and the career is over. The tax office gives one payment plan a year, no more.</span>
         </button>
         <div className="small note">{hc ? 'Hardcore: no second chances. You\'ll get a warning the first week you\'re under water.' : 'Miss three repayments and the bank takes your best machine. You keep going with what\'s left.'}</div>
-        {BETA && (
+        {(own || canBuy()) && (
           <>
             <div className="row"><span className="sub grow">What kind of outfit?</span></div>
             <button type="button" className={'pick' + (path === 'roads' ? ' on' : '')} aria-pressed={path === 'roads'} onClick={() => setPath('roads')}>
               <b style={{ fontSize: 16 }}>Roads</b>
               <span className="small muted">Start with a grader. Hire work, council day labour and private jobs, then flood recovery subcontracts and council contracts.</span>
             </button>
-            <button type="button" className={'pick' + (path === 'bulk' ? ' on' : '')} aria-pressed={path === 'bulk'} onClick={() => setPath('bulk')}>
+            <button type="button" className={'pick' + (path === 'bulk' ? ' on' : '')} aria-pressed={path === 'bulk'} onClick={() => (own ? setPath('bulk') : void buy('bulk').then((ok) => ok && setPath('bulk')))}>
               <b style={{ fontSize: 16 }}>Bulk earthworks</b>
-              <span className="tiny" style={{ color: 'var(--teal)', fontWeight: 700 }}>Bulk and Ag pack · free in the beta</span>
+              <span className="tiny" style={{ color: 'var(--teal)', fontWeight: 700 }}>Bulk and Ag pack · {BETA ? 'free in the beta' : own ? 'yours' : (S.price.bulk ?? '') + ' · tap to buy'}</span>
               <span className="small muted">Start with a dozer or an excavator. Farm dams, channels, contour banks, clearing and laser levelling, then developers' bulk earthworks.</span>
             </button>
-            {path === 'roads' && (
+            {path === 'roads' && own && (
               <button type="button" className={'pick' + (bulk ? ' on' : '')} aria-pressed={bulk} onClick={() => setBulk(!bulk)}>
                 <span className="row" style={{ width: '100%' }}>
                   <b className="grow" style={{ fontSize: 16 }}>Add bulk work later{bulk && <span className="chip c-job" style={{ marginLeft: 6, verticalAlign: 2 }}>ON</span>}</b>
@@ -106,7 +109,7 @@ export function SetupScreen({ onStart, saves }: { onStart: (s: game.Setup) => vo
       ))}
       <div className="btns"><button type="button" className="btn" onClick={() => setStep(0)}>Back</button></div>
       <div className="small muted" style={{ textAlign: 'center' }}>{fk(loan)} loan + $40k savings = {fk(loan + 40000)} in the bank to buy your first machine.</div>
-      <button type="button" className="big" onClick={() => onStart({ co, loan, town, hc, bulk: BETA && bulk, path: BETA ? path : 'roads' })}>Take the {fk(loan)} loan and set up in {TOWNS[town].name}</button>
+      <button type="button" className="big" onClick={() => onStart({ co, loan, town, hc, bulk: own && bulk, path: own ? path : 'roads' })}>Take the {fk(loan)} loan and set up in {TOWNS[town].name}</button>
     </div>
   );
 }

@@ -153,6 +153,7 @@ export function cardView(c: Career, q: Career['queue'][number], d: DrawnCard): C
       put('mobile', 'Get a mobile mechanic out', f(k.cost * 1.25) + '. Back working next week.');
       put('dealer', 'Wait for the dealer\'s workshop', f(k.cost) + '. Down about ' + k.dd + ' days next week.');
       if (k.rc != null) put('hireIn', 'Hire in a replacement', f(k.cost + k.rc) + ' all up. The client never misses a day.');
+      put('adFix', 'Watch an ad: the mechanic\'s on us', 'Free. Fixed on the spot, back to work tomorrow.');
       return out('Breakdown', 'The ' + short(m.type) + ' has broken down', (D.patched ? 'The patched-up ' + D.patched + ' has let go, and taken more with it.' : BREAK_STORIES[k.story]) + ' The repair is about ' + f(k.cost) + (j ? '. It was on ' + jt(j) + '.' : '.') + (D.overdue ? ' It was overdue for a service.' : ''));
     }
     case 'brtender': {
@@ -201,6 +202,7 @@ export function cardView(c: Career, q: Career['queue'][number], d: DrawnCard): C
       const x = D.x;
       put('chase', 'Chase it under Security of Payment', 'You\'ll be paid in 3 weeks. ' + x.client + ' won\'t hire you for six months.');
       put('friendly', 'Ring the boss, keep it friendly', 'Maybe half now. The relationship stays.');
+      put('adPay', 'Watch an ad: get paid now', 'The full ' + f(D.amt) + ' lands this week. No phone call, no hard feelings.');
       put('park', 'Park your machine until they pay', 'They need it. Leverage, but you lose the rest of the hire.');
       put('wait', 'Wait it out', 'Usually turns up within a fortnight.');
       return out('Money', x.client + ' hasn\'t paid', 'Your ' + f(D.amt) + ' invoice is overdue. The bank repayment of ' + f(D.weekly) + ' still comes out every week.');
@@ -370,6 +372,7 @@ function line(c: Career, k: string, id: string, D: Record<string, any>, R: any):
       if (id === 'fitterFix') return D.fitter + ' fixed it properly. ' + f(D.fitFix) + ', and ' + D.fitDays + ' day' + (D.fitDays === 1 ? '' : 's') + ' down.';
       if (id === 'patch') return D.fitter + ' patched it up for ' + f(D.fitPatch) + '. Keep an eye on it.';
       if (id === 'mobile') return 'Fixed on the spot for ' + f(k.cost * 1.25) + '.';
+      if (id === 'adFix') return 'The mechanic sorted it on the spot. No charge.';
       if (id === 'dealer') return 'Booked in. ' + f(k.cost) + ', and ' + k.dd + ' days off the job.';
       return 'Replacement on site the next morning. ' + f(k.cost + k.rc) + ' all up.';
     }
@@ -395,6 +398,7 @@ function line(c: Career, k: string, id: string, D: Record<string, any>, R: any):
       const x = D.x;
       if (id === 'chase') return 'Payment claim served. ' + x.client + ' has you on its "difficult" list.';
       if (id === 'friendly') return 'Half paid now (' + f(R) + '). The rest is promised in 4 weeks.';
+      if (id === 'adPay') return 'Paid in full: ' + f(D.amt) + '.';
       if (id === 'park') return 'Paid in full within 2 days. The hire is over and they won\'t call you for a while.';
       return R === 'soon' ? 'They say it\'s in the next pay run, in 2 weeks.' : 'Still nothing. Their accounts person says another 6 weeks.';
     }

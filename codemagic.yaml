@@ -4,7 +4,7 @@
 #   - this app's numeric Apple ID (App Store Connect > the app > App Information) in APP_STORE_APPLE_ID below
 # What testers see under "What to Test" in TestFlight comes from TESTFLIGHT_NOTES.txt.
 workflows:
-  ios-testflight:
+  ios-testflight: &ios
     name: iPhone app to TestFlight
     max_build_duration: 90
     instance_type: mac_mini_m2
@@ -50,3 +50,17 @@ workflows:
           app-store-connect publish --path "build/ios/ipa/*.ipa" --whats-new @file:TESTFLIGHT_NOTES.txt --max-build-processing-wait 40
     artifacts:
       - build/ios/ipa/*.ipa
+
+  # The store build: packs are sold, ads use the real AdMob units. It goes to TestFlight first (purchases there
+  # use Apple's sandbox, nothing is charged), and that same build is the one you submit for App Store review.
+  ios-store:
+    <<: *ios
+    name: iPhone store build (to TestFlight, then App Store review)
+    environment:
+      groups:
+        - ios_signing
+      vars:
+        APP_STORE_APPLE_ID: 6824078099
+        VITE_CHANNEL: live
+      node: 22
+      xcode: latest

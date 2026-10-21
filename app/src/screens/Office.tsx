@@ -5,10 +5,11 @@ import { Fragment, useState, type ReactNode } from 'react';
 import {
   CLIENTS, CLIENT_PM, ROLES, TOWNS, WHS_SYS, alertMachines, brCrews, brProfit, claimFinance, debtors, fleetValue, gstInBank, hsum, lastInc,
   lendCap, meStretched, plOf, recentInc, relOf, relTier, talksCost, trackAllow, utilOf, wages, whsNp, workInHand, YARDS, game,
-  rainCrews, type ForecastWeek, type WeekRow, play,
+  rainCrews, type ForecastWeek, type WeekRow, play, AD_TOPUP, adTopUp, adTopUpReady,
 } from '@engine';
 import { ownerFlags, ERP_NAME } from '@engine/text/office';
 import { Mentor } from '../Mentor';
+import { watchReward } from '../ads';
 import { fyName } from '@engine/text/cardView';
 import { jobTitle } from '@engine/text/work';
 import { f, fk } from '../format';
@@ -461,11 +462,39 @@ function Bank({ c, act, go }: { c: Career; act: Act; go: Go }) {
   );
 }
 
+/** A rewarded ad for a little cash, once a week (not in a season: the engine says when it's on offer). */
+function TopUp({ c, act }: { c: Career; act: Act }) {
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  if (!adTopUpReady(c)) return msg ? <div className="small muted">{msg}</div> : null;
+  const go = () => {
+    setBusy(true);
+    setMsg('');
+    void watchReward().then((ok) => {
+      setBusy(false);
+      if (ok) {
+        act((x) => { x.adsOn = true; adTopUp(x); });
+        setMsg(f(AD_TOPUP) + ' in the bank. Back next week.');
+      } else setMsg("The ad didn't finish, so no top-up this time.");
+    });
+  };
+  return (
+    <div className="card">
+      <div className="row">
+        <span className="grow"><b className="small">Cash top-up</b><br /><span className="tiny muted">Watch a short ad for {f(AD_TOPUP)}. Once a week.</span></span>
+        <button type="button" className="btn dark" disabled={busy} onClick={go}>Watch</button>
+      </div>
+      {msg && <div className="small" style={{ color: 'var(--rust)' }}>{msg}</div>}
+    </div>
+  );
+}
+
 export function OfficeTab({ c, act, go }: { c: Career; act: Act; go: Go }) {
   const [v, setV] = useState<'dash' | 'bank'>('dash');
   return (
     <>
       {v === 'dash' && <Mentor c={c} k="office" act={act} />}
+      <TopUp c={c} act={act} />
       <div className="seg" role="tablist" aria-label="Office">
         {([['dash', 'Dashboard'], ['bank', 'Bank and loans']] as const).map(([k, l]) => (
           <button key={k} type="button" role="tab" aria-selected={v === k} className={v === k ? 'on' : ''} onClick={() => setV(k)}>{l}</button>

@@ -6,4 +6,6 @@ And: DDES Advisory on every safety decision and to check tender prices; ProActiv
 
 Machine rates now follow a real 2022-23 hire schedule on a 10-hour day, and the 627 scraper is in. Council gravel jobs now plan a loader at the pit: yours, dry hire or a subbie. Leave it off and the trucks wait their turn. Roadtrains: buy one, or put a second trailer behind a side tipper you own, or hire them in on council jobs. Some roads are singles only. With a fitter of your own, breakdowns get two more choices (they patch it, or fix it properly), and Run on makes that call for you by how good they are. Fixed: finished bulk jobs now clear off the Work screen, and the rain card talks wet dirt when bulk work is going.
 
+NEW for launch: ads and the shop. The first time you open it, iPhone asks whether to allow tracking (either answer is fine). Google's TEST ads show in this build: a banner on the Market and Office tabs, and ads you choose to watch for a free mechanic on a breakdown, a late invoice paid now, or a weekly cash top-up (Office tab). Tap Ad choices in the Career tab to see Google's settings. The Bulk and Ag pack stays free in the beta.
+
 Tell us: do the bulk rates and job speeds feel right against real work? Anything that reads wrong, adds up wrong or doesn't fit your screen? Screenshot it and tap Share Beta Feedback.
