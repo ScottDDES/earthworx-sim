@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { BETA } from '../channel';
 import { buy, canBuy, hasBulk, restore, useShop } from '../shop';
 import { adPrivacyOptions, adsAvailable } from '../ads';
-import { MOODS, TICKETS, inherit, TIER, canBuyOut, checks, checks2, checks3, checks4, checks5, ownedCounts, rung, rvForm, rvPhase, stars, game, play } from '@engine';
+import { MOODS, TICKETS, inherit, TIER, canBuyOut, checks, checks2, checks3, checks4, checks5, ownedCounts, routeRung, rung, rvForm, rvPhase, stars, game, play } from '@engine';
 import { TICKET_CATS, TICKET_TEXT, checkWords, districtForm, starTxt, stepsFor } from '@engine/text/career';
 import { diaryLines } from '@engine/text/diary';
 import { sfx } from '../sound';
@@ -60,13 +60,24 @@ function Wallet({ c }: { c: Career }) {
   );
 }
 
-function Ladder({ c }: { c: Career }) {
+/** Has this outfit started on the other kind of work? A bulk outfit with a grader or a road job; a roads outfit with the pack and a bulk job or a dirt mover. */
+function bothWays(c: Career): boolean {
+  const owns = (ts: string[]) => c.fleet.some((m) => ts.includes(m.type) && m.status !== 'auction');
+  if (c.path === 'bulk') return owns(['grader']) || (c.subsWon || 0) > 0;
+  return !!c.packs?.bulk && (((c as { bulkDone?: number }).bulkDone || 0) > 0 || owns(['d6', 'd8', 'd9', 'd10', 'excavator', 'pull', 's623', 's627', 's631', 's637', 's651', 's657']));
+}
+
+/** The career ladder, one route at a time: the outfit's own, and (once it does both kinds of work) the other. */
+function Ladder({ c, route, other }: { c: Career; route: 'roads' | 'bulk'; other?: boolean }) {
   const [all, setAll] = useState(false);
-  const rg = rung(c as never), st = { ...c, owned: ownedCounts(c.fleet) };
-  const ok: Record<number, boolean[]> = { 3: checks(c as never), 4: checks2(c as never), 5: checks3(c as never), 7: checks4(c as never), 8: checks5(c as never) };
-  const STEPS = stepsFor(c.path), later = STEPS.length - (rg + 1);
+  const r = { ...c, path: route } as never, rg = routeRung(c as never, route), st = { ...c, path: route, owned: ownedCounts(c.fleet) };
+  const ok: Record<number, boolean[]> = { 3: checks(r), 4: checks2(r), 5: checks3(r), 7: checks4(r), 8: checks5(r) };
+  const STEPS = stepsFor(route), later = STEPS.length - (rg + 1);
   return (
     <div className="card">
+      {other !== undefined && (
+        <div className="sub">{route === 'bulk' ? 'Bulk and Ag work' : 'Road work'}{other ? '' : ' (where you started)'}</div>
+      )}
       {STEPS.map((s, i) => {
         const k = i + 1, cls = k < rg ? 'done' : k === rg ? 'here' : '';
         if (k > rg + 1 && !all) {
@@ -263,7 +274,14 @@ export function CareerTab({ c, act, onNew, saves }: { c: Career; act: Act; onNew
         <div className="row"><b className="grow">Track record</b><span style={{ color: 'var(--gold)', fontSize: 20, letterSpacing: 2 }} aria-label={n + ' of 3 stars'}>{starTxt(n)}</span></div>
         <div className="tiny muted">{c.rep} points. Finished jobs earn points (council work earns 2). Walking off a job costs one.</div>
       </div>
-      <Ladder c={c} />
+      {bothWays(c) && (
+        <div className="card">
+          <b>Two ways up</b>
+          <div className="small muted">You can climb on road work or on bulk work, and your standing is whichever is further along: step {rung(c as never)}, {stepsFor(routeRung(c as never, 'bulk') > routeRung(c as never, 'roads') ? 'bulk' : 'roads')[rung(c as never) - 1]?.t.toLowerCase()}. What each step unlocks counts for both.</div>
+        </div>
+      )}
+      <Ladder c={c} route={c.path === 'bulk' ? 'bulk' : 'roads'} other={bothWays(c) ? false : undefined} />
+      {bothWays(c) && <Ladder c={c} route={c.path === 'bulk' ? 'roads' : 'bulk'} other />}
       <District c={c} act={act} />
       {(c.week >= 13 || rung(c as never) >= 2) && <SeasonPicker saves={saves} />}
       <div className="card">

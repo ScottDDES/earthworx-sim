@@ -1,7 +1,7 @@
 // The fixes after the port: where the real game does better than the prototype.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, ATTACH, coverOff, dayQuality, doable, drawCard, rung, game, genEnquiry, genOffers, isBulk, leakOdds, passOdds, pricingVol, REDZONE_CASH, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot, rainBulk, rainCrews, type Job } from '../src';
+import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, ATTACH, coverOff, dayQuality, doable, drawCard, rung, routeRung, checkWin, game, genEnquiry, genOffers, isBulk, leakOdds, passOdds, pricingVol, REDZONE_CASH, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot, rainBulk, rainCrews, type Job } from '../src';
 import { cardView } from '../src/text/cardView';
 
 /** Bulk jobs seen so far: finished ones come off c.jobs, so tests keep hold of them here. */
@@ -644,9 +644,42 @@ describe('Starting as a bulk earthworks outfit', () => {
     expect(rung(c as never)).toBe(3);
     c.bulkDone = 1;
     expect(rung(c as never)).toBe(4);
-    // and a road career with the same gear is still waiting on a grader
-    const road = { ...c, path: 'roads' };
-    expect(rung(road as never)).toBe(2);
+    // and the road route with the same gear is still waiting on a grader
+    expect(routeRung(c as never, 'roads')).toBe(2);
+  });
+
+  it('a bulk outfit that takes on road work climbs by whichever route is further along', () => {
+    const c = bulkCareer(3, 350000);
+    for (const t of ['excavator', 'grader', 'roller', 'cart'] as const) c.fleet.push({ id: 'r' + t, type: t, year: 2015, cond: 80, hours: 9000, svcAt: 9000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null });
+    c.phase = 'play';
+    c.rep = 12;
+    c.whs.sys = 1;
+    // no compactor, so the bulk route waits at small fleet; the road crew makes it ready to subcontract
+    expect(routeRung(c as never, 'bulk')).toBe(2);
+    expect(rung(c as never)).toBe(3);
+    // three road subcontracts done and two stars: its own council contracts, as on the roads
+    c.subsWon = 3;
+    c.subsDone = 3;
+    expect(rung(c as never)).toBe(5);
+    checkWin(c as never);
+    expect(c.won2).toBe(true);
+    // the prototype only ever counted the bulk route
+    compat.prototype = true;
+    expect(rung(c as never)).toBe(2);
+    compat.prototype = false;
+  });
+
+  it('a roads outfit with the bulk pack can climb on bulk work too', () => {
+    const c = game.newCareer({ co: 'Both Ways', loan: 350000, town: 'gdi', bulk: true }, 8);
+    for (const t of ['d6', 'padfoot', 'moxycart'] as const) c.fleet.push({ id: 'b' + t, type: t, year: 2015, cond: 80, hours: 9000, svcAt: 9000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null });
+    c.phase = 'play';
+    c.rep = 6;
+    c.whs.sys = 1;
+    (c as { bulkDone?: number }).bulkDone = 1;
+    expect(routeRung(c as never, 'roads')).toBe(2);
+    expect(rung(c as never)).toBe(4);
+    // without the pack, bulk work doesn't count
+    expect(rung({ ...c, packs: {} } as never)).toBe(2);
   });
 
   it('a bulk outfit can play two years from an excavator and make a living', () => {

@@ -264,6 +264,27 @@ function PriceSheet({ c, t, act, onClose }: { c: Career; t: SubTender; act: Act;
 
 // ---------- the tab ----------
 
+/** A bulk outfit, once it's found its feet: what it takes to be asked to price road work too. */
+function RoadWorkCard({ c }: { c: Career }) {
+  const has = (t: 'grader' | 'roller' | 'cart') => game.owns(c, t);
+  const started = ((c as { bulkDone?: number }).bulkDone || 0) > 0 || has('grader') || c.week >= 26;
+  if (!started) return null;
+  const row = (ok: boolean, t: string) => <span key={t} className="check"><span className={ok ? 'ok' : 'no'}>{ok ? '✓' : '○'}</span><span>{t}</span></span>;
+  return (
+    <div className="card">
+      <div className="row"><span className="chip c-rain">ROAD WORK</span><span className="grow" /></div>
+      <b>Head contractors are asking around</b>
+      <div className="small muted">Flood recovery road jobs go to outfits with a road crew. Get set up and they'll send you packages to price. Road jobs count toward your career just like bulk work does, and a grader gets council day hire straight away.</div>
+      {row(has('grader'), 'A grader')}
+      {row(has('roller'), 'A roller')}
+      {row(has('cart'), 'A water cart')}
+      {row(stars(c.rep) >= 1, '1 star of track record (' + Math.min(c.rep, 5) + ' of 5 points)')}
+      {row(c.whs.sys >= 1, 'SWMS and a WHS plan (Yard, Safety)')}
+      <span className="tiny muted">Graders, rollers and carts come up in the Market most weeks.</span>
+    </div>
+  );
+}
+
 /** Who's on the machine: "Shaz driving", "You, covering for Shaz", or "Shaz off, nobody driving". */
 function driving(c: Career, j: Job): string {
   const p = j.who && j.who !== 'you' ? c.staff.find((x) => x.id === j.who) : null;
@@ -324,6 +345,7 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
       )}
       {showAll && offersNot.map((o) => <OfferCard key={o.id} c={c} o={o} act={act} onMsg={setMsg} />)}
       {c.path !== 'bulk' && bulkRinging}
+      {c.path === 'bulk' && !can && <RoadWorkCard c={c} />}
       {pt && <PriceSheet c={c} t={pt} act={act} onClose={() => setPricing(null)} />}
       {ct && <PlanSheet c={c} t={ct} act={act} onClose={() => setPlanning(null)} />}
     </>

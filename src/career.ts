@@ -1,6 +1,7 @@
 // The career ladder: eight rungs from owner-operator to prestige contractor, what each needs, what unlocks
 // on the way, and the tickets (achievements) earned by doing the real thing. Names and wording live in text/career.ts.
 
+import { compat } from './compat';
 import { note } from './diary';
 import type { Loan } from './bank';
 import type { Machine } from './machines';
@@ -43,6 +44,8 @@ export interface Ladder {
   unl?: Record<string, number>;
   /** Started as a bulk earthworks outfit rather than on the roads. */
   path?: 'roads' | 'bulk';
+  /** Add-on packs turned on (a roads outfit with bulk work). */
+  packs?: { bulk?: boolean };
   bulkDone?: number;
   devDone?: number;
   testsPassed?: number;
@@ -102,8 +105,24 @@ export function checks5(st: Ladder): boolean[] {
   return [(st.majorDone || 0) >= 2, st.whs.sys >= 3, st.yard === 'hub', (st.prestigeDone || 0) >= 1];
 }
 
-/** Where you are on the ladder, 1 to 8. */
+/**
+ * Where you are on the ladder, 1 to 8. In the real game an outfit doing both kinds of work climbs by whichever is
+ * further along: a bulk outfit that takes on road subcontracts can win its own council contracts that way, and a
+ * roads outfit with the bulk pack can climb on dams and developers' jobs.
+ */
 export function rung(st: Ladder): number {
+  const own = rungOn(st);
+  if (compat.prototype) return own;
+  if (isBulkPath(st)) return Math.max(own, rungOn({ ...st, path: 'roads' }));
+  return st.packs?.bulk ? Math.max(own, rungOn({ ...st, path: 'bulk' })) : own;
+}
+
+/** How far along one route is: the career's own path, or the other kind of work. */
+export function routeRung(st: Ladder, path: 'roads' | 'bulk'): number {
+  return rungOn({ ...st, path });
+}
+
+function rungOn(st: Ladder): number {
   if (isBulkPath(st)) {
     if (st.won3 && checks5(st).every(Boolean)) return 8;
     if (st.won3 && checks4(st).every(Boolean)) return 7;
