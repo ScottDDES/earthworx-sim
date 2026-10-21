@@ -5,12 +5,55 @@ import {
   rateStep, wallQuality, game, type Attachment, type BulkKind, type FarmEnquiry, type Job,
 } from '@engine';
 import { ATTACH_NAME, ATTACH_NOTE, DAM_KIND, SLOWEST, UNIT, damTitle, enquiryLine, needs, qty, surveyFind, surveyLabel, surveyRisk, wallWord } from '@engine/text/bulk';
+import { jobTitle } from '@engine/text/work';
 import { f } from '../format';
 
 type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
 const n0 = (n: number) => Math.round(n).toLocaleString('en-AU');
 const money = (n: number) => (Number.isInteger(n) ? f(n) : '$' + n.toFixed(2));
+
+/** Your machines a bulk job of this kind could use if they were free. */
+function couldUse(c: Career, kind: BulkKind): Career["fleet"] {
+  const asIf = c.fleet.map((m) => (m.status === 'auction' ? m : { ...m, status: 'idle' as const, down: 0 }));
+  const ids = new Set(freeFor({ fleet: asIf } as never, kind).map((m) => m.id));
+  return c.fleet.filter((m) => ids.has(m.id));
+}
+
+/** Bulk work that wants a machine of this type, if you hire your last free one out: jobs won and waiting, and prices sent. */
+export function waitingOn(c: Career, type: string): { won: string[]; priced: string[] } {
+  if (c.fleet.filter((m) => m.type === type && m.status === 'idle' && m.down === 0).length > 1) return { won: [], priced: [] };
+  const uses = (k: unknown) => couldUse(c, k as BulkKind).some((m) => m.type === type);
+  return {
+    won: c.jobs.filter((j) => j.kind === 'bulk' && j.state === 'waiting' && uses(j.dk)).map((j) => j.client + "'s " + DAM_KIND[j.dk as BulkKind].toLowerCase()),
+    priced: (c.bulk?.enq ?? []).filter((e) => e.quoted && uses(e.kind)).map((e) => e.farm + "'s " + DAM_KIND[e.kind].toLowerCase()),
+  };
+}
+
+const and = (xs: string[]) => (xs.length > 1 ? xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1] : xs[0]);
+
+/** Above the offers: which bulk work a hire would keep waiting, once per machine type. */
+export function HoldWarning({ c, types }: { c: Career; types: string[] }) {
+  const lines = [...new Set(types)].flatMap((t) => {
+    const w = waitingOn(c, t), m = TYPES[t as keyof typeof TYPES].short;
+    if (!w.won.length && !w.priced.length) return [];
+    const won = w.won.length ? and(w.won) + (w.won.length > 1 ? ' are' : ' is') + ' won and waiting for your ' + m + '. ' : '';
+    const priced = !w.priced.length ? '' : w.won.length ? 'So might ' + and(w.priced) + '. '
+      : "You've priced " + and(w.priced) + ', and ' + (w.priced.length > 1 ? 'they need' : 'it needs') + ' your ' + m + ' if the answer is yes. ';
+    return [won + priced + 'Hire it out and the farm work waits.'];
+  });
+  if (!lines.length) return null;
+  return <div className="card" style={{ border: '2px solid var(--rust)' }}>{lines.map((t) => <div key={t} className="small">{t}</div>)}</div>;
+}
+
+/** What the machines a waiting job could use are doing instead. */
+function heldUp(c: Career, j: Job): string[] {
+  return couldUse(c, j.dk as BulkKind).filter((m) => m.status !== 'idle' || m.down > 0).map((m) => {
+    const on = m.jobId ? c.jobs.find((x) => x.id === m.jobId) : undefined;
+    const where = !on ? ' is busy' : on.kind === 'dry' ? ' is out on dry hire to ' + on.client : on.kind === 'wet' ? ' is out on wet hire to ' + on.client : ' is on ' + jobTitle(on);
+    return 'Your ' + TYPES[m.type].short + (m.down > 0 ? ' is broken down' : where) + '.';
+  });
+}
 
 /** A client's enquiry: the quantity, the survey, what your spread would take, and your price. */
 export function EnquiryCard({ c, e, act }: { c: Career; e: FarmEnquiry; act: Act }) {
@@ -50,7 +93,8 @@ export function EnquiryCard({ c, e, act }: { c: Career; e: FarmEnquiry; act: Act
           </div>
           <div className="kv"><b>Your price</b><b className="num" style={{ fontSize: 18 }}>{f(price)}</b></div>
           {est.perDay > 0 && <div className="tiny muted">After the spread's running costs: {f(price - est.cost)}. Wages, repayments and the yard come out of that.</div>}
-          <button type="button" className="btn dark full" onClick={() => act((x) => game.damQuote(x, e.id))}>Send the price</button>
+          {est.perDay <= 0 && <div className="tiny" style={{ color: 'var(--rust)' }}>Win it and you've {WAIT_WEEKS} weeks to get the gear before {e.farm} gets someone else, and they'll tell people.</div>}
+          <button type="button" className="btn dark full" onClick={() => act((x) => game.damQuote(x, e.id))}>{est.perDay > 0 ? 'Send the price' : 'Send the price anyway'}</button>
         </>
       )}
     </div>
@@ -69,7 +113,10 @@ export function DamJobCard({ c, j, act }: { c: Career; j: Job; act: Act }) {
       <div className="row"><span className="chip c-job">{DAM_KIND[kind].toUpperCase()}</span>{j.tested ? <span className="chip c-rain">TESTED</span> : null}<span className="grow" /><span className="tiny muted">{kind === 'dev' ? 'Contract ' : 'Fixed '}{f(j.fixed as number)}</span></div>
       <b>{damTitle(j as never)}</b>
       {j.state === 'waiting' ? (
-        <div className="small muted">Waiting to start. {needs(kind)} {left} week{left === 1 ? '' : 's'} before {j.client} gets someone else.</div>
+        <>
+          <div className="small muted">Waiting to start. {needs(kind)} {left} week{left === 1 ? '' : 's'} before {j.client} gets someone else.</div>
+          {heldUp(c, j).map((t) => <div key={t} className="small" style={{ color: 'var(--rust)' }}>{t}</div>)}
+        </>
       ) : j.state === 'burn' ? (
         <div className="small muted">Raked and windrowed. It's fire season, so the windrows wait to be burnt{FIRE_MONTHS.includes(monthIdx(c.week)) ? ' until October' : ''}, and so does the money.</div>
       ) : (

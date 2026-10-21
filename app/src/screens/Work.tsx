@@ -10,7 +10,7 @@ import { KIND_CHIP, KIND_LABEL, councilTitle, jobTitle, offerCatch, offerDetail,
 import { Mentor } from '../Mentor';
 import { f, fk } from '../format';
 import { AdviceRow, CouncilCard, MarginRow, PlanSheet } from './Plan';
-import { DamJobCard, EnquiryCard } from './Bulk';
+import { DamJobCard, EnquiryCard, HoldWarning, waitingOn } from './Bulk';
 
 type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
@@ -48,6 +48,7 @@ function OfferCard({ c, o, act, onMsg }: { c: Career; o: Offer; act: Act; onMsg:
         </>
       ) : (
         <>
+          {!why && (() => { const w = waitingOn(c, o.type); return w.won.length + w.priced.length ? <div className="small" style={{ color: 'var(--rust)', fontWeight: 600 }}>Ties up the {TYPES[o.type].short} your farm work needs.</div> : null; })()}
           <button type="button" className="btn ink full" disabled={!!why} onClick={() => act((x) => play.accept(x, o.id))}>Take it</button>
           {why && <div className="why">{WHY[why]}</div>}
         </>
@@ -277,6 +278,10 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
   const [msg, setMsg] = useState<string | null>(null);
   const pt = pricing ? c.tenders.find((t) => t.id === pricing) : undefined;
   const can = canTender((t) => game.owns(c, t), c.rep, c.whs.sys);
+  const [showAll, setShowAll] = useState(false);
+  const shut = (o: Offer) => !!whyNot(c as never, o) && !bookable(c as never, o);
+  const offersNow = c.offers.filter((o) => !shut(o)).sort((a, b) => Number(!!whyNot(c as never, a)) - Number(!!whyNot(c as never, b)));
+  const offersNot = c.offers.filter(shut);
   // farmers and developers ringing (the Bulk and Ag pack)
   const bulkRinging = c.packs?.bulk ? (
         <>
@@ -309,8 +314,15 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
       {c.path === 'bulk' && bulkRinging}
       <div className="sub">Work on offer this week</div>
       {!c.offers.length && <div className="card"><div className="small muted">Nothing else this week. New work comes up every Monday.</div></div>}
-      {/* the work you can take first; jobs for machines you haven't got go to the bottom */}
-      {[...c.offers].sort((a, b) => Number(!!whyNot(c as never, a)) - Number(!!whyNot(c as never, b))).map((o) => <OfferCard key={o.id} c={c} o={o} act={act} onMsg={setMsg} />)}
+      {c.packs?.bulk && <HoldWarning c={c} types={offersNow.filter((o) => !whyNot(c as never, o)).map((o) => o.type)} />}
+      {/* the work you can take (or ring about) first; the rest fold away under one line */}
+      {offersNow.map((o) => <OfferCard key={o.id} c={c} o={o} act={act} onMsg={setMsg} />)}
+      {offersNot.length > 0 && (
+        <button type="button" className="btn full" aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>
+          {showAll ? 'Hide' : 'Show'} {offersNot.length} {offersNow.length ? 'more ' : ''}job{offersNot.length === 1 ? '' : 's'} you can't take now · {[...new Set(offersNot.map((o) => TYPES[o.type].short))].join(', ')}
+        </button>
+      )}
+      {showAll && offersNot.map((o) => <OfferCard key={o.id} c={c} o={o} act={act} onMsg={setMsg} />)}
       {c.path !== 'bulk' && bulkRinging}
       {pt && <PriceSheet c={c} t={pt} act={act} onClose={() => setPricing(null)} />}
       {ct && <PlanSheet c={c} t={ct} act={act} onClose={() => setPlanning(null)} />}
