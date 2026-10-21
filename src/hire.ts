@@ -203,6 +203,9 @@ export function frozen(b: Pick<Biz, 'freeze' | 'week'>): boolean {
   return (b.freeze ?? 0) > b.week;
 }
 
+/** Dozers the council hires by the day to push up gravel at its pits. */
+const COUNCIL_DOZERS: readonly string[] = ['d6', 'd8', 'd9', 'd10'];
+
 /** This week's hire offers. fmul is how busy the work is (market.ts). */
 export function genOffers(rand: Rand, b: Biz, fmul: number, won: boolean, won2: boolean): Offer[] {
   const T = TOWNS[b.town], out: Offer[] = [];
@@ -222,7 +225,11 @@ export function genOffers(rand: Rand, b: Biz, fmul: number, won: boolean, won2: 
     // call; in the real game a bulk outfit that's bought road gear still gets them, in step with how much bulk gear it runs
     const bulkGear = (b as { path?: string }).path === 'bulk' ? b.fleet.filter((m) => isBulk(m.type) && m.status !== 'auction').map((m) => m.type) : [];
     const roadGear = owns(b, 'grader');
-    const bulkCall = bulkGear.length > 0 && (!roadGear || (!compat.prototype && rand() < Math.max(0.5, bulkGear.length / b.fleet.filter((m) => m.status !== 'auction').length)));
+    // the real game: the council rings for a dozer too, to push up gravel at its pit
+    const dozers = compat.prototype || kind !== 'council' ? [] : b.fleet.filter((m) => COUNCIL_DOZERS.includes(m.type) && m.status !== 'auction').map((m) => m.type);
+    const pit = dozers.length > 0 && rand() < (roadGear ? 0.5 : 0.8);
+    if (pit) type = pick(rand, dozers);
+    const bulkCall = !pit && bulkGear.length > 0 && (!roadGear || (!compat.prototype && rand() < Math.max(0.5, bulkGear.length / b.fleet.filter((m) => m.status !== 'auction').length)));
     if (bulkCall && contractors.length) {
       if (kind === 'council' || kind === 'private') kind = 'wet';
       type = pick(rand, bulkGear);
@@ -234,6 +241,9 @@ export function genOffers(rand: Rand, b: Biz, fmul: number, won: boolean, won2: 
     } else if (kind === 'dry') {
       const client = pick(rand, contractors), days = int(rand, 2, 6), rate = round(Ty.dry * rf * (0.92 + rand() * 0.16), 100);
       out.push({ id, kind, type, place, client, days, rate, terms: CLIENTS[client]!.terms });
+    } else if (kind === 'council' && type !== 'grader') {
+      const days = int(rand, 5, 15), rate = round((Ty.wet + Ty.fuel) * 0.9 * (0.95 + rand() * 0.1), 10);
+      out.push({ id, kind, type, place, client: T.council, days, rate, terms: 2, fuelPaid: true });
     } else if (kind === 'council') {
       const days = int(rand, 12, 25), rate = round(225 * 9 * (0.95 + rand() * 0.1), 10);
       out.push({ id, kind, type, place, client: T.council, days, rate, terms: 2, fuelPaid: true });

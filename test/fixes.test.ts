@@ -3,6 +3,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, ATTACH, coverOff, dayQuality, doable, drawCard, rung, routeRung, checkWin, game, genEnquiry, genOffers, isBulk, leakOdds, passOdds, pricingVol, REDZONE_CASH, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot, rainBulk, rainCrews, type Job } from '../src';
 import { cardView } from '../src/text/cardView';
+import { offerCatch, offerDetail, offerTitle } from '../src/text/work';
 
 /** Bulk jobs seen so far: finished ones come off c.jobs, so tests keep hold of them here. */
 const track = (c: { jobs: Job[] }, seen: Set<Job>) => { for (const j of c.jobs) if (j.kind === 'bulk') seen.add(j); };
@@ -684,6 +685,33 @@ describe('Starting as a bulk earthworks outfit', () => {
     for (let i = 0; i < 20; i++) for (const o of genOffers(rand, c as never, 1, false, false)) if (isBulk(o.type)) pb++;
     compat.prototype = false;
     expect(pb).toBe(0);
+  });
+
+  it('the council rings for a dozer to push up gravel at its pit, and it runs and pays like grading', () => {
+    const c = bulkCareer(9, 350000);
+    c.fleet.push({ id: 'pd6', type: 'd6', year: 2015, cond: 80, hours: 9000, svcAt: 9000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null });
+    c.phase = 'play';
+    const rand = seedRand(4);
+    let o: ReturnType<typeof genOffers>[number] | undefined;
+    for (let i = 0; i < 80 && !o; i++) o = genOffers(rand, c as never, 1, false, false).find((x) => x.kind === 'council');
+    expect(o?.type).toBe('d6');
+    expect(offerTitle(o!)).toBe('Dozer D6: pushing up gravel at the council pit');
+    expect(offerDetail(o!)).toMatch(/^Ripping and stockpiling gravel at the pit near /);
+    // about 90% of the D6's rate with fuel, and you buy the fuel
+    expect(o!.rate).toBeGreaterThan(2000);
+    expect(o!.rate).toBeLessThan(2500);
+    expect(offerCatch(o!), offerCatch(o!)).toContain('You supply fuel, about $700 a day');
+    // take it and work it through
+    c.offers = [o!];
+    expect(game.accept(c, o!.id)).toBe(true);
+    const j = c.jobs.find((x) => x.kind === 'council')!;
+    for (let w = 0; w < 8 && !j.finished && c.jobs.includes(j); w++) { for (let k = 0; c.queue.length && k < 30; k++) choose(c, 0); game.endWeek(c); }
+    expect(j.done).toBeGreaterThanOrEqual(o!.days);
+    expect(Number.isFinite(c.bank)).toBe(true);
+    // the prototype only ever rang for a grader
+    compat.prototype = true;
+    for (let i = 0; i < 30; i++) for (const x of genOffers(rand, c as never, 1, false, false)) if (x.kind === 'council') expect(x.type).toBe('grader');
+    compat.prototype = false;
   });
 
   it('a roads outfit with the bulk pack can climb on bulk work too', () => {
