@@ -1,7 +1,7 @@
 // The Bulk and Ag pack on the Work tab: clients ringing about work, the jobs on the go, and the attachments.
 
 import {
-  ATTACH, BULK_CASUAL, FIRE_MONTHS, KINDS, SURVEY_COST, TYPES, WAIT_WEEKS, damVolume, freeFor, isDam, jobEstimate, monthIdx, pricingVol, quotePrice,
+  ATTACH, BULK_CASUAL, laserFree, laserOwned, FIRE_MONTHS, KINDS, SURVEY_COST, TYPES, WAIT_WEEKS, damVolume, freeFor, isDam, jobEstimate, monthIdx, pricingVol, quotePrice,
   rateStep, wallQuality, game, type Attachment, type BulkKind, type FarmEnquiry, type Job,
 } from '@engine';
 import { ATTACH_NAME, ATTACH_NOTE, DAM_KIND, SLOWEST, UNIT, damTitle, enquiryLine, needs, qty, surveyFind, surveyLabel, surveyRisk, wallWord } from '@engine/text/bulk';
@@ -75,7 +75,9 @@ export function EnquiryCard({ c, e, act }: { c: Career; e: FarmEnquiry; act: Act
       {K.survey && !e.surveyed && <div className="tiny muted">{surveyRisk(e)}</div>}
       {e.tested && isDam(e.kind) && <div className="tiny">An engineer's spec: the wall gets compaction tests at the end, and pays about 15% more. Fail and you rework it at your cost. Roll it, water it, and think about preconditioning the pit.</div>}
       {e.kind === 'rake' && <div className="tiny">Windrows can't be burnt in fire season (August and September). Finish then and you wait for your money.</div>}
-      {att && <div className="tiny" style={{ color: 'var(--rust)' }}>Needs the {ATTACH_NAME[att].toLowerCase()} ({f(ATTACH[att])} in the Market).</div>}
+      {att && <div className="tiny" style={{ color: 'var(--rust)' }}>Needs the {ATTACH_NAME[att]} ({f(ATTACH[att])} in the Market).</div>}
+      {e.kind === 'laser' && !att && laserFree(c as never) <= 0 && <div className="tiny" style={{ color: 'var(--rust)' }}>Your Laser Gear is on another job. Win this and it waits for it, or buy another in the Market.</div>}
+      {e.kind === 'laser' && !c.fleet.some((m) => m.laser && TYPES[m.type] && ['pull', 's623', 's627', 's631', 's637', 's651', 's657'].includes(m.type)) && <div className="tiny" style={{ color: 'var(--rust)' }}>Needs Laser Buckets or scrapers fitted with laser control (in the Yard).</div>}
       <div className="tiny" style={{ background: 'var(--soft)', borderRadius: 10, padding: '10px 12px' }}>
         {est.perDay > 0
           ? <>With what's free in your yard: about <b>{est.days} working day{est.days === 1 ? '' : 's'}</b> at {qty(Math.round(est.perDay * 10) / 10, u)} a day, held up by {SLOWEST[est.slowest] ?? est.slowest}. The spread costs about {f(est.dayCost)} a day in fuel, servicing{est.casuals ? ' and ' + est.casuals + ' labour-hire operator' + (est.casuals > 1 ? 's' : '') + ' at ' + f(BULK_CASUAL) : ''}: {f(est.cost)} all up.</>
@@ -149,7 +151,13 @@ export function Attachments({ c, act }: { c: Career; act: Act }) {
       {(Object.keys(ATTACH) as Attachment[]).map((a) => (
         <div key={a} className="row" style={{ alignItems: 'flex-start', gap: 10, padding: '6px 0' }}>
           <span className="grow"><b className="small">{ATTACH_NAME[a]}</b><br /><span className="tiny muted">{ATTACH_NOTE[a]}</span></span>
-          {own[a] ? <span className="chip c-job">OWNED</span>
+          {a === 'laser' && own[a] ? (
+            // more than one Laser Gear: one a job, as many laser machines on it as you like
+            <span style={{ display: 'grid', gap: 4, justifyItems: 'end' }}>
+              <span className="chip c-job">OWN {laserOwned(c as never)} · {laserFree(c as never)} FREE</span>
+              <button type="button" className="btn" disabled={c.bank < ATTACH[a]} onClick={() => act((x) => game.buyAttach(x, a))}>Buy another · {f(ATTACH[a])}</button>
+            </span>
+          ) : own[a] ? <span className="chip c-job">OWNED</span>
             : <button type="button" className="btn" disabled={c.bank < ATTACH[a]} onClick={() => act((x) => game.buyAttach(x, a))}>Buy · {f(ATTACH[a])}</button>}
         </div>
       ))}

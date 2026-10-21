@@ -6,7 +6,7 @@ import { bankWeek, newLoan, weeklyRepay, type Loan } from './bank';
 import { yearOf } from './calendar';
 import { DIFFICULTY, costIdx as costIdxOf, difficultyOf, type Difficulty } from './difficulty';
 import { book, newAccounts, type Accounts } from './ledger';
-import { GPS_COST, RT_COST, TYPES, isBulk, newMachine, serviced, svcCost, value, type Machine } from './machines';
+import { GPS_COST, LASER_COST, RT_COST, TYPES, canGps, canLaser, isBulk, newMachine, serviced, svcCost, value, type Machine } from './machines';
 import { MOODS, fmul as fmulOf, genBulkListings, genLoaderListings, genRoadtrainListings, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, unlist, inspect as inspectL, bid as bidL, hammer as hammerL, type HammerResult, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
 import { fromState, hashN, int, pick, seedRand, type Rand } from './rng';
 import { mkRivals, rivalsWeek, type Rival, type RivalEvent } from './rivals';
@@ -597,16 +597,27 @@ export function fixProperly(c: Career, id: string): boolean {
   return true;
 }
 
-/** Fit GPS machine control to a grader: a better finish, and 7% faster. */
+/** Fit GPS machine control: a grader (a better finish, 7% faster), or in the real game an excavator, or a scraper, laser bucket or dozer that has laser control. */
 export function fitGps(c: Career, id: string): boolean {
   const m = c.fleet.find((x) => x.id === id);
-  if (!m || m.type !== 'grader' || m.gps || c.bank < GPS_COST) return false;
+  if (!m || m.gps || c.bank < GPS_COST || (compat.prototype ? m.type !== 'grader' : !canGps(m))) return false;
   c.bank -= GPS_COST;
   book(c.acc, 'capital', GPS_COST);
   m.gps = true;
   tcAdd(c as never, 'gps');
   tickets(c);
   note(c, { k: 'gps', m: mRef(m), cost: GPS_COST });
+  return true;
+}
+
+/** Fit laser machine control to a scraper, laser bucket or dozer (the real game): it can run off a job's Laser Gear. */
+export function fitLaser(c: Career, id: string): boolean {
+  const m = c.fleet.find((x) => x.id === id);
+  if (compat.prototype || !m || !canLaser(m.type) || m.laser || c.bank < LASER_COST) return false;
+  c.bank -= LASER_COST;
+  book(c.acc, 'capital', LASER_COST);
+  m.laser = true;
+  note(c, { k: 'laserFit', m: mRef(m), cost: LASER_COST });
   return true;
 }
 

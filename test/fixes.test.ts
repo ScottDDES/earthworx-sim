@@ -1,7 +1,7 @@
 // The fixes after the port: where the real game does better than the prototype.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, ATTACH, coverOff, dayQuality, doable, drawCard, rung, routeRung, checkWin, game, genEnquiry, genOffers, isBulk, leakOdds, passOdds, pricingVol, REDZONE_CASH, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot, rainBulk, rainCrews, pitDozer, type Job } from '../src';
+import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, ATTACH, coverOff, dayQuality, doable, drawCard, rung, routeRung, checkWin, game, genEnquiry, genOffers, isBulk, leakOdds, passOdds, pricingVol, REDZONE_CASH, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot, rainBulk, rainCrews, pitDozer, canLaser, type Job } from '../src';
 import { cardView } from '../src/text/cardView';
 import { offerCatch, offerDetail, offerTitle } from '../src/text/work';
 
@@ -499,6 +499,8 @@ describe('Bulk and Ag pack, step 4: the rest of the work', () => {
     game.setPack(c, 'bulk', true);
     c.bulk ??= { enq: [] };
     for (const a of att) game.buyAttach(c, a as never);
+    // laser levelling: the scrapers are fitted with laser control (the real game needs it)
+    if (att.includes('laser')) for (const m of c.fleet) if (canLaser(m.type)) m.laser = true;
     c.bank = 3000000;
     return c;
   };

@@ -1,5 +1,6 @@
 // The words for the Bulk and Ag pack's work.
 
+import { compat } from '../compat';
 import type { Job } from '../hire';
 import { KINDS, type Attachment, type BulkKind, type FarmEnquiry, type Unit } from '../bulk';
 
@@ -20,7 +21,7 @@ export const UNIT: Record<Unit, { short: string; per: string; dp: number }> = {
 };
 export const ATTACH_NAME: Record<Attachment, string> = { laser: 'Laser Gear', rake: 'Stick Rake', cutter: 'Cutter Bar' };
 export const ATTACH_NOTE: Record<Attachment, string> = {
-  laser: 'Transmitter, receiver and the bucket controls. Needed for laser levelling.',
+  laser: 'The transmitter for one job site. Every laser-fitted machine on that job runs off it.',
   rake: 'Rakes cleared timber into windrows and leaves the topsoil. Fits any dozer.',
   cutter: 'A blade dragged under the surface to cut regrowth roots. D8 or bigger.',
 };
@@ -74,7 +75,7 @@ export function surveyFind(e: FarmEnquiry): string {
 /** What the kind needs before it can start. */
 export function needs(k: BulkKind): string {
   switch (k) {
-    case 'laser': return 'Scrapers (pull scrapers suit it) and the laser gear, with a grader to trim.';
+    case 'laser': return compat.prototype ? 'Scrapers (pull scrapers suit it) and the laser gear, with a grader to trim.' : 'Laser Buckets or scrapers fitted with laser control, a free Laser Gear, and a grader to trim.';
     case 'channel': return 'An excavator.';
     case 'contour': return 'A grader or a dozer.';
     case 'pad': return 'Dirt movers (scrapers, or an excavator and moxies or tippers), a compactor or roller, water and a grader.';

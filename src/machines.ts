@@ -151,6 +151,8 @@ export interface Machine {
   jobId: string | null;
   sale: unknown;
   gps?: boolean;
+  /** Laser machine control (scrapers, laser buckets, dozers): works off a job's Laser Gear. */
+  laser?: boolean;
   /** A side tipper pulling a second trailer: a roadtrain (the real game). */
   rt?: boolean;
   /** A roller fitted with rubber tyres. */
@@ -166,6 +168,24 @@ export const SVC_EVERY = 250;
 export const GPS_COST = 85000;
 /** GPS machine control: a grader gets 7% more done a day. */
 export const GPS_MUL = 1.07;
+/** Laser machine control on a scraper, laser bucket or dozer: needed for laser levelling, and works off the job's Laser Gear. */
+export const LASER_COST = 18000;
+/** Machine control on bulk gear: laser (with the job's Laser Gear) or GPS gets this much more done a day. */
+export const LASER_MUL = 1.05, GPS_BULK_MUL = 1.1;
+/** And the finish it leaves, on top of rolling and water. */
+export const LASER_Q = 0.04, GPS_Q = 0.08;
+const SCRAPERS: readonly string[] = ['pull', 's623', 's627', 's631', 's637', 's651', 's657'];
+const DOZERS: readonly string[] = ['d6', 'd8', 'd9', 'd10'];
+/** Which machines take laser control: scrapers, laser buckets and dozers. */
+export const canLaser = (t: string) => SCRAPERS.includes(t) || DOZERS.includes(t);
+/** Which machines take GPS: a grader or an excavator as they are; scrapers, laser buckets and dozers once they have laser control. */
+export const canGps = (m: Pick<Machine, 'type' | 'laser'>) => m.type === 'grader' || m.type === 'excavator' || (canLaser(m.type) && !!m.laser);
+/** How much more a machine gets done with its machine control, on a job with (or without) Laser Gear. */
+export function ctlMul(m: Pick<Machine, 'type'> & { laser?: boolean; gps?: boolean }, laserOn: boolean): number {
+  if (m.type === 'grader') return 1;
+  return m.gps ? GPS_BULK_MUL : m.laser && laserOn ? LASER_MUL : 1;
+}
+
 /** A second trailer and dolly turn a side tipper into a roadtrain. */
 export const RT_COST = 95000;
 /** A roadtrain's day: Scott's schedule, $210 an hour wet, $290 with your fuel, $3,500 a week dry, on a 10-hour day. */
@@ -188,10 +208,10 @@ export function baseValue(m: Pick<Machine, 'type' | 'year' | 'cond'>, week: numb
   return round(TYPES[m.type].newV * Math.max(0.2, Math.pow(0.92, age)) * (0.6 + (0.4 * m.cond) / 100), 500);
 }
 
-/** What it's worth with its extras: GPS keeps half its cost, multi-tyres add 10%. */
-export function value(m: Pick<Machine, 'type' | 'year' | 'cond' | 'gps' | 'multi'> & { rt?: boolean }, week: number): number {
+/** What it's worth with its extras: GPS and laser keep half their cost, multi-tyres add 10%. */
+export function value(m: Pick<Machine, 'type' | 'year' | 'cond' | 'gps' | 'multi'> & { rt?: boolean; laser?: boolean }, week: number): number {
   const b = baseValue(m, week);
-  return b + (m.gps ? round(GPS_COST * 0.5, 500) : 0) + (m.multi ? round(b * 0.1, 500) : 0) + (m.rt ? round(RT_COST * 0.6, 500) : 0);
+  return b + (m.gps ? round(GPS_COST * 0.5, 500) : 0) + (m.laser ? round(LASER_COST * 0.5, 500) : 0) + (m.multi ? round(b * 0.1, 500) : 0) + (m.rt ? round(RT_COST * 0.6, 500) : 0);
 }
 
 export function hoursSinceService(m: Machine): number {

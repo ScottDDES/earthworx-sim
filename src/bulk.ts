@@ -6,7 +6,7 @@
 import { book } from './ledger';
 import { monthIdx } from './calendar';
 import { compat, onCompat } from './compat';
-import { TYPES, breakdown, breaks, dayHours, wear, type BulkType, type Machine, type MachineType, type WorkshopCtx } from './machines';
+import { TYPES, breakdown, breaks, ctlMul, dayHours, wear, GPS_Q, LASER_Q, type BulkType, type Machine, type MachineType, type WorkshopCtx } from './machines';
 import { int, pick, type Rand } from './rng';
 import { ROLES } from './staff';
 import { TOWNS } from './towns';
@@ -162,6 +162,8 @@ export interface BulkBook {
   rzFound?: boolean;
   /** Attachments you own. */
   att?: Partial<Record<Attachment, boolean>>;
+  /** Laser Gear units owned, once there's more than one (the real game). */
+  lasers?: number;
   /** The real game: the red-zone grazier's dam, waiting on what you say. */
   rzDam?: FarmEnquiry;
   /** A grazier with a grudge: he rings, and gives it to someone else unless you're dirt cheap. */
@@ -295,8 +297,24 @@ export function yesOdds(e: FarmEnquiry): number {
 }
 
 /** Buy an attachment: one each. */
+/** Laser Gear units owned (the real game buys more than one), and how many aren't on a job. */
+export function laserOwned(b: Pick<B, 'bulk'>): number {
+  return b.bulk?.lasers ?? (b.bulk?.att?.laser ? 1 : 0);
+}
+export function laserFree(b: Pick<B, 'bulk' | 'jobs'>): number {
+  return laserOwned(b) - b.jobs.filter((j) => j.kind === 'bulk' && !j.finished && j.lzr).length;
+}
+
 export function buyAttachment(b: B, a: Attachment): boolean {
   const S = (b.bulk ??= { enq: [] });
+  // the real game: another Laser Gear, for another job at the same time
+  if (a === 'laser' && !compat.prototype && S.att?.laser) {
+    if (b.bank < ATTACH.laser) return false;
+    b.bank -= ATTACH.laser;
+    book(b.acc, 'capital', ATTACH.laser);
+    S.lasers = laserOwned(b) + 1;
+    return true;
+  }
   if (S.att?.[a] || b.bank < ATTACH[a]) return false;
   b.bank -= ATTACH[a];
   book(b.acc, 'capital', ATTACH[a]);
@@ -458,19 +476,30 @@ export interface SpreadRate {
   precon: boolean;
   /** Finished with a grader (laser levelling, pads). */
   trimmed: boolean;
+  /** The finish machine control adds (laser on the job's gear, or GPS), across the dirt movers. */
+  ctlQ?: number;
+}
+
+type Ctl = Pick<Machine, 'type'> & { laser?: boolean; gps?: boolean };
+/** The finish machine control adds: the share of dirt movers with it, laser (on the job's gear) or GPS. */
+function ctlQuality(ms: readonly Ctl[], laserOn: boolean): number {
+  const dm = ms.filter((m) => SCRAPER_SPEC[m.type as BulkType] || DOZE[m.type as BulkType] || m.type === 'excavator');
+  if (!dm.length) return 0;
+  return dm.reduce((a, m) => a + (m.gps ? GPS_Q : m.laser && laserOn ? LASER_Q : 0), 0) / dm.length;
 }
 
 /** Bank m³ an hour of dirt moved: scrapers (pushed or not), else an excavator loading moxies or tippers, else dozers. */
-function dirtRate(ms: readonly Pick<Machine, 'type'>[], haul: number): { k: string; r: number } {
+function dirtRate(ms: readonly Ctl[], haul: number, lz = false): { k: string; r: number } {
+  const mul = (m: Ctl) => ctlMul(m, lz);
   const scr = ms.filter((m) => bulkScraper(m.type)), doz = ms.filter((m) => DOZE[m.type as BulkType]);
   if (scr.length) {
     let self = 0, pushedN = 0, pushedRate = 0, load = 0, bank = 0;
     for (const m of scr) {
       const S = bulkScraper(m.type)!, cyc = scraperCycle({ load: S.load, haul, loadedKmh: S.lk, emptyKmh: S.ek, spreadTurn: 0.8 });
-      if (!S.pushed) self += scraperRate(cyc, S.bank);
+      if (!S.pushed) self += scraperRate(cyc, S.bank) * mul(m);
       else {
         pushedN++;
-        pushedRate += scraperRate(cyc, S.bank);
+        pushedRate += scraperRate(cyc, S.bank) * mul(m);
         load += S.load;
         bank += S.bank;
       }
@@ -484,15 +513,18 @@ function dirtRate(ms: readonly Pick<Machine, 'type'>[], haul: number): { k: stri
     return { k: 'scrapers', r: self + pushed };
   }
   const ex = ms.filter((m) => m.type === 'excavator').length, carts = ms.reduce((a, m) => a + (CART_M3[m.type] ?? 0), 0);
-  if (ex && carts) return { k: carts < ex * DIG ? 'trucks' : 'excavator', r: Math.min(ex * DIG, carts * Math.min(1, 300 / Math.max(300, haul))) };
-  if (doz.length) return { k: 'dozers', r: doz.reduce((a, m) => a + DOZE[m.type as BulkType]!, 0) * Math.min(1, 60 / Math.max(60, haul)) };
+  const dig = ms.filter((m) => m.type === 'excavator').reduce((a, m) => a + DIG * mul(m), 0);
+  if (ex && carts) return { k: carts < dig ? 'trucks' : 'excavator', r: Math.min(dig, carts * Math.min(1, 300 / Math.max(300, haul))) };
+  if (doz.length) return { k: 'dozers', r: doz.reduce((a, m) => a + DOZE[m.type as BulkType]! * mul(m), 0) * Math.min(1, 60 / Math.max(60, haul)) };
   return { k: 'dirt', r: 0 };
 }
 
 /** What a set of machines gets through an hour, in the job's unit, part by part, and the slowest part. */
-export function workRate(all: readonly Pick<Machine, 'type'>[], j: { dk?: unknown; haul?: unknown; per?: unknown; rock?: unknown; precon?: unknown; tested?: unknown }, att: Partial<Record<Attachment, boolean>> = {}): SpreadRate {
+export function workRate(all: readonly Ctl[], j: { dk?: unknown; haul?: unknown; per?: unknown; rock?: unknown; precon?: unknown; tested?: unknown; lzr?: unknown }, att: Partial<Record<Attachment, boolean>> = {}): SpreadRate {
   // rock in a channel is already in how many metres' worth of digging it really is (the truth)
   const kind = (j.dk ?? 'turkeyNest') as BulkKind, haul = (j.haul as number) || 0, per = (j.per as number) || 1;
+  // laser machine control works off the job's Laser Gear: a laser levelling job always has it
+  const lz = kind === 'laser' || !!j.lzr;
   let ms = all.slice(), pre = false;
   // preconditioning the pit takes a dozer (the smallest) and a moxy water cart off the spread
   if (j.precon && j.tested) {
@@ -507,18 +539,18 @@ export function workRate(all: readonly Pick<Machine, 'type'>[], j: { dk?: unknow
   const done = (scale = 1): SpreadRate => {
     let slowest = '', perHour = Infinity;
     for (const [k, r] of Object.entries(rates)) if (r < perHour) { perHour = r; slowest = k; }
-    return { rates, perHour: perHour === Infinity ? 0 : perHour * DELAYS * scale, slowest, compacted: comp.length > 0, watered: carts.length > 0, precon: pre, trimmed: grader };
+    return { rates, perHour: perHour === Infinity ? 0 : perHour * DELAYS * scale, slowest, compacted: comp.length > 0, watered: carts.length > 0, precon: pre, trimmed: grader, ctlQ: ctlQuality(ms, lz) };
   };
   switch (kind) {
     case 'laser': {
       if (!att.laser) { rates.laser = 0; return done(); }
-      const d = dirtRate(ms.filter((m) => bulkScraper(m.type) || DOZE[m.type as BulkType]), haul || 80);
+      // the real game: only scrapers and laser buckets fitted with laser control can run off the gear
+      const d = dirtRate(ms.filter((m) => (bulkScraper(m.type) && (compat.prototype || m.laser)) || DOZE[m.type as BulkType]), haul || 80, lz);
       rates[d.k] = d.r;
       return done(1 / per);
     }
     case 'channel': {
-      const ex = ms.filter((m) => m.type === 'excavator').length;
-      rates.excavator = ex * DIG;
+      rates.excavator = ms.filter((m) => m.type === 'excavator').reduce((a, m) => a + DIG * ctlMul(m, lz), 0);
       return done(1 / per);
     }
     case 'contour': {
@@ -538,7 +570,7 @@ export function workRate(all: readonly Pick<Machine, 'type'>[], j: { dk?: unknow
     }
     default: {
       // dams, pads and developers' bulk: dirt, then rolling it, then water
-      const d = dirtRate(ms, haul);
+      const d = dirtRate(ms, haul, lz);
       rates[d.k] = d.r;
       if (comp.length || (kind === 'pad' && ms.some((m) => m.type === 'roller'))) rates.compactor = ms.reduce((a, m) => a + (COMPACT_W[m.type] ? compactorRate(COMPACT_W[m.type]!, 8, 0.2, 6) : 0), 0) / (1 - SHRINK);
       if (carts.length) rates.water = carts.reduce((a, m) => a + waterCartRate(TANK[m.type]!, CART_TRIP), 0) / waterNeeded(1 - SHRINK, MOIST_ADD);
@@ -557,7 +589,7 @@ export function freeFor(b: Pick<B, 'fleet'>, kind: BulkKind): Machine[] {
   const idle = b.fleet.filter((m) => m.status === 'idle' && m.down === 0);
   const pickN = (f: (m: Machine) => boolean, n: number) => idle.filter(f).slice(0, n);
   switch (kind) {
-    case 'laser': return [...idle.filter((m) => bulkScraper(m.type)), ...pickN((m) => m.type === 'grader', 1)];
+    case 'laser': return [...idle.filter((m) => bulkScraper(m.type) && (compat.prototype || m.laser)), ...pickN((m) => m.type === 'grader', 1)];
     case 'channel': return [...idle.filter((m) => m.type === 'excavator'), ...pickN((m) => !!DOZE[m.type as BulkType], 1)];
     case 'contour': return pickN((m) => !!CONTOUR_KM[m.type], 2);
     case 'rake': return pickN((m) => !!RAKE_HA[m.type as BulkType], 1);
@@ -613,7 +645,9 @@ export function seatPlan(b: Pick<B, 'staff' | 'youJob'>, ms: readonly Pick<Machi
 
 /** Monday: a waiting job takes its spread if there's enough to make a start; a running one picks up anything freed. */
 export function bulkStart(b: B, events: BulkEvent[]): void {
-  for (const j of b.jobs) startOne(b, j, events);
+  // the real game: jobs waiting to start pick first, so a running job doesn't soak up every free machine
+  const order = compat.prototype ? b.jobs : [...b.jobs.filter((j) => j.state === 'waiting'), ...b.jobs.filter((j) => j.state !== 'waiting')];
+  for (const j of order) startOne(b, j, events);
 }
 
 /** Take a job's spread (and start it, if there's enough to make a start). Called on Monday, and the moment a job's won. */
@@ -621,7 +655,15 @@ function startOne(b: B, j: Job, events: BulkEvent[]): void {
   if (j.kind !== 'bulk' || j.finished || (j.state !== 'waiting' && j.state !== 'running')) return;
   const mine = b.fleet.filter((m) => m.jobId === j.id);
   const add = freeFor(b, j.dk as BulkKind);
-  if (j.state === 'waiting' && workRate(mine.concat(add), j as never, b.bulk?.att).perHour <= 0) return;
+  // the real game: a job runs off one Laser Gear. Levelling can't start without one; other work takes a spare one
+  // if its spread has laser machines and no levelling job is waiting for it.
+  if (!compat.prototype && j.state === 'waiting' && !j.lzr) {
+    if (j.dk === 'laser') {
+      if (laserFree(b) <= 0) return;
+    } else if (laserFree(b) > 0 && mine.concat(add).some((m) => m.laser) && !b.jobs.some((x) => x.kind === 'bulk' && x.dk === 'laser' && x.state === 'waiting' && !x.finished)) j.lzr = true;
+  }
+  if (j.state === 'waiting' && workRate(mine.concat(add), j as never, b.bulk?.att).perHour <= 0) { if (j.dk !== 'laser') delete j.lzr; return; }
+  if (!compat.prototype && j.dk === 'laser') j.lzr = true;
   for (const m of add) {
     m.status = 'job';
     m.jobId = j.id;
@@ -652,11 +694,11 @@ function startOne(b: B, j: Job, events: BulkEvent[]): void {
 // ---------- quality ----------
 
 /** How good a day's work is, 0 to 1. Dams and pads: rolled, watered, preconditioned, or pushed on wet. Banks: a dozer packs them better than a grader. Laser levelling: trimmed with a grader. */
-export function dayQuality(sr: { compacted: boolean; watered: boolean; precon: boolean; trimmed?: boolean; rates?: Record<string, number> }, wetPush: boolean, kind: BulkKind = 'turkeyNest'): number {
+export function dayQuality(sr: { compacted: boolean; watered: boolean; precon: boolean; trimmed?: boolean; ctlQ?: number; rates?: Record<string, number> }, wetPush: boolean, kind: BulkKind = 'turkeyNest'): number {
   if (kind === 'contour') return sr.compacted ? 0.88 : 0.72;
-  if (kind === 'laser') return sr.trimmed ? 0.92 : 0.65;
+  if (kind === 'laser') return Math.min(1, (sr.trimmed ? 0.92 : 0.65) + (sr.ctlQ ?? 0));
   if (kind === 'channel' || kind === 'rake' || kind === 'cutter') return 1;
-  return Math.max(0, Math.min(1, 0.55 + (sr.compacted ? 0.25 : 0) + (sr.watered ? 0.1 : 0) + (sr.precon ? 0.15 : 0) - (wetPush ? 0.25 : 0)));
+  return Math.max(0, Math.min(1, 0.55 + (sr.compacted ? 0.25 : 0) + (sr.watered ? 0.1 : 0) + (sr.precon ? 0.15 : 0) + (sr.ctlQ ?? 0) - (wetPush ? 0.25 : 0)));
 }
 
 /** The work as done so far, 0 to 1. */
