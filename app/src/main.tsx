@@ -5,12 +5,15 @@ import '@fontsource-variable/archivo/wdth.css';
 import './prototype.css';
 import './phone.css';
 import { App } from './App';
+import { WebGate } from './WebGate';
 import { startAds } from './ads';
 import { refreshShop } from './shop';
 
 createRoot(document.getElementById('app')!).render(
   <StrictMode>
-    <App />
+    <WebGate>
+      <App />
+    </WebGate>
   </StrictMode>,
 );
 
