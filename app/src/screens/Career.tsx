@@ -118,7 +118,7 @@ function District({ c, act }: { c: Career; act: Act }) {
       {rv.map((x) => (
         <div key={x.name}>
           <div className="kv">
-            <span>{x.name}<br /><span className="tiny muted">{TIER[x.tier].t} · {x.fleet} machines · {districtForm(rvForm(x, true), x.jobs.length, x.idle)}</span></span>
+            <span>{x.name}<br /><span className="tiny muted">{TIER[x.tier].t} · {x.fleet} machines · {districtForm(rvForm(x, true), x.jobs.length, x.idle, !!x.side)}</span></span>
             <span style={{ color: 'var(--gold)', letterSpacing: 1 }}>{starTxt(x.stars)}</span>
           </div>
           {canBuyOut(c as never) && rvPhase(x) === 'stretched' && (

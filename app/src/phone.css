@@ -16,7 +16,8 @@ body{margin:0}
 
 /* An ad banner along the bottom (phones, Market and Office tabs): the dock sits on top of it, the page clears both. */
 :root { --ad-h: 0px; }
-.ad-on .dock { bottom: calc(var(--ad-h) + env(safe-area-inset-bottom, 0px)); padding-bottom: 0; }
+/* the native banner is pinned just above the home bar; the dock runs to the screen's edge behind it, so nothing scrolls under the ad */
+.ad-on .dock { bottom: 0; padding-bottom: calc(var(--ad-h) + env(safe-area-inset-bottom, 0px)); }
 .ad-on body { padding-bottom: calc(170px + var(--ad-h) + env(safe-area-inset-bottom, 0px)); }
 
 /* A council package's road table: the name takes what's left and wraps inside its own column. */

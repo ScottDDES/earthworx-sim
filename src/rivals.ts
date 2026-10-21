@@ -1,6 +1,7 @@
 // The other outfits chasing the same work. Each runs its own books: win and make money and they grow,
 // lose money or sit idle and they sell gear, fold, or get bought out. They remember: winners price up, losers sharpen.
 
+import { compat } from './compat';
 import { MOODS, type Clearance, type Mood, type RivalSale } from './market';
 import type { MachineType } from './machines';
 import { int, pick, type Rand } from './rng';
@@ -67,6 +68,8 @@ export interface Rival {
   debt: number;
   /** Weeks without a job. */
   idle: number;
+  /** Work you never see (private jobs, other head contractors' packages, dry hire): weeks left and the profit each week. */
+  side?: { wk: number; pw: number };
   /** Weeks in a row short of cash. */
   low: number;
   /** Weeks in town. */
@@ -242,6 +245,18 @@ export function rvFold(rand: Rand, w: RivalWorld, x: Rival, events: RivalEvent[]
 
 const SELL_TYPES: readonly MachineType[] = ['grader', 'roller', 'cart', 'cart', 'grader'];
 
+/** A week's odds that an outfit with nothing on picks up work you never see, and its profit a machine a week. */
+export const SIDE_ODDS = 0.25;
+export const SIDE_PW = 150;
+
+/** A number from 0 to 1 that depends only on what's passed in (FNV-1a, then mixed). */
+function roll(name: string, week: number, n: number): number {
+  let h = 2166136261;
+  for (const ch of name + '|' + week + '|' + n) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  h ^= h >>> 15; h = Math.imul(h, 2246822507); h ^= h >>> 13; h = Math.imul(h, 3266489909); h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
 /** The rivals' week: jobs pay out, gear costs, margins drift, outfits grow, struggle, sell up, fold or start. */
 export function rivalsWeek(rand: Rand, w: RivalWorld, x0: RivalsWeekInputs, events: RivalEvent[]): void {
   const k = x0.fmul;
@@ -257,7 +272,18 @@ export function rivalsWeek(rand: Rand, w: RivalWorld, x0: RivalsWeekInputs, even
       if (x.last.length > 3) x.last.length = 3;
       return false;
     });
-    if (x.jobs.length) x.idle = 0;
+    // the real game: the district has more work than the tenders you see, and outfits with nothing on go looking for it
+    if (!compat.prototype) {
+      if (x.side) {
+        x.cash += x.side.pw;
+        if (--x.side.wk <= 0) delete x.side;
+      } else if (!x.jobs.length) {
+        // its own roll each week (from its name and weeks in town), so the game's other dice fall as they did
+        const [a, b, c] = [roll(x.name, x.age, 1), roll(x.name, x.age, 2), roll(x.name, x.age, 3)];
+        if (a < SIDE_ODDS * Math.max(0.6, Math.min(k, 1.2))) x.side = { wk: 3 + Math.floor(b * 8), pw: Math.round(x.fleet * SIDE_PW * (0.5 + c) * Math.min(k, 1.2)) };
+      }
+    }
+    if (x.jobs.length || x.side) x.idle = 0;
     else x.idle++;
     // Owning the gear costs every week; private work and dry hire fill the gaps, more of it when there's money about.
     const spare = 1 - x.jobs.length / TIER[x.tier].cap;

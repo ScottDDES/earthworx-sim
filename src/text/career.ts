@@ -119,6 +119,6 @@ export function checkWords(step: number, st: LadderState, ok: boolean[]): { t: s
 export const starTxt = (n: number) => '★★★'.slice(0, n) + '☆☆☆'.slice(0, 3 - n);
 
 /** What a rival's up to, on the district card. */
-export function districtForm(form: string, jobs: number, idle: number): string {
-  return (jobs ? 'On ' + jobs + ' job' + (jobs > 1 ? 's' : '') + ' · ' : '') + (form === 'new' ? 'New in town' : form === 'stretched' ? 'Short of cash, selling gear' : form === 'hungry' ? 'No work for ' + idle + ' weeks' : form === 'growing' ? 'Winning work, buying gear' : 'Steady');
+export function districtForm(form: string, jobs: number, idle: number, side = false): string {
+  return (jobs ? 'On ' + jobs + ' job' + (jobs > 1 ? 's' : '') + ' · ' : side ? 'On private work · ' : '') + (form === 'new' ? 'New in town' : form === 'stretched' ? 'Short of cash, selling gear' : form === 'hungry' ? 'No work for ' + idle + ' weeks' : form === 'growing' ? 'Winning work, buying gear' : 'Steady');
 }

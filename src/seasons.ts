@@ -23,7 +23,7 @@ import { coachOff, coachOk, runOn } from './coach';
 import { note } from './diary';
 
 /** Bump whenever the simulation changes, so older scores aren't checked against new rules. */
-export const SIM_VER = 14; // 14: bulk work pays 10% more again, and an outfit doing road and bulk work climbs by whichever is further along. 13: rewarded ads (a free mechanic, a late invoice paid, a weekly top-up). 12: finished bulk jobs come off the books. 11: your fitter patches or fixes breakdowns, and Run on goes by them. 10: roads rated for roadtrains, or singles only. 9: hire roadtrains on council jobs. 8: roadtrains. 7: a loader at the gravel pit. 6: Scott's hire schedule on a 10-hour day, and the 627. 5: bulk fuel and the diesel price. 2: Run on answers small cards itself. 3: playtest fixes (council bans, cover, Christmas). 4: DDES Advisory on WHS and tenders, the DDES ERP
+export const SIM_VER = 15; // 15: rival outfits find work you never see, so they aren't idle for years. 14: bulk work pays 10% more again, and an outfit doing road and bulk work climbs by whichever is further along. 13: rewarded ads (a free mechanic, a late invoice paid, a weekly top-up). 12: finished bulk jobs come off the books. 11: your fitter patches or fixes breakdowns, and Run on goes by them. 10: roads rated for roadtrains, or singles only. 9: hire roadtrains on council jobs. 8: roadtrains. 7: a loader at the gravel pit. 6: Scott's hire schedule on a 10-hour day, and the 627. 5: bulk fuel and the diesel price. 2: Run on answers small cards itself. 3: playtest fixes (council bans, cover, Christmas). 4: DDES Advisory on WHS and tenders, the DDES ERP
 
 export type SeasonId = 'wet2010' | 'dry2019' | 'prog2022';
 

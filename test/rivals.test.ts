@@ -175,3 +175,28 @@ describe('rivals growing, in words', () => {
     for (const k of ['grewMid', 'grewBig']) expect(seen[k], k).toBeGreaterThan(20);
   });
 });
+
+describe('rivals in the real game', () => {
+  it("find other work while you're not tendering: nobody sits idle for months on end", async () => {
+    const { compat, game, choose } = await import('../src');
+    compat.prototype = false;
+    try {
+      let worst = 0, side = 0;
+      for (const seed of [3, 17, 41]) {
+        const c = game.newCareer({ co: 'Quiet Earthmoving', loan: 180000, town: 'gdi' }, seed);
+        const g = c.market!.listings.find((m) => m.type === 'grader')!;
+        game.buy(c, g.id);
+        game.open(c);
+        for (let w = 0; w < 104 && c.phase === 'play'; w++) {
+          for (let k = 0; c.queue.length && k < 30; k++) choose(c, 0);
+          game.endWeek(c);
+          for (const x of c.rivals) { worst = Math.max(worst, x.idle); if (x.side) side++; }
+        }
+      }
+      expect(side).toBeGreaterThan(0);
+      expect(worst).toBeLessThan(26);
+    } finally {
+      compat.prototype = true;
+    }
+  });
+});
