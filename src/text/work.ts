@@ -23,14 +23,18 @@ export function offerTitle(o: Pick<Offer, 'kind' | 'type' | 'client'>): string {
   const T = TYPES[o.type];
   if (o.kind === 'wet') return T.name + ' + operator, for ' + o.client;
   if (o.kind === 'dry') return T.name + ' only, to ' + o.client;
-  if (o.kind === 'council') return o.type === 'grader' ? 'Maintenance grading, day labour' : T.name + ': pushing up gravel at the council pit';
+  if (o.kind === 'council') return o.type === 'grader' ? 'Maintenance grading, day labour' : 'Pushing up gravel at the council pit';
   const [what, place] = privateParts(o.client);
   return what + ' near ' + place;
 }
 
+const PIT_WORD = ['soft ripping', 'firm ripping', 'hard rock, slow going'];
+const n0 = (n: number) => Math.round(n).toLocaleString('en-AU');
+
 export function offerDetail(o: Offer): string {
   if (o.kind === 'wet') return o.days + ' working days on a flood recovery job near ' + o.place + '. They supply fuel.';
   if (o.kind === 'dry') return o.enq ? o.days + ' weeks near ' + o.place + '. They rang about your ' + TYPES[o.type].short + '. Their operator, your machine.' : o.days + ' weeks near ' + o.place + '. Their operator, your machine. You stay free.';
+  if (o.kind === 'council' && o.gravel) return n0(o.gravel) + ' m³ to rip and stockpile at the pit near ' + o.place + ', ' + PIT_WORD[o.rock ?? 0] + '. Needs a ' + TYPES[o.type].short + (o.type === 'd10' ? '' : ' or bigger') + '. About ' + o.days + ' working days.';
   if (o.kind === 'council') return o.type === 'grader' ? 'Rural roads around ' + o.place + ', ' + o.days + ' working days.' : 'Ripping and stockpiling gravel at the pit near ' + o.place + ' for the road crews, ' + o.days + ' working days.';
   return o.days + ' working days, fixed price. Cash a week after you finish.';
 }

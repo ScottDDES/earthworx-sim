@@ -1,7 +1,7 @@
 // The fixes after the port: where the real game does better than the prototype.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, ATTACH, coverOff, dayQuality, doable, drawCard, rung, routeRung, checkWin, game, genEnquiry, genOffers, isBulk, leakOdds, passOdds, pricingVol, REDZONE_CASH, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot, rainBulk, rainCrews, type Job } from '../src';
+import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, ATTACH, coverOff, dayQuality, doable, drawCard, rung, routeRung, checkWin, game, genEnquiry, genOffers, isBulk, leakOdds, passOdds, pricingVol, REDZONE_CASH, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot, rainBulk, rainCrews, pitDozer, type Job } from '../src';
 import { cardView } from '../src/text/cardView';
 import { offerCatch, offerDetail, offerTitle } from '../src/text/work';
 
@@ -695,8 +695,8 @@ describe('Starting as a bulk earthworks outfit', () => {
     let o: ReturnType<typeof genOffers>[number] | undefined;
     for (let i = 0; i < 80 && !o; i++) o = genOffers(rand, c as never, 1, false, false).find((x) => x.kind === 'council');
     expect(o?.type).toBe('d6');
-    expect(offerTitle(o!)).toBe('Dozer D6: pushing up gravel at the council pit');
-    expect(offerDetail(o!)).toMatch(/^Ripping and stockpiling gravel at the pit near /);
+    expect(offerTitle(o!)).toBe('Pushing up gravel at the council pit');
+    expect(offerDetail(o!)).toMatch(/^[\d,]+ m³ to rip and stockpile at the pit near .+, soft ripping\. Needs a D6 or bigger\. About \d+ working days\.$/);
     // about 90% of the D6's rate with fuel, and you buy the fuel
     expect(o!.rate).toBeGreaterThan(2000);
     expect(o!.rate).toBeLessThan(2500);
@@ -712,6 +712,31 @@ describe('Starting as a bulk earthworks outfit', () => {
     compat.prototype = true;
     for (let i = 0; i < 30; i++) for (const x of genOffers(rand, c as never, 1, false, false)) if (x.kind === 'council') expect(x.type).toBe('grader');
     compat.prototype = false;
+  });
+
+  it('the pit job sets the dozer: more gravel or a harder pit wants a bigger one, and a bigger one will do', () => {
+    // the sizes, by quantity and how hard the pit rips
+    expect([pitDozer(3000, 0), pitDozer(9000, 0), pitDozer(15000, 0), pitDozer(20000, 0)]).toEqual(['d6', 'd8', 'd9', 'd10']);
+    expect([pitDozer(3000, 1), pitDozer(3000, 2), pitDozer(9000, 2)]).toEqual(['d8', 'd9', 'd10']);
+    const c = bulkCareer(9, 350000);
+    c.phase = 'play';
+    const pit = (type: 'd8' | 'd9', id: string) => ({ id, kind: 'council' as const, type, place: 'Talwood', client: 'Council', days: 6, rate: 3000, terms: 2, fuelPaid: true, gravel: 4000, rock: 1 as const });
+    const add = (t: string) => c.fleet.push({ id: 'z' + t, type: t, year: 2015, cond: 80, hours: 9000, svcAt: 9000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null } as never);
+    // a D6 can't do a job that wants a D8
+    add('d6');
+    c.offers = [pit('d8', 'p1')];
+    expect(whyNot(c as never, c.offers[0]!)).toBe('noMachine');
+    // a D9 can, and it's the D9 that goes (burning its own fuel at the D8's rate)
+    add('d9');
+    expect(whyNot(c as never, c.offers[0]!)).toBeNull();
+    expect(game.accept(c, 'p1')).toBe(true);
+    expect(c.jobs.find((j) => j.kind === 'council')!.type).toBe('d9');
+    // with it busy, the next D8 job says so
+    c.offers = [pit('d8', 'p2')];
+    expect(whyNot(c as never, c.offers[0]!)).toBe('busy');
+    // offers never ask for more dozer than the outfit has
+    const rand = seedRand(8);
+    for (let i = 0; i < 200; i++) for (const o of genOffers(rand, c as never, 1, false, false)) if (o.gravel) expect(['d6', 'd8', 'd9']).toContain(o.type);
   });
 
   it('a roads outfit with the bulk pack can climb on bulk work too', () => {

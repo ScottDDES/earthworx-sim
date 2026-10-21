@@ -26,7 +26,8 @@ const who = (c: Career, id: string | null) => (id === 'you' ? 'You' : c.staff.fi
 
 function OfferCard({ c, o, act, onMsg }: { c: Career; o: Offer; act: Act; onMsg: (s: string) => void }) {
   const why = whyNot(c as never, o), bk = why ? bookable(c as never, o) : null;
-  const WHY: Record<string, string> = { busy: 'Your ' + TYPES[o.type].short + ' is busy', noMachine: 'You don\'t own a ' + TYPES[o.type].short, noDriver: 'Nobody free who can drive a ' + TYPES[o.type].short + '. Hire staff in the Yard.' };
+  const big = o.gravel && o.type !== 'd10' ? ' or bigger' : '';
+  const WHY: Record<string, string> = { busy: 'Your ' + TYPES[o.type].short + big + (big ? ' dozers are' : ' is') + ' busy', noMachine: 'You don\'t own a ' + TYPES[o.type].short + big, noDriver: 'Nobody free who can drive a ' + TYPES[o.type].short + '. Hire staff in the Yard.' };
   const ring = () => act((x) => {
     const a = play.askWait(x, o.id);
     if (!a) return;

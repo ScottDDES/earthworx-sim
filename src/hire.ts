@@ -54,6 +54,9 @@ export interface Offer {
   needsRoller?: boolean;
   /** A head contractor rang about one of your idle machines. */
   enq?: boolean;
+  /** Council pit work: cubic metres of gravel to rip and stockpile, and how hard the pit rips (0 soft, 1 firm, 2 hard). type is the smallest dozer for it. */
+  gravel?: number;
+  rock?: 0 | 1 | 2;
 }
 
 /** A job on the books. Hire jobs use the fields below; contracts add their own later. */
@@ -203,8 +206,28 @@ export function frozen(b: Pick<Biz, 'freeze' | 'week'>): boolean {
   return (b.freeze ?? 0) > b.week;
 }
 
-/** Dozers the council hires by the day to push up gravel at its pits. */
-const COUNCIL_DOZERS: readonly string[] = ['d6', 'd8', 'd9', 'd10'];
+/** Dozers the council hires by the day to push up gravel at its pits, smallest first. */
+export const PIT_DOZERS: readonly MachineType[] = ['d6', 'd8', 'd9', 'd10'];
+const COUNCIL_DOZERS: readonly string[] = PIT_DOZERS;
+/** Gravel a dozer rips and stockpiles in a 10-hour day, in a soft pit; firm and hard pits go slower. */
+export const PIT_RATE: Record<string, number> = { d6: 500, d8: 900, d9: 1300, d10: 1800 };
+export const PIT_HARD = [1, 0.7, 0.5] as const;
+
+/** The smallest dozer for a pit job: more gravel, or a harder pit, wants a bigger machine. */
+export function pitDozer(gravel: number, rock: number): MachineType {
+  return PIT_DOZERS[Math.min(3, Math.floor(gravel / 6000 + rock * 0.9))]!;
+}
+
+/** The machine that would go on an offer: its own type, or for pit work the smallest free dozer that's big enough. */
+export function offerMachine(b: Pick<Biz, 'fleet'>, o: Offer): Machine | undefined {
+  if (!o.gravel) return freeMachine(b, o.type);
+  const min = PIT_DOZERS.indexOf(o.type);
+  for (const t of PIT_DOZERS.slice(min)) {
+    const m = freeMachine(b, t);
+    if (m) return m;
+  }
+  return undefined;
+}
 
 /** This week's hire offers. fmul is how busy the work is (market.ts). */
 export function genOffers(rand: Rand, b: Biz, fmul: number, won: boolean, won2: boolean): Offer[] {
@@ -242,8 +265,17 @@ export function genOffers(rand: Rand, b: Biz, fmul: number, won: boolean, won2: 
       const client = pick(rand, contractors), days = int(rand, 2, 6), rate = round(Ty.dry * rf * (0.92 + rand() * 0.16), 100);
       out.push({ id, kind, type, place, client, days, rate, terms: CLIENTS[client]!.terms });
     } else if (kind === 'council' && type !== 'grader') {
-      const days = int(rand, 5, 15), rate = round((Ty.wet + Ty.fuel) * 0.9 * (0.95 + rand() * 0.1), 10);
-      out.push({ id, kind, type, place, client: T.council, days, rate, terms: 2, fuelPaid: true });
+      // the job sets the dozer: up to the biggest you own, smaller jobs more often. The council pays that size's rate.
+      const top = PIT_DOZERS.indexOf(type) >= 0 ? Math.max(...dozers.map((t) => PIT_DOZERS.indexOf(t as MachineType))) : 0;
+      const want = Math.min(top, Math.floor(rand() ** 1.6 * (top + 1)));
+      const rock = int(rand, 0, Math.min(2, want)) as 0 | 1 | 2;
+      // enough gravel to want that size, never so much it needs a bigger one than they've rung you about
+      const lo = Math.max(0.25, want - rock * 0.9), hi = want + 1 - rock * 0.9;
+      const gravel = Math.max(1500, Math.min(Math.floor((hi * 6000 - 1) / 500) * 500, round((lo + rand() * (hi - lo)) * 6000, 500)));
+      const need = pitDozer(gravel, rock), N = TYPES[need];
+      const days = Math.max(3, Math.min(20, Math.ceil(gravel / (PIT_RATE[need]! * PIT_HARD[rock]))));
+      const rate = round((N.wet + N.fuel) * 0.9 * (0.95 + rand() * 0.1), 10);
+      out.push({ id, kind, type: need, place, client: T.council, days, rate, terms: 2, fuelPaid: true, gravel, rock });
     } else if (kind === 'council') {
       const days = int(rand, 12, 25), rate = round(225 * 9 * (0.95 + rand() * 0.1), 10);
       out.push({ id, kind, type, place, client: T.council, days, rate, terms: 2, fuelPaid: true });
@@ -271,8 +303,10 @@ export type WhyNot = 'busy' | 'noMachine' | 'noDriver' | null;
 
 /** Why you can't take an offer, or null if you can. */
 export function whyNot(b: Biz, o: Offer): WhyNot {
-  if (!freeMachine(b, o.type)) return b.fleet.some((m) => m.type === o.type) ? 'busy' : 'noMachine';
-  if (o.kind !== 'dry' && !freeDriver(b, o.type)) return 'noDriver';
+  const m = offerMachine(b, o);
+  const fits = (t: string) => (o.gravel ? PIT_DOZERS.indexOf(t as MachineType) >= PIT_DOZERS.indexOf(o.type) : t === o.type);
+  if (!m) return b.fleet.some((x) => fits(x.type) && x.status !== 'auction') ? 'busy' : 'noMachine';
+  if (o.kind !== 'dry' && !freeDriver(b, m.type)) return 'noDriver';
   return null;
 }
 
@@ -296,12 +330,14 @@ function newJob(b: Biz, o: Offer, mId: string | null): Job {
 export function accept(b: Biz, id: string): Job | null {
   const o = b.offers.find((x) => x.id === id);
   if (!o || whyNot(b, o)) return null;
-  const m = freeMachine(b, o.type)!;
-  const j = newJob(b, o, m.id);
+  const m = offerMachine(b, o)!;
+  // pit work: the dozer you send goes on the job (a bigger one burns more fuel for the same rate)
+  const j = newJob(b, { ...o, type: m.type }, m.id);
+  if (o.gravel) j.gravel = o.gravel;
   m.status = 'job';
   m.jobId = j.id;
   if (o.kind !== 'dry') {
-    j.who = freeDriver(b, o.type);
+    j.who = freeDriver(b, m.type);
     seat(b, j, j.who!);
   }
   if (o.needsRoller) {
