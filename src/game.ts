@@ -24,7 +24,7 @@ import { buyAttachment, bulkStart, bulkWeek, damDay, doable, genEnquiry, sendQuo
 import { ERP_SETUP, PRICE_CHECK_FEE, erpOk, priceBand } from './advisory';
 import { buyTank, cancelFuel, fuelIdle, fuelSettle, fuelStart, fuelWeek, orderFuel, setAuto, type FuelBook, type FuelEvent, type TankId } from './fuel';
 import { BID_ODDS, rvOHFor } from './rivals';
-import { accept as acceptOffer, askWait as askWaitHire, barred, coverOff, genOffers, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
+import { accept as acceptOffer, askWait as askWaitHire, barred, coverOff, genOffers, jobDone, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
 import { relWeek } from './relations';
 import { seasonWeek } from './seasons';
 import { coachTick, tabsWeek, type CoachState } from './coach';
@@ -755,6 +755,11 @@ export function endWeek(c: Career): Report | null {
       if (e.k === 'finished' && ['wet', 'dry', 'council', 'private'].includes(e.kind)) tcAdd(c as never, 'hires');
       if (e.k === 'ownFinished' && e.early) tcAdd(c as never, 'early');
     }
+  }
+  // finished bulk work comes off the books (raking waits on its burn; the docket names it from rep.jobs)
+  if (!compat.prototype) for (const j of c.jobs.slice()) if (j.kind === 'bulk' && j.finished && j.state !== 'burn') {
+    jobDone(c as never, j);
+    c.jobs = c.jobs.filter((x) => x !== j);
   }
   const w = wctx(c);
   rep.costs += fitterWeek(rand, c as never, w, ev as WorkshopEvent[]);

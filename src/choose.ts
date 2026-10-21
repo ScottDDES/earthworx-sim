@@ -19,7 +19,7 @@ import { lendCap } from './market';
 import { fleetValue } from './overheads';
 import { nearMissAdvisory, nearMissCard, nearMissReport, nearMissShrug, quietAdvisory, quietDaysOff, quietLeave, quietYarn, seriousAdvisory, seriousCard, seriousHide, seriousNotify, swmsPay, swmsSelf } from './safety';
 import { dryDamBore, dryDamFar, dryDamFarMore, gravelArgue, gravelCart, gravelCartCost, gravelWork, ownFlow, pitFar, pitFarmer, staffOwn, staffSubs, swapCardKeep, swapIn, variationFree, variationLodge, variationValue, variationWriting } from './contracts';
-import { breakCard, breakFitterFix, breakFix, breakPatch, fitterFixCost, fitterFixDays, fitterPatchCost, breakinCamera, breakinClaim, breakinWithout, callGrader, calloutPull, callWork, clearingBorrow, clearingCash, xmasCost, xmasParty, earlyClient, earlyTake, extraAgree, extraAsk, extraFree, hurtAdvisory, hurtCover, hurtHome, hurtKeepGoing, rainCrews, rainDecide, svcFindDays, svcFix, svcPatch, turnoverKeep, turnoverSell } from './cards';
+import { breakCard, breakFitterFix, breakFix, breakPatch, fitterFixCost, fitterFixDays, fitterPatchCost, breakinCamera, breakinClaim, breakinWithout, callGrader, calloutPull, callWork, clearingBorrow, clearingCash, xmasCost, xmasParty, earlyClient, earlyTake, extraAgree, extraAsk, extraFree, hurtAdvisory, hurtCover, hurtHome, hurtKeepGoing, rainBulk, rainCrews, rainDecide, svcFindDays, svcFix, svcPatch, turnoverKeep, turnoverSell } from './cards';
 import { bankMoreTime, basInterest, basPay, basPlan, basPlanOk, gstInBank, odLimit, repoPick, repossess } from './office';
 import { weeklyRepay } from './bank';
 import { askSellUp, buyOutAll, buyOutBest, buyOutOffer, buyOutPay, canBuyOut, collapseCard, collapseClaim, collapseSell, insureBroker, sellAll, sellBest, sellBuyer, sellGear, sellPrice, sellTwo, walkAway } from './shocks';
@@ -132,7 +132,7 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
     }
     case 'rainday':
       if (q.w !== c.week || !rainCrews(c.jobs)) return null;
-      Object.assign(data, { crews: rainCrews(c.jobs), d: q.d, fmm: q.fmm, pc: q.pc });
+      Object.assign(data, { crews: rainCrews(c.jobs), bulk: rainBulk(c.jobs), d: q.d, fmm: q.fmm, pc: q.pc });
       return [o('standDown', () => rainDecide(st, q as never, false)), o('pushOn', () => rainDecide(st, q as never, true))];
     case 'break': {
       const m = machOf(c, q.id);

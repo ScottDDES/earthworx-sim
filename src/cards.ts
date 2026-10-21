@@ -27,10 +27,14 @@ const round = (n: number, to: number) => Math.round(n / to) * to;
 const mach = (b: Biz, id: string | null | undefined) => (id ? b.fleet.find((m) => m.id === id) : undefined);
 const job = (b: Biz, id: string | null | undefined) => (id ? b.jobs.find((j) => j.id === id) : undefined);
 
+/** Bulk jobs going (the real game): the rain card talks dirt, not formation, for these. */
+export const rainBulk = (jobs: readonly Job[]) => (compat.prototype ? 0 : jobs.filter((j) => j.kind === 'bulk' && j.state === 'running' && !j.finished).length);
+
 /** Crews out that rain would stop: day jobs, running subbie crews, your own contract's crews. Dry hire and subbed-out work carry on. */
 export function rainCrews(jobs: readonly Job[]): number {
   return jobs.reduce((a, j) => {
     if (j.finished || j.state === 'subbed' || j.kind === 'dry') return a;
+    if (j.kind === 'bulk' && !compat.prototype) return a + (j.state === 'running' ? 1 : 0);
     if (j.kind === 'own') return a + (j.state === 'running' ? (j.crews as number) : 0);
     if (j.kind === 'sub') return a + (j.state === 'running' ? 1 : 0);
     return a + 1;

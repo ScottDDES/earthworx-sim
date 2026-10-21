@@ -1,7 +1,11 @@
 // The fixes after the port: where the real game does better than the prototype.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, ATTACH, coverOff, dayQuality, doable, drawCard, rung, game, genEnquiry, genOffers, isBulk, leakOdds, passOdds, pricingVol, REDZONE_CASH, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot } from '../src';
+import { RUN_ANSWERS, canRunOn, choose, coachOff, compat, ATTACH, coverOff, dayQuality, doable, drawCard, rung, game, genEnquiry, genOffers, isBulk, leakOdds, passOdds, pricingVol, REDZONE_CASH, spreadRate, nearMissAdvisoryCost, value, seriousAdvisoryCost, runOn, seedRand, shutWeek, shuffled, whyNot, rainBulk, rainCrews, type Job } from '../src';
+import { cardView } from '../src/text/cardView';
+
+/** Bulk jobs seen so far: finished ones come off c.jobs, so tests keep hold of them here. */
+const track = (c: { jobs: Job[] }, seen: Set<Job>) => { for (const j of c.jobs) if (j.kind === 'bulk') seen.add(j); };
 
 describe('a fair shuffle', () => {
   beforeAll(() => { compat.prototype = false; });
@@ -354,13 +358,15 @@ describe('Bulk and Ag pack, step 2: farm dams', () => {
   it('the dam sum prices it, the spread builds it at the slowest machine\'s pace, and the farmer pays', () => {
     let done = 0, profit = 0, n = 0;
     for (let seed = 1; seed <= 12; seed++) {
-      const c = outfit(seed, ['s631', 's631', 'd9', 'c825', 'moxycart']);
+      const c = outfit(seed, ['s631', 's631', 'd9', 'c825', 'moxycart']), seen = new Set<Job>();
       for (let w = 0; w < 60; w++) {
         for (const e of c.bulk?.enq ?? []) if (!e.quoted && !c.jobs.some((j) => j.kind === 'bulk' && !j.finished)) { game.damSurvey(c, e.id); game.damQuote(c, e.id); }
         for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0);
+        track(c, seen);
         game.endWeek(c);
       }
-      for (const j of c.jobs.filter((x) => x.kind === 'bulk' && x.finished)) {
+      for (const j of [...seen].filter((x) => x.finished)) {
+        expect(c.jobs.includes(j), 'finished bulk work comes off the books').toBe(false);
         done++;
         profit += (j.fixed as number) - (j.spent || 0);
         expect(j.m3 as number).toBeGreaterThanOrEqual(j.truth as number);
@@ -412,7 +418,7 @@ describe('Bulk and Ag pack, step 3: what goes wrong', () => {
     let walls = 0, passed = 0, tested = 0;
     const cards: Record<string, number> = {};
     for (let seed = 1; seed <= 25; seed++) {
-      const c = outfit(seed, gear);
+      const c = outfit(seed, gear), seen = new Set<Job>();
       for (let w = 0; w < 70; w++) {
         for (const e of c.bulk?.enq ?? []) {
           if (opts.tested != null) e.tested = opts.tested;
@@ -420,10 +426,11 @@ describe('Bulk and Ag pack, step 3: what goes wrong', () => {
         }
         for (const j of c.jobs) if (j.kind === 'bulk' && opts.precon) game.damPrecon(c, j.id, true);
         for (let k = 0; c.queue.length && k < 20; k++) { const q = c.queue[0]!; cards[q.k] = (cards[q.k] || 0) + 1; choose(c, opts.answer ? opts.answer(q.k) : 0); }
+        track(c, seen);
         const r = game.endWeek(c);
         for (const e of (r?.events ?? []) as { k: string }[]) { if (e.k === 'damPassed') { passed++; tested++; } if (e.k === 'damFailed') tested++; }
       }
-      walls += c.jobs.filter((j) => j.kind === 'bulk' && j.finished).length;
+      walls += [...seen].filter((j) => j.finished).length;
     }
     return { walls, passed, tested, cards };
   };
@@ -496,18 +503,19 @@ describe('Bulk and Ag pack, step 4: the rest of the work', () => {
   };
   /** Only enquiries of one kind, priced low so they're won; plays until one finishes. */
   const one = (kind: string, gear: string[], att: string[] = [], seed = 1, weeks = 60) => {
-    const c = outfit(seed, gear, att);
+    const c = outfit(seed, gear, att), seen = new Set<Job>();
     const evs: { k: string }[] = [];
     for (let w = 0; w < weeks; w++) {
       c.bulk!.enq = c.bulk!.enq.filter((e) => e.kind === kind || e.quoted);
       if (!c.bulk!.enq.some((e) => e.kind === kind) && !c.jobs.some((j) => j.kind === 'bulk')) c.bulk!.enq.push(genEnquiry(seedRand(seed * 100 + w), c as never, 1, kind as never));
       for (const e of c.bulk!.enq) if (!e.quoted && !c.jobs.some((j) => j.kind === 'bulk' && !j.finished)) { e.rate = e.rate * 0.5; game.damQuote(c, e.id); }
       for (let k = 0; c.queue.length && k < 20; k++) choose(c, 0);
+      track(c, seen);
       const r = game.endWeek(c);
       evs.push(...((r?.events ?? []) as { k: string }[]));
-      if (c.jobs.some((j) => j.kind === 'bulk' && j.finished)) break;
+      if ([...seen].some((j) => j.finished)) break;
     }
-    return { c, evs, job: c.jobs.find((j) => j.kind === 'bulk') };
+    return { c, evs, job: [...seen].find((j) => j.finished) ?? [...seen][0] };
   };
 
   it('each kind of work gets done with the right gear', () => {
@@ -567,9 +575,9 @@ describe('Bulk and Ag pack, step 4: the rest of the work', () => {
   });
 
   it('developers pay monthly claims less retention, and some go under owing you', () => {
-    const { c, evs } = one('dev', ['s637', 's637', 's637', 'c825', 'moxycart', 'moxycart'], [], 7, 120);
+    const { job: dj, evs } = one('dev', ['s637', 's637', 's637', 'c825', 'moxycart', 'moxycart'], [], 7, 120);
     expect(evs.filter((e) => e.k === 'devClaim').length).toBeGreaterThan(0);
-    expect(c.jobs.find((j) => j.kind === 'bulk')!.retained as number).toBeGreaterThan(0);
+    expect(dj!.retained as number).toBeGreaterThan(0);
     let busts = 0;
     for (let seed = 1; seed <= 30; seed++) if (one('dev', ['s637', 's637', 'c825', 'moxycart'], [], seed, 120).evs.some((e) => e.k === 'devBust')) busts++;
     expect(busts).toBeGreaterThan(0);
@@ -660,5 +668,25 @@ describe('Starting as a bulk earthworks outfit', () => {
     }
     expect(alive).toBeGreaterThanOrEqual(6);
     expect(jobs).toBeGreaterThan(8);
+  });
+});
+
+describe('Bulk work and the rain card', () => {
+  beforeAll(() => { compat.prototype = false; });
+  afterAll(() => { compat.prototype = true; });
+
+  it('only bulk jobs under way count as crews out, and the card talks dirt, not formation', () => {
+    const c = game.newCareer({ co: 'Wet Dirt', loan: 180000, town: 'gdi', path: 'bulk' }, 5);
+    const bj = (state: string, finished = false) => ({ id: 'b' + state + finished, kind: 'bulk', state, finished, client: 'Smith', place: 'Toobeah', dk: 'dam' }) as unknown as Job;
+    c.jobs = [bj('waiting'), bj('running', true)];
+    expect(rainCrews(c.jobs)).toBe(0);
+    c.jobs.push(bj('running'));
+    expect(rainCrews(c.jobs)).toBe(1);
+    expect(rainBulk(c.jobs)).toBe(1);
+    const q = { k: 'rainday', w: c.week, d: 2, fmm: 14, pc: 70 } as never;
+    const v = cardView(c, q, drawCard(c, q)!);
+    expect(v.body).toContain('1 bulk job going');
+    expect(v.body).not.toContain('formation');
+    expect(v.opts.map((o) => o.label).join(' ')).not.toContain('crews');
   });
 });

@@ -19,7 +19,7 @@ export type Go = (tab: 'work' | 'yard' | 'market') => void;
 
 const fks = (n: number) => (n < 0 ? '−' : '') + fk(Math.abs(n));
 const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
-const KIND_NAME: Record<string, string> = { wet: 'Wet hire', dry: 'Dry hire', council: 'Council day labour', private: 'Private job', sub: 'Subcontract', own: 'Council contract', major: 'Flood program' };
+const KIND_NAME: Record<string, string> = { wet: 'Wet hire', dry: 'Dry hire', council: 'Council day labour', private: 'Private job', sub: 'Subcontract', own: 'Council contract', major: 'Flood program', bulk: 'Bulk earthworks' };
 const TIER_TEXT: Record<string, { t: string; c: string }> = {
   pref: { t: 'Preferred', c: 'var(--teal)' }, good: { t: 'Good', c: 'var(--teal)' }, ok: { t: 'Neutral', c: 'var(--muted)' }, wary: { t: 'Wary', c: 'var(--warn)' }, out: { t: 'On the outer', c: 'var(--rust)' },
 };
@@ -140,7 +140,7 @@ function Dashboard({ c, act, go, toBank }: { c: Career; act: Act; go: Go; toBank
   );
   const JL = c.jlog || [], byK: Record<string, { rev: number; cost: number; n: number }> = {};
   for (const j of JL) {
-    const g = j.kind === 'wet' || j.kind === 'dry' || j.kind === 'council' ? 'Hire' : j.kind === 'sub' ? 'Subcontract' : j.kind === 'private' ? 'Private' : 'Council';
+    const g = j.kind === 'wet' || j.kind === 'dry' || j.kind === 'council' ? 'Hire' : j.kind === 'sub' ? 'Subcontract' : j.kind === 'private' ? 'Private' : j.kind === 'bulk' ? 'Bulk earthworks' : 'Council';
     const b = (byK[g] = byK[g] || { rev: 0, cost: 0, n: 0 });
     if (!j.part) { b.rev += j.rev; b.cost += j.cost; b.n++; }
   }

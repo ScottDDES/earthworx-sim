@@ -131,7 +131,14 @@ export function cardView(c: Career, q: Career['queue'][number], d: DrawnCard): C
       return out('Your fleet', 'Your ' + T.short + ' is back in the yard', 'The ' + label(D.m) + ' is free. You\'re paying for ' + hire + ' on ' + title + '. Put yours on and that stops; you pay its fuel and ' + (wet ? 'an operator' : 'wear') + ' instead.' + (D.ops ? ' An operations manager would make this call for you.' : ''));
     }
     case 'rainday': {
-      const day = DAYS[D.d]!, cr = D.crews as number;
+      const day = DAYS[D.d]!, cr = D.crews as number, bk = (D.bulk as number) || 0, rd = cr - bk;
+      if (bk) {
+        // bulk work in the mix: wet dirt, not wet formation
+        const have = (rd ? rd + ' road crew' + s(rd) + ' and ' : '') + bk + ' bulk job' + s(bk) + ' going';
+        put('standDown', 'Send everyone home ' + day, 'Lose the day whatever falls. No rework.');
+        put('pushOn', 'Push on and work through it', 'If it misses you, you get the day in. Light rain costs about ' + f(REWORK_LIGHT * cr) + ' drying out and reworking the top layer. Over ' + RAIN_HEAVY + ' mm the fill turns to slop: about ' + f(REWORK_HEAVY * cr) + ' to strip it out, and the day\'s lost anyway.');
+        return out('Weather', 'Rain forecast for ' + day, 'The forecast has about ' + D.fmm + ' mm on ' + day + ' around ' + TOWNS[c.town].name + ' (' + D.pc + '% chance). You have ' + have + '. Wet dirt won\'t push, cart or compact' + (rd ? ', and 4 mm stops work on unsealed formation.' : '.'));
+      }
       put('standDown', 'Stand the crews down ' + day, 'Lose the day whatever falls. No rework.');
       put('pushOn', 'Push on and work through it', 'If it misses you, you get the day in. Light rain costs about ' + f(REWORK_LIGHT * cr) + ' in touch-up passes. Over ' + RAIN_HEAVY + ' mm the formation pugs up: about ' + f(REWORK_HEAVY * cr) + ' of rework and the day\'s lost anyway.');
       return out('Weather', 'Rain forecast for ' + day, 'The forecast has about ' + D.fmm + ' mm on ' + day + ' around ' + TOWNS[c.town].name + ' (' + D.pc + '% chance). You have ' + cr + ' crew' + s(cr) + ' out. 4 mm stops work on unsealed formation.');
