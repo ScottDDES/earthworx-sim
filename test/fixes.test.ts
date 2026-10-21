@@ -669,6 +669,23 @@ describe('Starting as a bulk earthworks outfit', () => {
     compat.prototype = false;
   });
 
+  it('a bulk outfit that buys a road crew still gets calls for its dozers and excavators', () => {
+    const c = bulkCareer(6, 350000);
+    for (const t of ['d6', 'excavator', 'grader', 'roller', 'cart'] as const) c.fleet.push({ id: 'h' + t, type: t, year: 2015, cond: 80, hours: 9000, svcAt: 9000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null });
+    c.phase = 'play';
+    const rand = seedRand(12);
+    let bulk = 0, all = 0;
+    for (let i = 0; i < 60; i++) for (const o of genOffers(rand, c as never, 1, false, false)) { all++; if (isBulk(o.type)) bulk++; }
+    // two of its five machines are bulk gear: at least half the calls are for them
+    expect(bulk / all).toBeGreaterThan(0.4);
+    // the prototype went all road once there was a grader
+    compat.prototype = true;
+    let pb = 0;
+    for (let i = 0; i < 20; i++) for (const o of genOffers(rand, c as never, 1, false, false)) if (isBulk(o.type)) pb++;
+    compat.prototype = false;
+    expect(pb).toBe(0);
+  });
+
   it('a roads outfit with the bulk pack can climb on bulk work too', () => {
     const c = game.newCareer({ co: 'Both Ways', loan: 350000, town: 'gdi', bulk: true }, 8);
     for (const t of ['d6', 'padfoot', 'moxycart'] as const) c.fleet.push({ id: 'b' + t, type: t, year: 2015, cond: 80, hours: 9000, svcAt: 9000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null });

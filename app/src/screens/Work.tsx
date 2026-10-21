@@ -311,9 +311,9 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
             : <div className="card"><div className="small muted">Nobody's rung this week. Farmers and developers ring most weeks.</div></div>}
         </>
   ) : null;
-  return (
+  // council and head contractors' tenders: first for a roads outfit; after its own bulk work for a bulk one
+  const tendersBlock = (
     <>
-      {msg && <div className="card" style={{ borderColor: 'var(--teal)', borderWidth: 2 }}><div className="small">{msg}</div><div className="btns"><button type="button" className="btn" onClick={() => setMsg(null)}>OK</button></div></div>}
       {c.won2 && (
         <>
           <div className="sub">Council tenders</div>
@@ -329,10 +329,17 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
             : <div className="card"><div className="small muted">{can ? 'No packages out to price this week. Head contractors send them out most weeks.' : 'You need a grader, roller, water cart and 1 star to be asked to price.'}</div></div>}
         </>
       )}
+    </>
+  );
+  return (
+    <>
+      {msg && <div className="card" style={{ borderColor: 'var(--teal)', borderWidth: 2 }}><div className="small">{msg}</div><div className="btns"><button type="button" className="btn" onClick={() => setMsg(null)}>OK</button></div></div>}
+      {c.path !== 'bulk' && tendersBlock}
       <div className="sub">On the go</div>
       {!c.jobs.length && <div className="card"><b>Nothing on.</b><div className="small muted">Idle machines still cost you repayments. Take some work below.</div></div>}
       {c.jobs.map((j) => <JobCard key={j.id} c={c} j={j} act={act} />)}
       {c.path === 'bulk' && bulkRinging}
+      {c.path === 'bulk' && tendersBlock}
       <div className="sub">Work on offer this week</div>
       {!c.offers.length && <div className="card"><div className="small muted">Nothing else this week. New work comes up every Monday.</div></div>}
       {c.packs?.bulk && <HoldWarning c={c} types={offersNow.filter((o) => !whyNot(c as never, o)).map((o) => o.type)} />}

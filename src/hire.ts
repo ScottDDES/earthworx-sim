@@ -218,9 +218,12 @@ export function genOffers(rand: Rand, b: Biz, fmul: number, won: boolean, won2: 
     if (kind === 'council' && !compat.prototype && barred(b, T.council)) kind = 'private';
     const y = rand();
     let type: MachineType = kind === 'council' || kind === 'private' ? 'grader' : y < 0.6 ? 'grader' : y < 0.8 ? 'roller' : y < 0.95 || !owns(b, 'truck') ? 'cart' : 'truck';
-    // a bulk outfit with no grader: head contractors ring to hire its dozers, excavators and the like instead
-    const bulkGear = (b as { path?: string }).path === 'bulk' && !owns(b, 'grader') ? b.fleet.filter((m) => isBulk(m.type) && m.status !== 'auction').map((m) => m.type) : [];
-    if (bulkGear.length && contractors.length) {
+    // a bulk outfit: head contractors ring to hire its dozers, excavators and the like. With no grader that's every
+    // call; in the real game a bulk outfit that's bought road gear still gets them, in step with how much bulk gear it runs
+    const bulkGear = (b as { path?: string }).path === 'bulk' ? b.fleet.filter((m) => isBulk(m.type) && m.status !== 'auction').map((m) => m.type) : [];
+    const roadGear = owns(b, 'grader');
+    const bulkCall = bulkGear.length > 0 && (!roadGear || (!compat.prototype && rand() < Math.max(0.5, bulkGear.length / b.fleet.filter((m) => m.status !== 'auction').length)));
+    if (bulkCall && contractors.length) {
       if (kind === 'council' || kind === 'private') kind = 'wet';
       type = pick(rand, bulkGear);
     }
