@@ -17,7 +17,7 @@ export const POSTS_PER_HOUR = 20;
 export const BOARD_ROWS = 50;
 
 // Words that keep a name off the board. Kept short and plain; the owner can hide anything else by hand.
-const BLOCKED = ['fuck', 'shit', 'cunt', 'nigg', 'nazi', 'hitler', 'wank', 'slut', 'whore', 'retard'];
+const BLOCKED = ['fuck', 'shit', 'cunt', 'nigg', 'nazi', 'hitler', 'wank', 'slut', 'whore', 'retard', 'bitch', 'twat', 'faggot', 'rapist', 'kkk'];
 
 /** A nickname for the board, tidied, or why it can't be used. */
 export function cleanName(raw: unknown): { ok: true; name: string } | { ok: false; why: string } {

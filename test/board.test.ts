@@ -9,7 +9,8 @@ describe('the board', () => {
     expect(cleanName("O'Brien-2")).toEqual({ ok: true, name: "O'Brien-2" });
     expect(cleanName('Zoë')).toEqual({ ok: true, name: 'Zoë' });
     // a blocked word hidden inside an innocent one doesn't trip it
-    for (const ok of ['Grapevine Grading', 'Skyscape', 'Fagan', 'Mitsubishi']) expect(cleanName(ok).ok, ok).toBe(true);
+    for (const ok of ['Grapevine Grading', 'Skyscape', 'Fagan', 'Mitsubishi', 'Torpedo Earthworks', 'Hancock', 'Dickson Plant']) expect(cleanName(ok).ok, ok).toBe(true);
+    for (const bad of ['B1tch Grader', 'kkk crew', 'tw4t']) expect(cleanName(bad).ok, bad).toBe(false);
   });
 
   it('refuses names that are too short, too long, marked up or abusive', () => {
