@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import {
-  BID_ODDS, LD_OWN, LD_WEEK, MOB, RETAIN, ROLES, TREAT, TYPES, bookable, carryCash, crewDayCost, freeDriver, freeMachine, leftDays, monthIdx,
+  BID_ODDS, LD_OWN, LD_WEEK, MOB, RETAIN, ROLES, TREAT, TYPES, an, bookable, carryCash, crewDayCost, freeDriver, freeMachine, leftDays, monthIdx,
   npOf, ownFlow, rainChance, rvForm, stars, subTerms, tCost, whyNot, canTakeBack, game, subPrice, otherContracts, canTender,
   type Job, type Offer, type SubTender, play,
 } from '@engine';
@@ -27,7 +27,7 @@ const who = (c: Career, id: string | null) => (id === 'you' ? 'You' : c.staff.fi
 function OfferCard({ c, o, act, onMsg }: { c: Career; o: Offer; act: Act; onMsg: (s: string) => void }) {
   const why = whyNot(c as never, o), bk = why ? bookable(c as never, o) : null;
   const big = o.gravel && o.type !== 'd10' ? ' or bigger' : '';
-  const WHY: Record<string, string> = { busy: 'Your ' + TYPES[o.type].short + big + (big ? ' dozers are' : ' is') + ' busy', noMachine: 'You don\'t own a ' + TYPES[o.type].short + big, noDriver: 'Nobody free who can drive a ' + TYPES[o.type].short + '. Hire staff in the Yard.' };
+  const WHY: Record<string, string> = { busy: 'Your ' + TYPES[o.type].short + big + (big ? ' dozers are' : ' is') + ' busy', noMachine: 'You don\'t own ' + an(TYPES[o.type].short) + big, noDriver: 'Nobody free who can drive ' + an(TYPES[o.type].short) + '. Hire staff in the Yard.' };
   const ring = () => act((x) => {
     const a = play.askWait(x, o.id);
     if (!a) return;
@@ -71,9 +71,9 @@ function Needs({ c, j }: { c: Career; j: Job }) {
       <div className="sub">To start it needs</div>
       {row(!!freeMachine(c as never, 'grader'), 'A grader')}
       {row(!!freeMachine(c as never, 'roller'), 'A roller')}
-      {row(!!freeMachine(c as never, 'cart'), 'A water cart')}
+      {row(!!freeMachine(c as never, 'cart'), 'A water truck')}
       {row(!!freeDriver(c as never, 'grader'), 'Someone on the grader: you or a grader operator')}
-      <span className="tiny muted">A second water cart is hired in if you don't have a spare. Roller and cart seats use your staff first, then casuals.</span>
+      <span className="tiny muted">A second water truck is hired in if you don't have a spare. Roller and cart seats use your staff first, then casuals.</span>
     </div>
   );
 }
@@ -278,7 +278,7 @@ function RoadWorkCard({ c }: { c: Career }) {
       <div className="small muted">Flood recovery road jobs go to outfits with a road crew. Get set up and they'll send you packages to price. Road jobs count toward your career just like bulk work does, and a grader gets council day hire straight away.</div>
       {row(has('grader'), 'A grader')}
       {row(has('roller'), 'A roller')}
-      {row(has('cart'), 'A water cart')}
+      {row(has('cart'), 'A water truck')}
       {row(stars(c.rep) >= 1, '1 star of track record (' + Math.min(c.rep, 5) + ' of 5 points)')}
       {row(c.whs.sys >= 1, 'SWMS and a WHS plan (Yard, Safety)')}
       <span className="tiny muted">Graders, rollers and carts come up in the Market most weeks.</span>
@@ -327,7 +327,7 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
         <>
           <div className="sub">Tenders</div>
           {c.tenders.length ? c.tenders.map((t) => <TenderCard key={t.id} t={t} onPrice={() => setPricing(t.id)} />)
-            : <div className="card"><div className="small muted">{can ? 'No packages out to price this week. Head contractors send them out most weeks.' : 'You need a grader, roller, water cart and 1 star to be asked to price.'}</div></div>}
+            : <div className="card"><div className="small muted">{can ? 'No packages out to price this week. Head contractors send them out most weeks.' : 'You need a grader, roller, water truck and 1 star to be asked to price.'}</div></div>}
         </>
       )}
     </>

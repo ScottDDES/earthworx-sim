@@ -65,30 +65,33 @@ export const TYPES: Record<MachineType, MachineSpec> = {
  * fuel, fuel the gap to the rate with your fuel, sub that whole rate (what another outfit charges you), dry a week.
  * The 627's are a guess between the 623 and the 637. The prototype keeps the table above.
  */
-const RATES: Partial<Record<MachineType, { wet: number; withFuel: number; dry: number; name?: string }>> = {
-  grader: { wet: 185, withFuel: 240, dry: 5000, name: 'Grader 14ft' },
-  roller: { wet: 150, withFuel: 200, dry: 2500 },
-  cart: { wet: 140, withFuel: 200, dry: 2500 },
-  truck: { wet: 170, withFuel: 220, dry: 2750 },
-  d6: { wet: 190, withFuel: 260, dry: 6500 },
-  d8: { wet: 250, withFuel: 370, dry: 8000 },
-  d9: { wet: 300, withFuel: 450, dry: 10000 },
-  d10: { wet: 380, withFuel: 520, dry: 12500 },
-  pull: { wet: 240, withFuel: 360, dry: 10000 },
-  s623: { wet: 300, withFuel: 430, dry: 12000 },
-  s627: { wet: 330, withFuel: 490, dry: 14000 },
-  s631: { wet: 275, withFuel: 390, dry: 10000 },
-  s637: { wet: 355, withFuel: 540, dry: 16000 },
-  s651: { wet: 400, withFuel: 610, dry: 15000 },
-  s657: { wet: 480, withFuel: 750, dry: 20000 },
-  padfoot: { wet: 150, withFuel: 200, dry: 2500 },
-  c815: { wet: 170, withFuel: 250, dry: 3000 },
-  c825: { wet: 195, withFuel: 300, dry: 3000 },
-  excavator: { wet: 200, withFuel: 250, dry: 2500, name: 'Excavator 30t' },
-  moxy: { wet: 180, withFuel: 260, dry: 3000 },
-  moxycart: { wet: 200, withFuel: 300, dry: 4000, name: 'Moxy water cart 40kL' },
-  loader: { wet: 170, withFuel: 230, dry: 4000 },
+const RATES: Partial<Record<MachineType, { wet: number; withFuel: number; dry: number; name?: string; short?: string }>> = {
+  grader: { wet: 185, withFuel: 240, dry: 5000, name: 'Grader 14ft', short: 'Grader' },
+  roller: { wet: 150, withFuel: 200, dry: 2500, name: 'Smooth Drum Roller', short: 'Roller' },
+  cart: { wet: 140, withFuel: 200, dry: 2500, name: 'Water Truck 18kL', short: 'Water Truck' },
+  truck: { wet: 170, withFuel: 220, dry: 2750, name: 'Side Tipper', short: 'Side Tipper' },
+  d6: { wet: 190, withFuel: 260, dry: 6500, name: 'Dozer D6', short: 'D6' },
+  d8: { wet: 250, withFuel: 370, dry: 8000, name: 'Dozer D8', short: 'D8' },
+  d9: { wet: 300, withFuel: 450, dry: 10000, name: 'Dozer D9', short: 'D9' },
+  d10: { wet: 380, withFuel: 520, dry: 12500, name: 'Dozer D10', short: 'D10' },
+  pull: { wet: 240, withFuel: 360, dry: 10000, name: 'Laser Bucket', short: 'Laser Bucket' },
+  s623: { wet: 300, withFuel: 430, dry: 12000, name: 'Scraper 623', short: '623' },
+  s627: { wet: 330, withFuel: 490, dry: 14000, name: 'Scraper 627', short: '627' },
+  s631: { wet: 275, withFuel: 390, dry: 10000, name: 'Scraper 631', short: '631' },
+  s637: { wet: 355, withFuel: 540, dry: 16000, name: 'Scraper 637', short: '637' },
+  s651: { wet: 400, withFuel: 610, dry: 15000, name: 'Scraper 651', short: '651' },
+  s657: { wet: 480, withFuel: 750, dry: 20000, name: 'Scraper 657', short: '657' },
+  padfoot: { wet: 150, withFuel: 200, dry: 2500, name: 'Padfoot Roller', short: 'Padfoot' },
+  c815: { wet: 170, withFuel: 250, dry: 3000, name: 'Compactor 815', short: '815' },
+  c825: { wet: 195, withFuel: 300, dry: 3000, name: 'Compactor 825', short: '825' },
+  excavator: { wet: 200, withFuel: 250, dry: 2500, name: 'Excavator 30T', short: 'Excavator' },
+  moxy: { wet: 180, withFuel: 260, dry: 3000, name: 'Moxy 30T', short: 'Moxy' },
+  moxycart: { wet: 200, withFuel: 300, dry: 4000, name: 'Moxy Water Cart 40kL', short: 'Water Cart' },
+  loader: { wet: 170, withFuel: 230, dry: 4000, name: 'Loader', short: 'Loader' },
 };
+/** "a" or "an" before a machine's name: an Excavator, an 815. */
+export const an = (name: string) => (/^[aeiou8]/i.test(name) ? 'an ' : 'a ') + name;
+
 /** Hours in a working day: what a wet hire day is charged on and what a day puts on the clock. */
 export const dayHours = () => (compat.prototype ? 9 : 10);
 const PROTO_TYPES = JSON.parse(JSON.stringify(TYPES)) as typeof TYPES;
@@ -97,7 +100,7 @@ onCompat(() => {
     const r = RATES[k], h = dayHours();
     Object.assign(TYPES[k], PROTO_TYPES[k]);
     if (compat.prototype || !r) continue;
-    Object.assign(TYPES[k], { wet: r.wet * h, fuel: (r.withFuel - r.wet) * h, sub: r.withFuel * h, dry: r.dry }, r.name ? { name: r.name } : {});
+    Object.assign(TYPES[k], { wet: r.wet * h, fuel: (r.withFuel - r.wet) * h, sub: r.withFuel * h, dry: r.dry }, r.name ? { name: r.name } : {}, r.short ? { short: r.short } : {});
   }
 });
 
@@ -175,6 +178,7 @@ export function newMachine(rand: Rand, id: string, type: MachineType, year: numb
 }
 
 export function machineName(m: Pick<Machine, 'type' | 'multi'> & { rt?: boolean }): string {
+  if (!compat.prototype && (m.multi || m.rt)) return m.multi ? 'Multi-Tyre Roller' : 'Roadtrain Side Tipper';
   return m.multi ? 'Multi-tyre roller' : m.rt ? 'Roadtrain side tipper' : TYPES[m.type].name;
 }
 

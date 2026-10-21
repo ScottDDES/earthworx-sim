@@ -1,6 +1,7 @@
 // People. Permanent staff are paid every week, working or not; casuals from labour hire
 // are paid only on the days they work. You (the owner) can drive a grader, roller or water cart.
 
+import { compat, onCompat } from './compat';
 import { isRoad, type MachineType, type RoadType } from './machines';
 import { pick, type Rand } from './rng';
 
@@ -44,6 +45,17 @@ export interface SkillSpec {
   yes: number;
   note: string;
 }
+
+// The real game calls the road water cart a water truck (Scott's names); the prototype keeps its words.
+const PROTO_ROLES = JSON.parse(JSON.stringify(ROLES)) as typeof ROLES;
+onCompat(() => {
+  for (const k of Object.keys(ROLES) as Role[]) {
+    Object.assign(ROLES[k], PROTO_ROLES[k]);
+    if (compat.prototype) continue;
+    ROLES[k].name = ROLES[k].name.replace('Water cart', 'Water truck');
+    ROLES[k].note = ROLES[k].note.replace(/water cart/g, 'water truck').replace('Water cart', 'Water truck');
+  }
+});
 
 export const SKILLS: Record<Skill, SkillSpec> = {
   green: { name: 'Green', pay: 0.85, wear: 1.3, yes: 0.8, note: 'Cheap, and harder on the gear.' },

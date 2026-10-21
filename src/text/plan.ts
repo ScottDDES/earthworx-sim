@@ -6,9 +6,14 @@ const money = (n: number) => (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).to
 const crewL = (i: number) => String.fromCharCode(65 + i);
 
 /** Crew colours on the map and the timeline. */
+import { rw } from './real';
+
 export const CREW_COL = ['#2F6FD0', '#D9480F', '#2B8A3E', '#9C36B5', '#C2255C', '#0C8599'];
 
 export function issueText(x: Issue, t: CouncilTender): string {
+  return rw(issueText0(x, t));
+}
+function issueText0(x: Issue, t: CouncilTender): string {
   switch (x.k) {
     case 'unassigned': return x.n + ' road' + (x.n > 1 ? 's are' : ' is') + ' not given to any crew yet. The council won\'t score a program that leaves roads out.';
     case 'water': return t.roads[x.road]!.name + ' (Crew ' + crewL(x.crew) + '): water. ' + x.carts + ' cart' + (x.carts > 1 ? 's' : '') + ' on a ' + x.waterKm + ' km water run keep the crew at ' + Math.round(x.wf * 100) + '%. +' + x.lost.toFixed(1) + ' days. Add a cart to Crew ' + crewL(x.crew) + '.';
@@ -20,6 +25,9 @@ export function issueText(x: Issue, t: CouncilTender): string {
 }
 
 export function bottText(b: Bott, t: CouncilTender): string {
+  return rw(bottText0(b, t));
+}
+function bottText0(b: Bott, t: CouncilTender): string {
   switch (b.k) {
     case 'roller': return 'The roller is the bottleneck. ' + b.graders + ' graders but only ' + b.rollers + ' roller per crew, so the second grader waits. One roller per grader.';
     case 'water': return 'Water is the bottleneck. ' + (b.mul > 1 ? 'Two graders' : 'A grader') + ' at full pace needs ' + waterNeed(b.mul) + ' water carts; ' + b.carts + ' per crew' + (b.long ? ' on a ' + b.waterKm + ' km water run' : '') + ' has the crews at ' + Math.round(b.wf * 100) + '%.';

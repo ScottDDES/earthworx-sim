@@ -143,13 +143,13 @@ function BranchCard({ c, act }: { c: Career; act: Act }) {
             {(Object.keys(BR_MGR) as (keyof typeof BR_MGR)[]).map((k) => <button key={k} type="button" className="btn full" onClick={() => act((x) => play.hireBranchManager(x, k))}>Hire {BR_MGR[k].t.toLowerCase()} · {f(BR_MGR[k].wage)}/wk</button>)}
           </>
         )}
-        <div className="kv"><span>Full crews there</span><span className="num">{C.n}{C.n && C.pace < 1 ? ' · short a water cart each' : ''}</span></div>
+        <div className="kv"><span>Full crews there</span><span className="num">{C.n}{C.n && C.pace < 1 ? ' · short a water truck each' : ''}</span></div>
         <div className="kv"><span>Profit, last {H.length} weeks</span><span className="num" style={{ color: p13 < 0 ? 'var(--rust)' : 'var(--teal)' }}>{fks(p13)}</span></div>
         {can > 0 && <div className="kv"><span>Crews worked</span><span className="num">{Math.round((days / can) * 100)}% of dry days</span></div>}
         {B.boost && B.boost.until >= c.week && <div className="kv"><span>Council package on</span><span className="num">to week {B.boost.until}</span></div>}
         <div className="row tiny"><span className="grow">Local reputation</span><span className="num">{Math.round(B.rep)} of 100</span></div>
         <div className="bar"><i style={{ width: B.rep + '%', background: 'var(--teal)' }} /></div>
-        <div className="tiny muted">A full crew is a grader, a roller and a water cart (two carts keeps it at full pace). Reputation grows with every week the crews work, faster with a good safety system. Send idle machines from the list below; floating one either way costs {f(BR_FLOAT)}.</div>
+        <div className="tiny muted">A full crew is a grader, a roller and a water truck (two water trucks keep it at full pace). Reputation grows with every week the crews work, faster with a good safety system. Send idle machines from the list below; floating one either way costs {f(BR_FLOAT)}.</div>
         {closing ? (
           <>
             <div className="why">Close the branch? The gear floats home and the set-up is gone.</div>
@@ -244,7 +244,7 @@ function MachineRow({ c, m, onOpen }: { c: Career; m: Machine; onOpen: () => voi
 
 const FLEET_ORDER: MachineType[] = ['grader', 'roller', 'cart', 'truck', 'loader', ...BULK_TYPES];
 const FLEET_PL: Record<MachineType, string> = {
-  grader: 'Graders', roller: 'Rollers', cart: 'Water carts', truck: 'Side tippers', loader: 'Loaders',
+  grader: 'Graders', roller: 'Rollers', cart: 'Water trucks', truck: 'Side tippers', loader: 'Loaders',
   d6: 'D6 dozers', d8: 'D8 dozers', d9: 'D9 dozers', d10: 'D10 dozers', pull: 'Pull scrapers', s623: '623 scrapers', s627: '627 scrapers', s631: '631 scrapers', s637: '637 scrapers',
   s651: '651 scrapers', s657: '657 scrapers', padfoot: 'Padfoot rollers', c815: '815 compactors', c825: '825 compactors', excavator: 'Excavators', moxy: 'Moxies', moxycart: 'Moxy water carts',
 };

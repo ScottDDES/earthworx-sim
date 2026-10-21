@@ -3,7 +3,7 @@
 import type { Career, Report } from '../game';
 import type { DiaryEntry, JobRef, MRef } from '../diary';
 import type { Job } from '../hire';
-import { TYPES } from '../machines';
+import { TYPES, an, machineName } from '../machines';
 import { TOWNS } from '../towns';
 import { YARDS } from '../yards';
 import { ROLES } from '../staff';
@@ -16,6 +16,7 @@ import { SERIOUS_STORIES } from './safety';
 import { DAM_KIND, farmer as farmerName } from './bulk';
 const dk = (k: string) => (DAM_KIND[k as keyof typeof DAM_KIND] ?? 'job').toLowerCase();
 import { TICKET_TEXT } from './career';
+import { rw } from './real';
 
 const f = (n: number) => (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-AU');
 const fk = (n: number) => (n >= 1e6 ? '$' + Math.round(n / 1e4) / 100 + 'M' : n >= 1000 ? '$' + Math.round(n / 1000) + 'k' : f(n));
@@ -24,7 +25,7 @@ const QNAME: Record<number, string> = { 6: 'April to June', 9: 'July to Septembe
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const MGR_ROLE: Record<string, string> = { ops: 'operations manager', wsm: 'workshop manager' };
 
-const label = (m: MRef) => (m.multi ? 'Multi-tyre roller' : m.rt ? 'Roadtrain side tipper' : TYPES[m.type].name) + ', ' + m.year;
+const label = (m: MRef) => machineName(m as never) + ', ' + m.year;
 const title = (j: JobRef) => jobTitle(j as Job);
 const ctitle = (t: { n: number }) => councilTitle({ ...t, roads: Array(t.n) } as never);
 const town = (t: string) => TOWNS[t as keyof typeof TOWNS].name;
@@ -80,7 +81,7 @@ export function diaryText(c: Career, e: any): string {
     case 'floated': return 'Floated the crew to ' + e.place + ' (' + f(e.cost) + '). ' + (e.cart2 ? '' : 'Hired a second water cart at ' + f(e.hire) + ' a week. ') + (e.names.length ? e.names.join(' and ') + ' on the crew. ' : '') + (e.casuals ? 'Casuals from labour hire for the rest.' : '');
     case 'spareCart': return 'Your spare water cart went onto ' + title(e.job) + ' in place of the hired one.';
     case 'tookOverThe': return e.name + ' took over the ' + short(e.type) + ' on ' + title(e.job) + ' from a labour-hire casual.';
-    case 'tookOverA': return e.name + ' took over a ' + short(e.type) + ' on ' + title(e.job) + ' from a labour-hire casual.';
+    case 'tookOverA': return e.name + ' took over ' + an(short(e.type)) + ' on ' + title(e.job) + ' from a labour-hire casual.';
     case 'swappedIn': return (e.by ? e.by + ' put your ' : 'Your ') + short(e.type) + (e.by ? '' : ' went') + ' onto ' + title(e.job) + ' in place of a ' + (e.wet ? 'subbie' : 'hire-in') + '.';
     case 'onSite': return 'Crews on site for ' + title(e.job) + '. ' + e.owned + ' of your machines, ' + (e.hireWeek ? f(e.hireWeek) + ' a week of hire-ins, ' : '') + (e.subDay ? f(e.subDay) + ' a day of subbies, ' : '') + e.staff + ' of your staff and ' + e.casuals + ' casuals.';
     case 'roadsMoved': return 'Council moved roads off ' + title(e.job) + '.';
@@ -163,6 +164,6 @@ const NO_REPORT = { events: [], tix: [], days: [] } as unknown as Report;
 
 /** The diary as lines: week and words, newest first. */
 export function diaryLines(c: Career, L: readonly DiaryEntry[] = c.log): { w: number; t: string }[] {
-  return L.map((x) => ({ w: x.w, t: diaryText(c, x.e) }));
+  return L.map((x) => ({ w: x.w, t: rw(diaryText(c, x.e)) }));
 }
 

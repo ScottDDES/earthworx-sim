@@ -1,5 +1,7 @@
 // Words for the career ladder, unlocks and tickets. Keep ticket ids and list orders as they are: saved careers point into them.
 
+import { rw } from './real';
+
 export const STAGES = ['', 'Owner-operator', 'Small fleet', 'Ready to subcontract', 'Subcontractor', 'Your own contract', 'Regional contractor', 'Flood recovery contractor', 'Prestige contractor'] as const;
 
 export const UNLOCK_TEXT: Record<string, string> = {
@@ -76,7 +78,7 @@ export const BULK_STEPS: { t: string; d: string; u?: string }[] = [
 
 /** The ladder for the outfit you started: roads or bulk. */
 export function stepsFor(path?: string): { t: string; d: string; u?: string }[] {
-  return path === 'bulk' ? BULK_STEPS : STEPS;
+  return (path === 'bulk' ? BULK_STEPS : STEPS).map((x) => ({ ...x, t: rw(x.t), d: rw(x.d), ...(x.u ? { u: rw(x.u) } : {}) }));
 }
 
 export interface LadderState {
@@ -103,7 +105,7 @@ export function checkWords(step: number, st: LadderState, ok: boolean[]): { t: s
       7: ['Finish 3 developers\' jobs (' + m(st.devDone, 3) + ' of 3)'],
       8: ['Finish 5 developers\' jobs (' + m(st.devDone, 5) + ' of 5)', 'Certified to ISO 45001', 'Run from a plant hub'],
     };
-    return (B[step] ?? []).map((t, i) => ({ t, ok: !!ok[i] }));
+    return (B[step] ?? []).map((t, i) => ({ t: rw(t), ok: !!ok[i] }));
   }
   const T: Record<number, string[]> = {
     3: ['Own a grader, roller and water cart', '1 star of track record (' + Math.min(st.rep, 5) + ' of 5 points)', 'No missed loan repayments', 'SWMS and a WHS plan (Yard, Safety)'],
@@ -112,7 +114,7 @@ export function checkWords(step: number, st: LadderState, ok: boolean[]): { t: s
     7: ['Deliver a flood recovery program by 30 June (' + m(st.majorDone, 1) + ' of 1)'],
     8: ['Deliver 2 flood recovery programs (' + m(st.majorDone, 2) + ' of 2)', 'Certified to ISO 45001', 'Run from a plant hub', 'Deliver a state road program (' + m(st.prestigeDone, 1) + ' of 1)'],
   };
-  return (T[step] ?? []).map((t, i) => ({ t, ok: !!ok[i] }));
+  return (T[step] ?? []).map((t, i) => ({ t: rw(t), ok: !!ok[i] }));
 }
 
 /** Stars as ★★☆. */

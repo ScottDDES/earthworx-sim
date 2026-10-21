@@ -1,6 +1,7 @@
 // Words for the week's docket: each event the week reported, as the prototype wrote it, and the stamps
 // across the top. Events that only went in the prototype's log (not the docket) give null here.
 
+import { rw } from './real';
 import { bulkLine } from './bulk';
 import type { Career, Report } from '../game';
 import type { Job } from '../hire';
@@ -108,7 +109,7 @@ const QNAME: Record<number, string> = { 6: 'April to June', 9: 'July to Septembe
 /** The docket's lines, in the order the prototype shows them: trading insolvent goes first. */
 export function docketLines(c: Career, r: Report): string[] {
   const ev = r.events as any[], first = ev.filter((e) => e.k === 'insolvent'), rest = ev.filter((e) => e.k !== 'insolvent');
-  return [...first, ...rest].map((e) => eventText(c, r, e)).filter((t): t is string => t != null);
+  return [...first, ...rest].map((e) => eventText(c, r, e)).filter((t): t is string => t != null).map(rw);
 }
 
 /** The stamps across the top: a subcontract or council contract finished, a program delivered, something unlocked. */

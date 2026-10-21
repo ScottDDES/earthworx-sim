@@ -20,6 +20,7 @@ import { yearOf } from '../calendar';
 import { councilTitle, jobTitle, pmOf, subTenderTitle } from './work';
 import { NEAR_MISS_STORIES, QUIET_REPLIES, SERIOUS_STORIES } from './safety';
 import { TICKET_TEXT } from './career';
+import { rw } from './real';
 
 const f = (n: number) => (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-AU');
 const fk = (n: number) => (n >= 1e6 ? '$' + Math.round(n / 1e4) / 100 + 'M' : n >= 1000 ? '$' + Math.round(n / 1000) + 'k' : f(n));
@@ -82,6 +83,11 @@ const table = (R: any[], council: boolean): CardView['table'] => ({
 
 /** The card as the player sees it. d is what drawCard gave. */
 export function cardView(c: Career, q: Career['queue'][number], d: DrawnCard): CardView {
+  const v = cardView0(c, q, d);
+  return { ...v, tag: rw(v.tag), title: rw(v.title), body: rw(v.body), opts: v.opts.map((o) => ({ ...o, label: rw(o.label), sub: rw(o.sub) })) };
+}
+
+function cardView0(c: Career, q: Career['queue'][number], d: DrawnCard): CardView {
   const D = d.data, by: Record<string, Opt> = {}, out = (tag: string, title: string, body: string, tbl?: CardView['table']): CardView =>
     ({ tag, title, body, opts: d.opts.map((x) => ({ id: x.id, label: by[x.id]?.label ?? x.id, sub: by[x.id]?.sub ?? '' })), table: tbl });
   const put = (id: string, label: string, sub: string) => { by[id] = { label, sub }; };
@@ -415,7 +421,7 @@ export function cardView(c: Career, q: Career['queue'][number], d: DrawnCard): C
 /** What happened, in a line. Read straight after choose(), from the answer and the career as it is now. */
 export function resultText(c: Career, a: Answer): string {
   const D = a.data, R = a.result as any;
-  return line(c, a.q.k, a.id, D, R) + (a.tix.length ? ' New ticket: ' + a.tix.map((t) => TICKET_TEXT[t]?.n ?? t).join(', ') + '.' : '');
+  return rw(line(c, a.q.k, a.id, D, R)) + (a.tix.length ? ' New ticket: ' + a.tix.map((t) => TICKET_TEXT[t]?.n ?? t).join(', ') + '.' : '');
 }
 
 function line(c: Career, k: string, id: string, D: Record<string, any>, R: any): string {

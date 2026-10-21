@@ -206,11 +206,11 @@ function PackageSheet({ c, t, act, onClose }: { c: Career; t: CouncilTender; act
         <Mentor c={c} k="overheads" act={act} />
         <div className="sub">1 · Your plan</div>
         <div className="card">
-          <div className="small muted">You own {own.grader} grader{own.grader !== 1 ? 's' : ''}, {own.roller} roller{own.roller !== 1 ? 's' : ''}, {own.cart} water cart{own.cart !== 1 ? 's' : ''} and {own.truck} side tipper{own.truck !== 1 ? 's' : ''} free for the start. Anything more is hired in.{away ? ` ${away} more ${away > 1 ? 'are' : 'is'} out on other work past week ${t.close + 1}, so the plan hires ${away > 1 ? 'them' : 'it'} in.` : ''}</div>
+          <div className="small muted">You own {own.grader} grader{own.grader !== 1 ? 's' : ''}, {own.roller} roller{own.roller !== 1 ? 's' : ''}, {own.cart} water truck{own.cart !== 1 ? 's' : ''} and {own.truck} side tipper{own.truck !== 1 ? 's' : ''} free for the start. Anything more is hired in.{away ? ` ${away} more ${away > 1 ? 'are' : 'is'} out on other work past week ${t.close + 1}, so the plan hires ${away > 1 ? 'them' : 'it'} in.` : ''}</div>
           <Stepper label="Crews" sub="Two crews on one job work side by side." val={pl.crews} onDown={set('crews', -1)} onUp={set('crews', 1)} />
           <Stepper label="Graders per crew" sub="A second grader doubles the pace, with its own roller and enough water." val={pl.graders || 1} onDown={set('graders', -1)} onUp={set('graders', 1)} />
           <Stepper label="Rollers per crew" sub="One per grader." val={pl.rollers || 1} onDown={set('rollers', -1)} onUp={set('rollers', 1)} />
-          <Stepper label="Water carts per crew" sub={'2 keep one grader at full pace, 3 for two graders. One short drops productivity 33%.' + (cartEff(t.waterKm) < 1 ? ` The water point is ${t.waterKm} km out, so each cart does ${Math.round(cartEff(t.waterKm) * 100)}% of a normal day.` : '')} val={pl.carts} onDown={set('carts', -1)} onUp={set('carts', 1)} />
+          <Stepper label="Water trucks per crew" sub={'2 keep one grader at full pace, 3 for two graders. One short drops productivity 33%.' + (cartEff(t.waterKm) < 1 ? ` The water point is ${t.waterKm} km out, so each cart does ${Math.round(cartEff(t.waterKm) * 100)}% of a normal day.` : '')} val={pl.carts} onDown={set('carts', -1)} onUp={set('carts', 1)} />
           <Stepper label="Gravel trucks per crew" sub={`Your own side tippers first, then hired with a driver at ${f(TRUCK_DAY)} a day, only on resheeting days.`} val={pl.trucks} onDown={set('trucks', -1)} onUp={set('trucks', 1)} />
           <div className="sub" style={{ marginTop: 6 }}>Gravel pit</div>
           <div className="seg">{t.pits.map((x, i) => <button key={i} type="button" className={pl.pit === i ? 'on' : ''} onClick={() => act((y) => play.setPlan(y, t.id, 'pit', i))}>{x.name} · {x.haul} km</button>)}</div>
@@ -316,7 +316,7 @@ function ProgramSheet({ c, t, act, onClose }: { c: Career; t: CouncilTender; act
               {cr.sub ? <div className="small muted">A local outfit with its own grader, roller, carts, trucks and operators. {f(t.subRate!)} a working day at {Math.round((t.subPace || 0.85) * 100)}% of a full crew's pace.</div>
                 : (['gr', 'ro', 'ca', 'tr'] as const).map((k) => (
                   <div key={k} className="row" style={{ flexWrap: 'nowrap' }}>
-                    <span className="grow small">{{ gr: 'Graders', ro: 'Rollers', ca: 'Water carts', tr: 'Gravel trucks' }[k]}</span>
+                    <span className="grow small">{{ gr: 'Graders', ro: 'Rollers', ca: 'Water trucks', tr: 'Gravel trucks' }[k]}</span>
                     <Btn onClick={op({ op: 'cfg', i: sel, k, d: -1 })}>−</Btn><b className="num" style={{ width: 26, textAlign: 'center' }}>{cr[k]}</b><Btn onClick={op({ op: 'cfg', i: sel, k, d: 1 })}>+</Btn>
                   </div>
                 ))}

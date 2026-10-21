@@ -18,7 +18,7 @@ export const UNIT: Record<Unit, { short: string; per: string; dp: number }> = {
   m: { short: 'm', per: 'a metre', dp: 0 },
   km: { short: 'km', per: 'a km', dp: 1 },
 };
-export const ATTACH_NAME: Record<Attachment, string> = { laser: 'Laser bucket gear', rake: 'Stick rake', cutter: 'Cutter bar' };
+export const ATTACH_NAME: Record<Attachment, string> = { laser: 'Laser Gear', rake: 'Stick Rake', cutter: 'Cutter Bar' };
 export const ATTACH_NOTE: Record<Attachment, string> = {
   laser: 'Transmitter, receiver and the bucket controls. Needed for laser levelling.',
   rake: 'Rakes cleared timber into windrows and leaves the topsoil. Fits any dozer.',
