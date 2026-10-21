@@ -2,11 +2,11 @@
 // A business that's run its own contract, with a fleet, a few hands, and a council package and a flood
 // recovery program out to tender. ?demo=bulk is the same business with the Bulk and Ag pack on and some of its gear.
 
-import { genCouncil, genEnquiry, genMajor, newAccounts, newFuel, newMachine, seedRand, uid, game, type MachineType } from '@engine';
+import { mentorOff, genCouncil, genEnquiry, genMajor, newAccounts, newFuel, newMachine, seedRand, uid, game, type MachineType } from '@engine';
 
 export function demoCareer(kind: string): game.Career | null {
   if (kind !== 'council' && kind !== 'bulk' && kind !== 'fuel' && kind !== 'war') return null;
-  const c = game.newCareer({ co: 'Demo Earthmoving', loan: 350000, town: 'gdi' }, 20261017);
+  const c = game.newCareer({ co: 'Black Soil Earthmoving', loan: 350000, town: 'gdi' }, 20261017);
   const rand = seedRand(7);
   c.phase = 'play';
   c.yard = 'regional';
@@ -49,5 +49,11 @@ export function demoCareer(kind: string): game.Career | null {
       c.queue.push({ k: 'dieselWar' });
     }
   }
+  // ?shots: for store screenshots, Col's notes off; &card=break or rainday puts a card up
+  const q = new URLSearchParams(location.search);
+  if (q.has('shots')) mentorOff(c);
+  const card = q.get('card');
+  if (card === 'break') { Object.assign(c.fleet[0]!, { repair: 6400, down: 3 }); c.queue.push({ k: 'break', id: c.fleet[0]!.id }); }
+  if (card === 'rainday') c.queue.push({ k: 'rainday', w: c.week, d: 2, fmm: 14, pc: 70 } as never);
   return c;
 }

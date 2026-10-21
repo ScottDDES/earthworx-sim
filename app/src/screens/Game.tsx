@@ -277,7 +277,7 @@ export function GameScreen({ c, act, onNew, saves, saveFailed, demo }: { c: Care
               <div className="small">Its storage may be full or blocked (a private window does this). Keep this tab open, or your progress since the last save is lost.</div>
             </div>
           )}
-          {demo && <div className="card"><div className="small muted">A demo career: nothing you do here is saved, and your own saves aren't touched.</div></div>}
+          {demo && !location.search.includes('shots') && <div className="card"><div className="small muted">A demo career: nothing you do here is saved, and your own saves aren't touched.</div></div>}
           <CoachCard c={c} tab={tab} act={act} go={setTab} />
           {!coachOn(c) && c.week >= 6 && tab !== 'bank' && <Mentor c={c} k="runon" act={act} />}
           {tab === 'yard' && <YardTab c={c} act={act} go={setTab} />}
