@@ -277,6 +277,14 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
   const [msg, setMsg] = useState<string | null>(null);
   const pt = pricing ? c.tenders.find((t) => t.id === pricing) : undefined;
   const can = canTender((t) => game.owns(c, t), c.rep, c.whs.sys);
+  // farmers and developers ringing (the Bulk and Ag pack)
+  const bulkRinging = c.packs?.bulk ? (
+        <>
+          <div className="sub">Bulk and Ag: who's ringing</div>
+          {(c.bulk?.enq ?? []).length ? c.bulk!.enq.map((e) => <EnquiryCard key={e.id} c={c} e={e} act={act} />)
+            : <div className="card"><div className="small muted">Nobody's rung this week. Farmers and developers ring most weeks.</div></div>}
+        </>
+  ) : null;
   return (
     <>
       {msg && <div className="card" style={{ borderColor: 'var(--teal)', borderWidth: 2 }}><div className="small">{msg}</div><div className="btns"><button type="button" className="btn" onClick={() => setMsg(null)}>OK</button></div></div>}
@@ -298,16 +306,12 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
       <div className="sub">On the go</div>
       {!c.jobs.length && <div className="card"><b>Nothing on.</b><div className="small muted">Idle machines still cost you repayments. Take some work below.</div></div>}
       {c.jobs.map((j) => <JobCard key={j.id} c={c} j={j} act={act} />)}
-      {c.packs?.bulk && (
-        <>
-          <div className="sub">Bulk and Ag: who's ringing</div>
-          {(c.bulk?.enq ?? []).length ? c.bulk!.enq.map((e) => <EnquiryCard key={e.id} c={c} e={e} act={act} />)
-            : <div className="card"><div className="small muted">Nobody's rung this week. Farmers and developers ring most weeks.</div></div>}
-        </>
-      )}
+      {c.path === 'bulk' && bulkRinging}
       <div className="sub">Work on offer this week</div>
       {!c.offers.length && <div className="card"><div className="small muted">Nothing else this week. New work comes up every Monday.</div></div>}
-      {c.offers.map((o) => <OfferCard key={o.id} c={c} o={o} act={act} onMsg={setMsg} />)}
+      {/* the work you can take first; jobs for machines you haven't got go to the bottom */}
+      {[...c.offers].sort((a, b) => Number(!!whyNot(c as never, a)) - Number(!!whyNot(c as never, b))).map((o) => <OfferCard key={o.id} c={c} o={o} act={act} onMsg={setMsg} />)}
+      {c.path !== 'bulk' && bulkRinging}
       {pt && <PriceSheet c={c} t={pt} act={act} onClose={() => setPricing(null)} />}
       {ct && <PlanSheet c={c} t={ct} act={act} onClose={() => setPlanning(null)} />}
     </>
