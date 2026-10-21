@@ -12,6 +12,17 @@ import { diaryLines } from '../src/text/diary';
 import { playWeeks } from './saveBot';
 
 const DIR = new URL('./saves/', import.meta.url);
+
+// what a player should never read: a broken number or blank, doubled spaces, American spelling, or a brand name
+const BAD: [RegExp, string][] = [
+  [/NaN|undefined|null|\[object|Infinity/, 'a broken value'],
+  [/ {2,}| [,.;:!?](?!\d)/, 'stray spaces'],
+  [/(colou?r(?<!colour)|center|organiz|realiz|labor|tire|tires|gray|meters?|liters?|favorite|defense)/i, 'American spelling'],
+  [/(QRA|DRFA|NDRRA|WorkSafe|Safe ?Work|Austroads|QBCC|WHSQ)/, 'a brand name'],
+];
+function checkWords(where: string, t: string, bad: string[]): void {
+  for (const [re, why] of BAD) if (re.test(t)) bad.push(where + ' (' + why + '): ' + t.slice(0, 140));
+}
 const files = readdirSync(DIR).filter((f) => f.endsWith('.json')).sort();
 
 describe('saves from older builds', () => {
@@ -26,11 +37,20 @@ describe('saves from older builds', () => {
       const w0 = c.week;
       expect(c.phase).toBe('play');
       let cards = 0, weeks = 0;
+      const bad: string[] = [];
       playWeeks(c, 52, {
-        card: (c, q) => { const d = drawCard(c, q); if (d) { const v = cardView(c, q, d); expect(v.title, q.k).toBeTruthy(); cards++; } },
-        report: (c, r) => { docketLines(c, r); docketStamps(c, r); weeks++; },
+        card: (c, q) => {
+          const d = drawCard(c, q);
+          if (!d) return;
+          const v = cardView(c, q, d);
+          expect(v.title, q.k).toBeTruthy();
+          for (const t of [v.tag, v.title, v.body, ...v.opts.flatMap((o) => [o.label, o.sub])]) checkWords('card ' + q.k, t, bad);
+          cards++;
+        },
+        report: (c, r) => { for (const t of [...docketLines(c, r), ...docketStamps(c, r)]) checkWords('docket', t, bad); weeks++; },
       });
-      diaryLines(c);
+      for (const l of diaryLines(c)) checkWords('diary', l.t, bad);
+      expect(bad, f).toEqual([]);
       expect(c.week).toBeGreaterThan(w0);
       expect(weeks).toBeGreaterThan(0);
       for (const n of [c.bank, game.worth(c), ...c.fleet.map((m) => m.hours)]) expect(Number.isFinite(n), f).toBe(true);
