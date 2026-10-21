@@ -105,6 +105,20 @@ export function comeback(k: BulkKind): { title: (farm: string) => string; body: 
   }
 }
 
+/** A grazier by first name and surname (the real game's hard calls). */
+const FIRST: Record<string, string> = { Kelly: 'Bev', Hartigan: 'Col', Morrow: 'Jim', Fitzgerald: 'Noel', Lucas: 'Pete', Pearce: 'Trish', Doyle: 'Gary', McCann: 'Ray', Walsh: 'Deb', Brennan: 'Kev' };
+export const farmer = (farm: string) => (FIRST[farm] ? FIRST[farm] + ' ' + farm : farm);
+export const firstName = (farm: string) => FIRST[farm] ?? farm;
+
+/** The real game's comeback: what you'd show them, and what they reckon. */
+export function comebackDoubt(k: BulkKind, farm: string): { show: string; body: string } {
+  switch (k) {
+    case 'contour': return { show: 'Show ' + firstName(farm) + ' it was a big storm, not your banks', body: 'It was a big storm, and the neighbours lost banks too. ' + firstName(farm) + ' reckons it\'s your work.' };
+    case 'laser': return { show: 'Show ' + firstName(farm) + ' the siphons are set wrong', body: 'The siphons look like they\'re running too long. ' + firstName(farm) + ' reckons it\'s your levels.' };
+    default: return { show: 'Show ' + firstName(farm) + ' it\'s the cracking and the yabbies', body: 'The top of the wall has cracked in the dry and there are yabby holes along the bank. ' + firstName(farm) + ' reckons it\'s your wall.' };
+  }
+}
+
 export function damProgress(j: Job): string {
   const u = KINDS[j.dk as BulkKind]?.unit ?? 'm3';
   return qty(Math.min(j.m3 as number, j.truth as number), u) + ' done';

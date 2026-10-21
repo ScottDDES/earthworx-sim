@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import {
-  BULK_TYPES, ERP_SETUP, ERP_WEEK, erpOk, BR_FLOAT, BR_MGR, BR_RENT, BR_SETUP, BR_SLOTS, GPS_COST, MGR, ROLES, SKILLS, TOWNS, WHS_SYS, YARDS, YARD_ORDER,
+  BULK_TYPES, ERP_SETUP, ERP_WEEK, erpOk, BR_FLOAT, BR_MGR, BR_RENT, BR_SETUP, BR_SLOTS, GPS_COST, MGR, ROLES, SKILLS, TOWNS, COMP_AFTER, COMP_SHARE, wageNow, WHS_SYS, YARDS, YARD_ORDER,
   bigNoWsm, brCrews, brMachines, brProfit, brTown, canBranch, fitPer, fitters, forecast, lastInc, machineAlerts, machineName,
   mgrOf, mgrUnlocked, monthIdx, nextWhs, odLimit, premParts, recentInc, riskMult, svcCost, unlocked, value, whsNp, fleetValue, wages,
   RT_COST, compat, game, type Machine, type MachineType, type YardId, play,
@@ -318,11 +318,20 @@ function People({ c, act }: { c: Career; act: Act }) {
             ) : (
               <div className="small muted">{oj ? jobTitle(oj) + '. ' : ''}{SKILLS[p.skill].name}. {ROLES[p.role].note} {f(p.wage)} a week, working or not.</div>
             )}
+            {p.inj && p.off > 0 && (
+              <div className="small" style={{ color: 'var(--rust)' }}>
+                Off injured. {p.inj.rep
+                  ? p.inj.wk >= COMP_AFTER ? `Workers' compensation pays ${Math.round(COMP_SHARE * 100)}% of their wage: you pay ${f(wageNow(p))} a week.` : `Workers' compensation pays ${Math.round(COMP_SHARE * 100)}% of their wage once they've been off ${COMP_AFTER} weeks.`
+                  : 'No claim was lodged, so you pay their whole wage.'}
+              </div>
+            )}
+            {(p.unpaid ?? 0) > 0 && <div className="small muted">Home without pay for {p.unpaid} more week{p.unpaid === 1 ? '' : 's'}.</div>}
             <div className="btns">
               <button type="button" className="btn" disabled={!!p.jobId} onClick={() => { if (going === p.id) { act((x) => play.letGo(x, p.id)); setGoing(null); } else setGoing(p.id); }}>
-                {going === p.id ? 'Tap again: let ' + p.name + ' go with a week\'s pay' : 'Let ' + p.name + ' go'}
+                {going === p.id ? (p.inj && p.off > 0 ? 'Tap again: let ' + p.name + ' go while they\'re off injured' : 'Tap again: let ' + p.name + ' go with a week\'s pay') : 'Let ' + p.name + ' go'}
               </button>
             </div>
+            {going === p.id && p.inj && p.off > 0 && <div className="small" style={{ color: 'var(--rust)' }}>Letting someone go while they're off hurt at work can bring an unfair dismissal claim.</div>}
           </div>
         );
       })}

@@ -10,7 +10,7 @@ import { HEAD_CONTRACTORS, type Mood } from './market';
 import { dmap, mapRival, mapWork, pickRoads, placePos, type MapHolder } from './map';
 import { relAdd, relOf, relPts } from './relations';
 import { int, pick, type Rand } from './rng';
-import { rvOHFor, rvPhase, rvWhs, rvWin, whoPrices, type Rival } from './rivals';
+import { BID_ODDS, rvOHFor, rvPhase, rvWhs, rvWin, whoPrices, type Rival } from './rivals';
 import { whsNp, whsNpSub, type Whs } from './safety';
 import { ROLES } from './staff';
 import { TOWNS, type TownId } from './towns';
@@ -46,6 +46,10 @@ export function gradeDays(q: Quantities): number {
 
 export interface SubTender {
   id: string;
+  /** The real game: a rival's number you were tipped (and whether you priced off it), and whether you've been asked. */
+  tip?: { name: string; price: number };
+  tipUsed?: boolean;
+  tipAsked?: boolean;
   /** DDES Advisory's read on the sharpest rival price. */
   adv?: { lo: number; hi: number };
   place: string;
@@ -283,6 +287,14 @@ export function setMk(st: Tenderer, id: string, d: number): void {
 
 export type CloseEvent = { k: 'directLapsed'; hc: string } | { k: 'wentTo'; name: string; price: number };
 
+/** The real game: a rival's estimator tells you their number on a tender. Picks the rival and works out what they'll put in. */
+export function tipFor(rand: Rand, st: Tenderer, t: SubTender): { name: string; price: number } | null {
+  const rv = st.rivals.filter((x) => BID_ODDS.sub[x.tier] > 0);
+  if (!rv.length) return null;
+  const x = pick(rand, rv), std = tCost(t, STD_CREW_DAY), oh = rvOHFor(x, subWks(t));
+  return { name: x.name, price: Math.round(((std * x.eff + oh) * (1 + x.margin) * (0.94 + rand() * 0.12)) / 100) * 100 };
+}
+
 /**
  * The tender closes. A direct offer is yours if you're within their budget. Otherwise the rivals free to
  * price put theirs in, everyone's scored, and the best total wins. The winning rival carries the job and
@@ -305,10 +317,14 @@ export function closeTender(rand: Rand, st: Tenderer, t: SubTender, me: Standing
     return;
   }
   const std = tCost(t, STD_CREW_DAY), bidders = whoPrices(rand, st.rivals, 'sub');
+  // the real game: the rival whose number you were tipped prices, at that number
+  const tipped = t.tip ? st.rivals.find((x) => x.name === t.tip!.name) : undefined;
+  if (tipped && !bidders.includes(tipped)) bidders.push(tipped);
   type Entry = { name: string; stars: number; price: number; oh?: number; rv?: Rival; you?: boolean; pp?: number; parts?: NonPrice; np?: number; tot?: number };
   const E: Entry[] = bidders.map((x) => {
     const oh = rvOHFor(x, subWks(t));
-    return { name: x.name, stars: x.stars, oh, price: Math.round(((std * x.eff + oh) * (1 + x.margin) * (0.94 + rand() * 0.12)) / 100) * 100, rv: x };
+    const price = Math.round(((std * x.eff + oh) * (1 + x.margin) * (0.94 + rand() * 0.12)) / 100) * 100;
+    return { name: x.name, stars: x.stars, oh, price: x === tipped ? t.tip!.price : price, rv: x };
   });
   if (t.bid) E.push({ name: coName, stars: stars(st.rep), price: t.bid, you: true });
   const low = Math.min(...E.map((e) => e.price));
@@ -333,6 +349,8 @@ export function closeTender(rand: Rand, st: Tenderer, t: SubTender, me: Standing
   }
   t.result = E.map((e) => ({ name: e.name, price: e.price, pp: Math.round(e.pp! * 10) / 10, np: e.np!, parts: e.parts, tot: Math.round(e.tot! * 10) / 10, you: !!e.you }));
   t.winner = w.name;
+  // priced off a tip: it might get out (more likely if you won on it)
+  if (t.tipUsed && rand() < (w.you ? 0.3 : 0.1)) ((st as { later?: unknown[] }).later ??= []).push({ w: st.week + int(rand, 6, 20), k: 'tipOut', hc: t.hc, rival: t.tip?.name });
   if (!w.you) mapRival(st.dmap!, t.mapIds, w.name, t.weeks, st.week);
   if (t.bid) st.queue.push({ k: 'tresult', t });
   else {

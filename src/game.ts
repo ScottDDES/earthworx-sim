@@ -20,6 +20,7 @@ import { genMgrApplicants, hireMgr as hireMgrPerson, mgrIs, mgrOf, mgrTraitsWeek
 import { afterService, fitterWeek, wsmWeek, type WorkshopEvent } from './workshop';
 import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium as premiumOf } from './overheads';
 import { compat } from './compat';
+import { injuryWeek, laterWeek, letGoInjured } from './later';
 import { buyAttachment, bulkStart, bulkWeek, damDay, doable, genEnquiry, sendQuote, setPrecon, type Attachment, setRate, survey, type BulkBook, type BulkEvent } from './bulk';
 import { ERP_SETUP, PRICE_CHECK_FEE, erpOk, priceBand } from './advisory';
 import { buyTank, cancelFuel, fuelIdle, fuelSettle, fuelStart, fuelWeek, orderFuel, setAuto, type FuelBook, type FuelEvent, type TankId } from './fuel';
@@ -30,7 +31,7 @@ import { seasonWeek } from './seasons';
 import { coachTick, tabsWeek, type CoachState } from './coach';
 import { mRef, note, noteNews, type DiaryEntry } from './diary';
 import { dmap, mapWeek, type DistrictMap, type MapEvent } from './map';
-import { STD_CREW_DAY, tCost as tCostOf, subWks as subWksOf, canTender, closeTender, crewDayCost, genTenders, otherContracts, setMk, subPrice, submitBid as submitBidT, withdrawBid as withdrawBidT, tbs, type CloseEvent, type Standing, type SubTender } from './tenders';
+import { tipFor, STD_CREW_DAY, tCost as tCostOf, subWks as subWksOf, canTender, closeTender, crewDayCost, genTenders, otherContracts, setMk, subPrice, submitBid as submitBidT, withdrawBid as withdrawBidT, tbs, type CloseEvent, type Standing, type SubTender } from './tenders';
 import { closeCouncil, councilPrice, genMajor, genCouncil, canPrestige, progAct as progActC, setCmk, setHm as setHmC, setOh, setPlan as setPlanC, submitCouncil as submitCouncilT, type CouncilEvent, type ProgOp } from './council';
 import { autoPlan, planEval, stdPlan, type CouncilTender, type PlanCtx } from './planning';
 import { endOfDay, jobDay, settleJob, staffOwn, staffSubs, seatStaff, subOut as subOutC, subQuotes, takeBack as takeBackC, terminateWeek, type ContractEvent, type SubQuote } from './contracts';
@@ -90,6 +91,10 @@ export interface Career {
   blocked: Record<string, number>;
   market: Market | null;
   queue: { k: string; id?: string; sd?: number; [x: string]: any }[];
+  /** Hard calls that come back later (the real game). */
+  later?: import('./later').Later[];
+  /** Week a rival last tipped you their number. */
+  tipLast?: number;
   phase: string;
   won: boolean;
   won2: boolean;
@@ -568,6 +573,12 @@ export function hireCand(c: Career, id: string, haggle = false): HireAnswer | nu
 export function letGo(c: Career, id: string): boolean {
   const p = c.staff.find((x) => x.id === id);
   if (!p || p.jobId) return false;
+  // the real game: letting go someone off injured invites an unfair dismissal claim
+  if (!compat.prototype && p.inj && p.off > 0) {
+    letGoInjured(stream(c), c, p);
+    note(c, { k: 'letGo', name: p.name });
+    return true;
+  }
   c.bank -= p.wage;
   c.staff = c.staff.filter((x) => x !== p);
   note(c, { k: 'letGo', name: p.name });
@@ -805,6 +816,11 @@ export function endWeek(c: Career): Report | null {
     ev.push({ k: 'paidOff' });
   }
   salesWeek(rand, c as never, mood(c), ev as SaleEvent[]);
+  // the real game: hard calls coming back, and the injured a week further on (workers' compensation, the card at four weeks)
+  if (!compat.prototype) {
+    laterWeek(worldRand(c, 'later'), c);
+    injuryWeek(c);
+  }
   for (const p of c.staff) if (p.off > 0) p.off--;
   c.cands = genCandidates(worldRand(c, 'cands'), { taken: c.staff.map((p) => p.name), ownContract: c.won2, workshop: YARDS[c.yard].svc < 1 }, () => uid(c));
   if (c.packs?.bulk) {
@@ -861,6 +877,19 @@ export function endWeek(c: Career): Report | null {
   fuelWeek(worldRand(c, 'diesel'), c as never, costIdx(c), ev as FuelEvent[]);
   if (c.packs?.bulk) bulkWeek(worldRand(c, 'bulk-enq'), c as never, fmul(c), ev as BulkEvent[], rep.mm);
   genTenders(wr, c as never, canTender((t) => owns(c, t), c.rep, c.whs.sys), mood(c), fmul(c));
+  // the real game: now and then a rival's estimator offers you their number over a beer
+  if (!compat.prototype) {
+    const tr = worldRand(c, 'tip'), t = c.tenders.find((x) => !x.direct && !x.bid && !x.tipAsked);
+    if (t && c.week - (c.tipLast ?? -99) >= 26 && tr() < 0.06) {
+      const tip = tipFor(tr, c as never, t);
+      t.tipAsked = true;
+      if (tip) {
+        t.tip = tip;
+        c.tipLast = c.week;
+        c.queue.push({ k: 'tip', id: t.id });
+      }
+    }
+  }
   if (compat.prototype || !barred(c as never, TOWNS[c.town].council)) {
     genCouncil(wr, c as never, planCtx(c), fmul(c));
     genMajor(wr, c as never, planCtx(c), fmul(c), canPrestige(c as never, c.whs.sys, c.yard));

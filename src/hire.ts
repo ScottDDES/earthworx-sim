@@ -549,6 +549,12 @@ export function hireDay(rand: Rand, b: Biz, j: Job, d: number, wet: boolean, w: 
       if (!wet) rep.lost++;
       return true;
     }
+    // the real game: a day stopped (a near miss sorted out properly)
+    if (j.halt != null && (j.halt as number) <= b.week && d === 0) {
+      delete j.halt;
+      if (!wet) rep.lost++;
+      return true;
+    }
     if (j.mob && j.mob.w === b.week && d <= j.mob.d) return true;
     // your tank's dry: work you fuel yourself waits on the fuel truck today
     if (fuelIdle(b, d) && (j.fuelPaid || ((j.kind === 'sub' || j.kind === 'own') && j.state !== 'subbed'))) {

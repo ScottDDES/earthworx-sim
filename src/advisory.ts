@@ -20,6 +20,9 @@ export function nearMissAdvisoryCost(reportCost: number): number {
 /** Injury management for a crew member who's hurt: the right doctor this week, and back sooner. */
 export const HURT_ADVISORY = 400;
 
+/** A return-to-work plan for someone off injured, run with the insurer and the doctor. */
+export const RTW_ADVISORY = 1800;
+
 /** A wellbeing check-in for the whole crew. */
 export const WELLBEING_ADVISORY = 600;
 

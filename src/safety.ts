@@ -2,6 +2,7 @@
 // with every call they make, and a hidden build-up of near-trouble (hazard). All three set the odds of an incident.
 // Words for what happened live in text/safety.ts; the engine only records which story it was.
 
+import { compat } from './compat';
 import { note } from './diary';
 import { DIFFICULTY, type Difficulty } from './difficulty';
 import { WHS_SYS } from './overheads';
@@ -293,7 +294,8 @@ export function quietYarn(rand: Rand, st: SafetyState, p: Person): number {
   st.bank -= 80;
   p.yarn = st.week;
   st.whs.cult = Math.min(100, st.whs.cult + 5);
-  return int(rand, 0, 2);
+  // the real game: they'd asked you to leave it, and sometimes it doesn't land
+  return int(rand, 0, compat.prototype ? 2 : 3);
 }
 
 /** DDES Advisory runs a wellbeing check-in for the whole crew: counts as a yarn with everyone. */

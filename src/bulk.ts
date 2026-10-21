@@ -66,6 +66,10 @@ export const REWORK = 0.12;
 export const LEAK_FIX = 0.15;
 /** The red-zone call: three days' hourly cash, and the fine if it comes out. */
 export const REDZONE_CASH = 7200;
+/** How often a farmer asks to do a won job for cash; the discount; the odds the tax office finds it within the year, and what it costs then. */
+export const CASH_ASK = 0.12, CASH_OFF = 0.1, CASH_AUDIT = 0.15, CASH_BACK = 0.35;
+/** The engineer's price for signing off a tested wall untested. */
+export const SIGNOFF_BRIBE = 1500;
 export const REDZONE_FINE = 60000;
 /** A week with this much rain leaves the clay too wet to compact. */
 export const WET_CLAY_MM = 25;
@@ -147,7 +151,7 @@ export interface FarmEnquiry {
   week: number;
 }
 
-export interface Leak { w: number; farm: string; place: string; dk: BulkKind; price: number }
+export interface Leak { w: number; farm: string; place: string; dk: BulkKind; price: number; /** How good the work was, and whether it was pushed on wet clay (the real game). */ q?: number; wet?: boolean }
 export interface BulkBook {
   enq: FarmEnquiry[];
   /** Comebacks waiting: leaking walls, banks that broke, paddocks that pond. */
@@ -158,11 +162,19 @@ export interface BulkBook {
   rzFound?: boolean;
   /** Attachments you own. */
   att?: Partial<Record<Attachment, boolean>>;
+  /** The real game: the red-zone grazier's dam, waiting on what you say. */
+  rzDam?: FarmEnquiry;
+  /** A grazier with a grudge: he rings, and gives it to someone else unless you're dirt cheap. */
+  grudge?: { farm: string; until: number };
+  /** A grazier who owes you one: his work is yours at anything reasonable. */
+  promise?: { farm: string; until: number };
+  /** A client you let down a little: less keen next time. */
+  cool?: { farm: string; until: number };
 }
 export type BulkState = Biz & { bulk?: BulkBook; won2?: boolean; bulkDone?: number; devDone?: number; testsPassed?: number };
 type B = BulkState;
 
-const FARMS = ['Kelly', 'Hartigan', 'Morrow', 'Fitzgerald', 'Lucas', 'Pearce', 'Doyle', 'McCann', 'Walsh', 'Brennan'] as const;
+export const FARMS = ['Kelly', 'Hartigan', 'Morrow', 'Fitzgerald', 'Lucas', 'Pearce', 'Doyle', 'McCann', 'Walsh', 'Brennan'] as const;
 const DEVS = ['Macintyre Land', 'Border Solar', 'Weir Valley Estates', 'Downs Logistics Park'] as const;
 
 /** Someone rings about work. Developers only once you've run your own contract. */
@@ -267,6 +279,17 @@ export function sendQuote(b: B, id: string): boolean {
 }
 
 /** The client's yes: sure under 88% of their budget, never over 108%. */
+/** The real game: a grazier's grudge or favour bends his answer. */
+export function clientOdds(S: BulkBook, e: FarmEnquiry, week: number): number {
+  const on = (x?: { farm: string; until: number }) => !!x && x.farm === e.farm && week < x.until;
+  if (on(S.grudge)) return (e.quoted ?? 0) <= e.budget * GRUDGE_PRICE ? yesOdds(e) : 0;
+  if (on(S.promise)) return (e.quoted ?? 0) <= e.budget * 1.25 ? 1 : yesOdds(e);
+  if (on(S.cool)) return yesOdds(e) * 0.6;
+  return yesOdds(e);
+}
+/** Under a grudge, he only says yes at this share of his budget or less. */
+export const GRUDGE_PRICE = 0.7;
+
 export function yesOdds(e: FarmEnquiry): number {
   return Math.max(0, Math.min(1, (e.budget * 1.08 - (e.quoted ?? 0)) / (e.budget * 0.2)));
 }
@@ -309,6 +332,14 @@ export function bulkWeek(rand: Rand, b: B, fmul: number, events: BulkEvent[], mm
     const j = b.jobs.find((x) => x.kind === 'bulk' && x.state === 'running' && !x.finished && (isDam(x.dk) || x.dk === 'pad' || x.dk === 'dev'));
     if (j && !b.queue.some((q) => q.k === 'wetclay')) b.queue.push({ k: 'wetclay', id: j.id, mm: Math.round(mm) });
   }
+  // the real game: the engineer testing a wall offers to sign it off untested
+  if (!compat.prototype) {
+    const tj = b.jobs.find((x) => x.kind === 'bulk' && x.state === 'running' && !x.finished && x.tested && !x.signAsked && (x.m3 as number) >= (x.est as number) * 0.6);
+    if (tj && !b.queue.some((q) => q.k === 'signoff') && rand() < 0.3) {
+      tj.signAsked = true;
+      b.queue.push({ k: 'signoff', id: tj.id });
+    }
+  }
   // windrows waiting on the end of fire season
   for (const j of b.jobs) {
     if (j.kind === 'bulk' && j.state === 'burn' && !FIRE_MONTHS.includes(monthIdx(b.week))) {
@@ -336,25 +367,36 @@ export function bulkWeek(rand: Rand, b: B, fmul: number, events: BulkEvent[], mm
     S.rzFound = true;
     b.bank -= REDZONE_FINE;
     b.rep = Math.max(0, b.rep - 3);
+    // the real game: and the council won't hire you for six months
+    if (!compat.prototype) (b.blocked as Record<string, number>)[TOWNS[b.town as keyof typeof TOWNS].council] = b.week + 26;
     events.push({ k: 'redzoneFound', fine: REDZONE_FINE });
     note(b, { k: 'redzoneFound', fine: REDZONE_FINE });
   }
   if (b.fleet.some((m) => m.type === 'd8' || m.type === 'd9' || m.type === 'd10') && b.week - (S.rzLast ?? -99) >= 40 && !b.queue.length && rand() < 0.04) {
     S.rzLast = b.week;
-    b.queue.push({ k: 'redzone' });
+    if (compat.prototype) b.queue.push({ k: 'redzone' });
+    else {
+      // a grazier you've worked for if there is one, and the dam he's got lined up for you
+      const known = ((b as { log?: { e: { k: string; farm?: string } }[] }).log ?? []).filter((x) => (x.e.k === 'damWon' || x.e.k === 'damDone') && (FARMS as readonly string[]).includes(x.e.farm ?? '')).map((x) => x.e.farm!);
+      const farm = known.length ? pick(rand, known) : pick(rand, FARMS);
+      S.rzDam = { ...genEnquiry(rand, b, fmul, 'turkeyNest'), farm };
+      b.queue.push({ k: 'redzone', farm });
+    }
   }
   for (const e of S.enq.slice()) {
     if (e.quoted && e.week < b.week) {
       S.enq = S.enq.filter((x) => x !== e);
-      if (rand() < yesOdds(e)) {
+      if (rand() < (compat.prototype ? yesOdds(e) : clientOdds(S, e, b.week))) {
         const j = bulkJob(b, e);
         // the gear's booked the moment they say yes, before a hire job can take it
         startOne(b, j, events);
         events.push({ k: 'damWon', jobId: j.id, price: e.quoted });
+        // the real game: now and then a farmer wants it done for cash
+        if (!compat.prototype && e.kind !== 'dev' && !e.tested && rand() < CASH_ASK) b.queue.push({ k: 'cashjob', id: j.id });
         note(b, { k: 'damWon', farm: e.farm, place: e.place, dk: e.kind, price: e.quoted });
       } else {
         events.push({ k: 'damLost', farm: e.farm, place: e.place });
-        note(b, { k: 'damLost', farm: e.farm, place: e.place, dk: e.kind });
+        note(b, { k: !compat.prototype && S.grudge?.farm === e.farm && b.week < S.grudge.until ? 'grudgeLost' : 'damLost', farm: e.farm, place: e.place, dk: e.kind });
       }
     } else if (!e.quoted && b.week - e.week >= ENQ_WEEKS) {
       S.enq = S.enq.filter((x) => x !== e);
@@ -372,7 +414,10 @@ export function bulkWeek(rand: Rand, b: B, fmul: number, events: BulkEvent[], mm
   if (S.enq.filter((e) => !e.quoted).length < 3 && rand() < 0.5) {
     // half the time it's work your gear can already do, so a small outfit isn't left looking at jobs it can't touch
     const can = doable(b);
-    S.enq.push(genEnquiry(rand, b, fmul, can.length && rand() < 0.5 ? pick(rand, can) : undefined));
+    const e = genEnquiry(rand, b, fmul, can.length && rand() < 0.5 ? pick(rand, can) : undefined);
+    // the real game: a grazier with a grudge keeps ringing for prices, just to give the work to someone else
+    if (!compat.prototype && S.grudge && b.week < S.grudge.until && e.kind !== 'dev' && rand() < 0.35) e.farm = S.grudge.farm;
+    S.enq.push(e);
   }
 }
 
@@ -623,6 +668,14 @@ export function wallQuality(j: Job): number {
 export function passOdds(q: number): number {
   return Math.max(0, Math.min(1, (q - 0.5) / 0.4));
 }
+/** The real game: a sound wall still comes back now and then (cracking, yabbies). */
+export const DROUGHT_CRACK = 0.04;
+
+/** Whether a client believes it wasn't your wall: good, dry-rolled work usually stands up; pushed on wet clay, rarely. */
+export function believeOdds(q: number, wet: boolean): number {
+  return Math.max(0.05, Math.min(0.8, (q - 0.5) * 2.5)) * (wet ? 0.3 : 1);
+}
+
 export function leakOdds(q: number): number {
   return Math.max(0, Math.min(1, (0.85 - q) * 1.5));
 }
@@ -713,11 +766,21 @@ function finishJob(rand: Rand, b: B, j: Job, rep: WeekReport, events: BulkEvent[
     // windrows can't be burnt in fire season: paid once they are
     j.state = 'burn';
     events.push({ k: 'burnWait', jobId: j.id });
+  } else if (j.cash) {
+    // cash in hand, nothing in the books
+    b.bank += j.fixed as number;
+    if (rand() < CASH_AUDIT) laterBulk(b, 'audit', int(rand, 10, 40), { farm: j.client, amt: round((j.fixed as number) * CASH_BACK, 100) });
   } else invoice(b, j.client, j.fixed as number, j.terms, rep);
   events.push({ k: 'damDone', jobId: j.id, price: j.fixed as number, m3: Math.round(j.truth as number), est: Math.round(j.est as number) });
   const q = wallQuality(j);
   j.q = Math.round(q * 100) / 100;
-  if (j.tested) {
+  if (j.tested && j.signed) {
+    // signed off untested: it passes on paper. If it wouldn't have, the wall finds out later.
+    b.rep += 1;
+    b.testsPassed = (b.testsPassed || 0) + 1;
+    events.push({ k: 'damPassed', jobId: j.id });
+    if (rand() >= passOdds(q)) laterBulk(b, 'signFail', int(rand, 12, 40), { farm: j.client, place: j.place, cost: round((j.fixed as number) * REWORK * 2, 100) });
+  } else if (j.tested) {
     if (rand() < passOdds(q)) {
       b.rep += 1;
       b.testsPassed = (b.testsPassed || 0) + 1;
@@ -730,9 +793,10 @@ function finishJob(rand: Rand, b: B, j: Job, rep: WeekReport, events: BulkEvent[
       b.rep = Math.max(0, b.rep - 1);
       events.push({ k: 'damFailed', jobId: j.id, cost });
     }
-  } else if (rand() < leakOdds(q)) {
+  } else if (rand() < leakOdds(q) || (!compat.prototype && rand() < DROUGHT_CRACK)) {
+    // the real game: a good wall can still crack in a dry spell, or get the yabbies in
     const S = (b.bulk ??= { enq: [] });
-    (S.leaks ??= []).push({ w: b.week + int(rand, 8, 30), farm: j.client, place: j.place, dk: kind, price: j.fixed as number });
+    (S.leaks ??= []).push({ w: b.week + int(rand, 8, 30), farm: j.client, place: j.place, dk: kind, price: j.fixed as number, ...(compat.prototype ? {} : { q: Math.round(q * 100) / 100, wet: j.wetPush != null }) });
   }
   note(b, { k: 'damDone', farm: j.client, place: j.place, dk: j.dk, price: j.fixed, m3: Math.round(j.truth as number), est: Math.round(j.est as number), spent: Math.round(j.spent || 0) });
 }
@@ -760,6 +824,56 @@ export function leakFix(b: B, fix: number): void {
 }
 export function leakArgue(b: B): void {
   b.rep = Math.max(0, b.rep - 2);
+}
+/** The real game: show them it wasn't your wall. Believed, nothing comes of it; not, they get an engineer and you pay the fix and the name. Returns believed. */
+export function leakShow(rand: Rand, b: B, fix: number, q: number, wet: boolean): boolean {
+  if (rand() < believeOdds(q, wet)) return true;
+  b.bank -= fix;
+  b.rep = Math.max(0, b.rep - 2);
+  return false;
+}
+/** Wet clay: wait for it to dry, and the client's put out (the real game: a little less keen next time). */
+export function wetClayWaitCool(b: B, j: Job): void {
+  wetClayWait(j);
+  (b.bulk ??= { enq: [] }).cool = { farm: j.client, until: b.week + 26 };
+}
+/** The red-zone grazier, the real game. No: he holds it against you for a year. Permit: half the time the same, half the time the dam comes back later, done properly. Take: the cash, and the dam's yours. */
+export function redzoneNo(b: B, farm: string): void {
+  const S = (b.bulk ??= { enq: [] });
+  S.grudge = { farm, until: b.week + 52 };
+  delete S.rzDam;
+}
+export function redzonePermit(rand: Rand, b: B, farm: string): boolean {
+  if (rand() < 0.5) {
+    redzoneNo(b, farm);
+    return false;
+  }
+  laterBulk(b, 'rzDam', int(rand, 10, 16), { permit: true });
+  return true;
+}
+export function redzoneTakeDam(rand: Rand, b: B): void {
+  redzoneTake(b);
+  laterBulk(b, 'rzDam', int(rand, 4, 8), {});
+}
+/** A farmer wants a won job done for cash: take it (10% off, paid in cash, no invoice) or put it through the books (half the time they're put out). */
+export function cashTake(j: Job): void {
+  j.cash = true;
+  j.fixed = round((j.fixed as number) * (1 - CASH_OFF), 100);
+}
+export function cashInvoice(rand: Rand, b: B, j: Job): boolean {
+  if (rand() < 0.5) {
+    (b.bulk ??= { enq: [] }).cool = { farm: j.client, until: b.week + 26 };
+    return true;
+  }
+  return false;
+}
+/** Pay the engineer to sign off the tests. */
+export function signoffPay(b: B, j: Job): void {
+  b.bank -= SIGNOFF_BRIBE;
+  j.signed = true;
+}
+function laterBulk(b: B, k: string, wks: number, d: Record<string, unknown>): void {
+  ((b as { later?: unknown[] }).later ??= []).push({ w: b.week + wks, k, ...d });
 }
 /** The red-zone job: the cash now, and a chance it comes out over the next year. */
 export function redzoneTake(b: B): void {

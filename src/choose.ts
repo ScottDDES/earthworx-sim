@@ -11,7 +11,10 @@ import { hashN, pick, seedRand, type Rand } from './rng';
 import { lateChase, lateFriendly, latePark, lateWait, release, stars, type Job } from './hire';
 import { TOWNS } from './towns';
 import { compat } from './compat';
-import { REDZONE_CASH, REDZONE_FINE, leakArgue, leakFix, redzoneTake, wetClayPush, wetClayWait } from './bulk';
+import { REDZONE_CASH, REDZONE_FINE, SIGNOFF_BRIBE, CASH_OFF, cashInvoice, cashTake, leakArgue, leakFix, leakShow, redzoneNo, redzonePermit, redzoneTake, redzoneTakeDam, signoffPay, wetClayPush, wetClayWait, wetClayWaitCool } from './bulk';
+import { injure, injuredAdvisory, injuredKeep, later, letGoInjured, nextTownOperator } from './later';
+import { RTW_ADVISORY } from './advisory';
+import { relAdd } from './relations';
 import { ROLES } from './staff';
 import { bestFitter, mgrIs } from './managers';
 import { adFix, adOK, adPay } from './ads';
@@ -70,10 +73,18 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       if (hj && hj === sj0) card.story = ({ cart: 0, grader: 1, truck: 2, roller: 3 } as Record<string, number>)[hj.type] ?? card.story;
       const fsz = Math.min(1, 0.25 + c.fleet.length / 10);
       Object.assign(data, { card, job: sj0, who: q.who ?? null, sys: c.whs.sys, fineLo: Math.round(20000 * fsz / 1000) * 1000, fineHi: Math.round(60000 * fsz / 1000) * 1000 });
+      const hurtP = q.who && q.who !== 'you' ? c.staff.find((p) => p.id === q.who) : undefined;
+      // the real game: the client's on the phone wanting the site going (a head contractor, or the council)
+      const hc = !compat.prototype && sj0 && sj0.kind === 'sub' ? sj0.client : null;
+      if (hc) data.hc = hc;
       return [
         o('notify', () => {
           const nm = whoName(c, q.who);
           seriousNotify(st, card);
+          if (!compat.prototype) {
+            if (hurtP) injure(hurtP, true);
+            if (hc) relAdd(st, hc, -3);
+          }
           if (sj0) sj0.stood = 1;
           note(c, { k: 'seriousNotified', name: nm, story: card.story, fine: card.fine });
           news(c, { k: 'regulator', co: c.co });
@@ -82,10 +93,17 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
         o('hide', () => {
           const res = seriousHide(r(), st, card, TOWNS[c.town].council);
           if (res.found) news(c, { k: 'unreportedFine', co: c.co, fine: res.fine });
+          if (!compat.prototype) {
+            // no claim lodged, so no workers' compensation; and the crew saw what happened
+            if (hurtP) injure(hurtP, res.found, !res.found);
+            if (r()() < 0.35) later(c, 'quit', 2 + Math.floor(r()() * 5), { not: q.who, why: 'hushed', hurt: hurtP?.name ?? null });
+          }
           return res;
         }),
         ...(compat.prototype ? [] : [o('advisory', () => {
           const nm = whoName(c, q.who), cost = seriousAdvisory(st, card);
+          if (hurtP) injure(hurtP, true);
+          if (hc) relAdd(st, hc, -3);
           if (sj0) sj0.stood = 1;
           note(c, { k: 'seriousNotified', name: nm, story: card.story, fine: 0 });
           news(c, { k: 'regulator', co: c.co });
@@ -96,7 +114,7 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
     case 'nearmiss': {
       const card = nearMissCard(cr, rainCrews(c.jobs));
       Object.assign(data, { card, job: c.jobs.find((j) => j.state === 'running' && !j.finished && (j.kind === 'sub' || j.kind === 'own')) });
-      return [o('report', () => nearMissReport(st, card)), o('shrug', () => nearMissShrug(st)), ...(compat.prototype ? [] : [o('advisory', () => nearMissAdvisory(st, card))])];
+      return [o('report', () => { nearMissReport(st, card); if (!compat.prototype && data.job) data.job.halt = c.week; }), o('shrug', () => nearMissShrug(st)), ...(compat.prototype ? [] : [o('advisory', () => nearMissAdvisory(st, card))])];
     }
     case 'quiet': {
       const p = c.staff.find((x) => x.id === q.id);
@@ -224,7 +242,14 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       const hj = jobOf(c, p.jobId);
       data.sub = compat.prototype || !hj || !['wet', 'council', 'private'].includes(hj.kind) ? null
         : c.staff.find((x) => x !== p && !x.jobId && x.off === 0 && ROLES[x.role].drives.includes(hj.type))?.name ?? null;
-      return [o('home', () => hurtHome(p)), o('cover', () => hurtCover(st, p)), o('keepGoing', () => { const hurt = hurtKeepGoing(r(), st, p); if (hurt) note(c, { k: 'badBack', name: p.name }); return hurt; }), ...(compat.prototype ? [] : [o('advisory', () => hurtAdvisory(st, p))])];
+      if (compat.prototype) return [o('home', () => hurtHome(p)), o('cover', () => hurtCover(st, p)), o('keepGoing', () => { const hurt = hurtKeepGoing(r(), st, p); if (hurt) note(c, { k: 'badBack', name: p.name }); return hurt; })];
+      return [
+        o('homePaid', () => { hurtHome(p); c.whs.cult = Math.min(100, c.whs.cult + 6); }),
+        o('home', () => { hurtHome(p); p.unpaid = 2; const go = r()() < 0.3; if (go) later(c, 'quit', 3 + Math.floor(r()() * 3), { who: p.id, why: 'unpaid' }); }),
+        o('cover', () => hurtCover(st, p)),
+        o('keepGoing', () => { const hurt = hurtKeepGoing(r(), st, p); if (hurt) { note(c, { k: 'badBack', name: p.name }); injure(p, true); } return hurt; }),
+        o('advisory', () => hurtAdvisory(st, p)),
+      ];
     }
     case 'dieselWar': {
       const F = c.fuel, ci = costIdx(c);
@@ -258,15 +283,49 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       const j = jobOf(c, q.id);
       if (!j || j.finished) return null;
       Object.assign(data, { job: j, mm: q.mm, tested: !!j.tested });
-      return [o('wait', () => wetClayWait(j)), o('push', () => wetClayPush(c, j))];
+      return [o('wait', () => (compat.prototype ? wetClayWait(j) : wetClayWaitCool(st, j))), o('push', () => wetClayPush(c, j))];
     }
     case 'leak':
       Object.assign(data, { farm: q.farm, place: q.place, dk: q.dk, fix: q.fix });
+      if (!compat.prototype && q.q != null) return [o('fix', () => leakFix(st, q.fix)), o('show', () => leakShow(r(), st, q.fix, q.q, !!q.wet))];
       return [o('fix', () => leakFix(st, q.fix)), o('argue', () => leakArgue(st))];
     case 'redzone':
       data.cash = REDZONE_CASH;
       data.fine = REDZONE_FINE;
-      return [o('no', () => {}), o('take', () => redzoneTake(st))];
+      if (compat.prototype || !q.farm) return [o('no', () => {}), o('take', () => redzoneTake(st))];
+      Object.assign(data, { farm: q.farm, dam: c.bulk?.rzDam ?? null });
+      return [o('no', () => redzoneNo(st, q.farm)), o('permit', () => redzonePermit(r(), st, q.farm)), o('take', () => redzoneTakeDam(r(), st))];
+    case 'injured': {
+      const p = c.staff.find((x) => x.id === q.id);
+      if (!p || p.off <= 0) return null;
+      Object.assign(data, { person: p, left: p.off });
+      return [
+        o('keep', () => injuredKeep(c, p)),
+        o('letGo', () => { const claim = letGoInjured(r(), c, p); nextTownOperator(r(), c, p); note(c, { k: 'letGoInjured', name: p.name }); return claim; }),
+        o('advisory', () => injuredAdvisory(c, p)),
+      ];
+    }
+    case 'cashjob': {
+      const j = jobOf(c, q.id);
+      if (!j || j.finished || j.cash) return null;
+      Object.assign(data, { job: j, price: j.fixed, cashPrice: Math.round(((j.fixed as number) * (1 - CASH_OFF)) / 100) * 100 });
+      return [o('invoice', () => cashInvoice(r(), st, j)), o('cash', () => cashTake(j))];
+    }
+    case 'signoff': {
+      const j = jobOf(c, q.id);
+      if (!j || j.finished) return null;
+      Object.assign(data, { job: j, bribe: SIGNOFF_BRIBE });
+      return [o('test', () => {}), o('sign', () => signoffPay(st, j))];
+    }
+    case 'tip': {
+      const t = c.tenders.find((x) => x.id === q.id);
+      if (!t || !t.tip || t.bid) return null;
+      Object.assign(data, { t });
+      return [
+        o('no', () => { delete t.tip; }),
+        o('use', () => { t.bid = Math.round((t.tip!.price * 0.985) / 100) * 100; t.tipUsed = true; note(c, { k: 'priced', place: t.place, L: t.L, hc: t.hc, bid: t.bid }); return t.bid; }),
+      ];
+    }
     case 'early': {
       const ec = earlyClient(st);
       if (!ec) return null;

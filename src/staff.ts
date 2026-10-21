@@ -67,6 +67,10 @@ export interface Person {
   trait?: string;
   /** Week they last had a quiet word with you. */
   yarn?: number;
+  /** Hurt at work and off (the real game): weeks off so far, whether it was reported (so workers' compensation is paying), whether the incident was hidden and hasn't come out, and whether you've been asked what to do. */
+  inj?: { wk: number; rep: boolean; hid?: boolean; asked?: boolean };
+  /** Weeks sent home without pay. */
+  unpaid?: number;
 }
 
 export interface Candidate {
@@ -135,9 +139,20 @@ export function hire(c: Candidate, wage: number, id: string): Person {
   return { id, name: c.name, role: c.role, skill: c.skill, wage, off: 0, jobId: null };
 }
 
+/** Workers' compensation pays this share of an injured worker's wage once they've been off this many weeks (the injury reported). */
+export const COMP_SHARE = 0.75;
+export const COMP_AFTER = 4;
+
+/** What you pay someone this week: nothing while they're home unpaid, a quarter once workers' compensation picks up an injury. */
+export function wageNow(p: Person): number {
+  if ((p.unpaid ?? 0) > 0) return 0;
+  if (p.inj && p.off > 0 && p.inj.rep && p.inj.wk >= COMP_AFTER) return Math.round(p.wage * (1 - COMP_SHARE));
+  return p.wage;
+}
+
 /** The weekly wage bill. */
 export function wages(staff: readonly Person[]): number {
-  return staff.reduce((a, p) => a + p.wage, 0);
+  return staff.reduce((a, p) => a + wageNow(p), 0);
 }
 
 export function working(p: Person): boolean {
