@@ -17,8 +17,8 @@ const DIR = new URL('./saves/', import.meta.url);
 const BAD: [RegExp, string][] = [
   [/NaN|undefined|null|\[object|Infinity/, 'a broken value'],
   [/ {2,}| [,.;:!?](?!\d)/, 'stray spaces'],
-  [/(colou?r(?<!colour)|center|organiz|realiz|labor|tire|tires|gray|meters?|liters?|favorite|defense)/i, 'American spelling'],
-  [/(QRA|DRFA|NDRRA|WorkSafe|Safe ?Work|Austroads|QBCC|WHSQ)/, 'a brand name'],
+  [/\b(colors?|centers?|centered|organiz\w*|realiz\w*|labor|tires?|gray|(kilo)?meters?|liters?|favorite|defense)\b/i, 'American spelling'],
+  [/\b(QRA|DRFA|NDRRA|WorkSafe|Safe ?Work|Austroads|QBCC|WHSQ)\b/, 'a brand name'],
 ];
 function checkWords(where: string, t: string, bad: string[]): void {
   for (const [re, why] of BAD) if (re.test(t)) bad.push(where + ' (' + why + '): ' + t.slice(0, 140));
