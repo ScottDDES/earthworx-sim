@@ -495,7 +495,7 @@ describe('Bulk and Ag pack, step 4: the rest of the work', () => {
     c.yard = 'hub';
     c.bank = 3000000;
     c.won2 = true;
-    for (const [i, type] of gear.entries()) c.fleet.push({ id: 'b' + i, type, year: 2016, cond: 85, hours: 8000, svcAt: 8000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null } as never);
+    for (const [i, type] of gear.entries()) c.fleet.push({ id: 'b' + i, type, year: 2024, cond: 90, hours: 3000, svcAt: 3000, status: 'idle', down: 0, cover: 0, warranty: 0, jobId: null, sale: null } as never);
     game.setPack(c, 'bulk', true);
     c.bulk ??= { enq: [] };
     for (const a of att) game.buyAttach(c, a as never);

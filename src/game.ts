@@ -2,11 +2,11 @@
 // Every roll comes from the career's own stream (rngA), from a seed for the week's new world (worldRand), or
 // from a card's seed (cards.ts / choose.ts), exactly as the prototype draws them, so a career replays exactly.
 
-import { bankWeek, newLoan, weeklyRepay, type Loan } from './bank';
+import { bankWeek, newLoan, topUp, weeklyRepay, type Loan } from './bank';
 import { yearOf } from './calendar';
 import { DIFFICULTY, costIdx as costIdxOf, difficultyOf, type Difficulty } from './difficulty';
 import { book, newAccounts, type Accounts } from './ledger';
-import { GPS_COST, LASER_COST, RT_COST, TYPES, canGps, canLaser, isBulk, newMachine, serviced, svcCost, value, type Machine } from './machines';
+import { GPS_COST, LASER_COST, RT_COST, TYPES, canGps, canLaser, isBulk, newMachine, serviced, svcCost, value, type Machine, type MachineType } from './machines';
 import { MOODS, fmul as fmulOf, genBulkListings, genLoaderListings, genRoadtrainListings, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, unlist, inspect as inspectL, bid as bidL, hammer as hammerL, type HammerResult, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
 import { fromState, hashN, int, pick, seedRand, type Rand } from './rng';
 import { mkRivals, rivalsWeek, type Rival, type RivalEvent } from './rivals';
@@ -20,6 +20,7 @@ import { genMgrApplicants, hireMgr as hireMgrPerson, mgrIs, mgrOf, mgrTraitsWeek
 import { afterService, fitterWeek, wsmWeek, type WorkshopEvent } from './workshop';
 import { easeLoading, fleetValue, overheads as overheadsOf, premParts, premium as premiumOf } from './overheads';
 import { compat } from './compat';
+import { DELIVERY_MAX, DELIVERY_MIN, NEW_DEPOSIT, NEW_WARRANTY_WEEKS, canFinanceNew, dealerTypes, newPrice, tradeCredit } from './dealer';
 import { injuryWeek, laterWeek, letGoInjured } from './later';
 import { buyAttachment, bulkStart, bulkWeek, damDay, doable, genEnquiry, sendQuote, setPrecon, type Attachment, setRate, survey, type BulkBook, type BulkEvent } from './bulk';
 import { ERP_SETUP, PRICE_CHECK_FEE, erpOk, priceBand } from './advisory';
@@ -95,6 +96,8 @@ export interface Career {
   later?: import('./later').Later[];
   /** Week a rival last tipped you their number. */
   tipLast?: number;
+  /** New machines on order from the dealer (the real game). */
+  orders?: import('./dealer').Order[];
   phase: string;
   won: boolean;
   won2: boolean;
@@ -176,7 +179,8 @@ export function costIdx(c: Career): number {
   return costIdxOf(c.week, diff(c));
 }
 export function room(c: Career): number {
-  return YARDS[c.yard].slots - c.fleet.filter((m) => m.status !== 'branch').length;
+  // machines on order from the dealer have a spot waiting for them
+  return YARDS[c.yard].slots - c.fleet.filter((m) => m.status !== 'branch').length - (c.orders?.length ?? 0);
 }
 export function homeFleet(c: Career): number {
   return c.fleet.filter((m) => m.status !== 'branch').length;
@@ -610,6 +614,55 @@ export function fitGps(c: Career, id: string): boolean {
   return true;
 }
 
+/**
+ * Order a new machine from the dealer (the real game): list price, delivered in 4 to 10 weeks with a two-year
+ * warranty. Trade in an idle machine against it (the dealer takes it now), and pay cash or on finance (20% down).
+ */
+export function orderNew(c: Career, type: MachineType, fin = false, tradeId: string | null = null): boolean {
+  if (compat.prototype || !dealerTypes(!!c.packs?.bulk).includes(type)) return false;
+  const tr = tradeId ? c.fleet.find((m) => m.id === tradeId && m.status === 'idle' && !m.jobId && m.down === 0) : undefined;
+  if (tradeId && !tr) return false;
+  if (room(c) + (tr ? 1 : 0) <= 0) return false;
+  // a trade-in worth more than the new machine: the dealer pays you the difference
+  const price = newPrice(type, mood(c)), credit = tr ? tradeCredit(tr, c.week) : 0, owe = price - credit;
+  let lent = 0;
+  if (fin && owe > 0) {
+    if (!canFinanceNew(price, credit, c.loan, lendCap(fleetValue(c.fleet, c.week), c.won, c.won2, c.won3), c.won)) return false;
+    lent = Math.round(owe * (1 - NEW_DEPOSIT));
+  }
+  if (c.bank < owe - lent) return false;
+  c.bank -= owe - lent;
+  book(c.acc, 'capital', price);
+  if (lent) {
+    topUp(c.loan, lent);
+    note(c, { k: 'financed', lent, weekly: c.loan.weekly });
+  }
+  if (tr) {
+    c.fleet = c.fleet.filter((m) => m !== tr);
+    note(c, { k: 'tradedIn', m: mRef(tr), credit });
+  }
+  const rand = stream(c), w = c.week + int(rand, DELIVERY_MIN, DELIVERY_MAX);
+  (c.orders ??= []).push({ id: uid(c), type, w, price, lent, ...(tr ? { trade: { type: tr.type, year: tr.year, credit } } : {}) });
+  note(c, { k: 'ordered', type, price, w });
+  return true;
+}
+
+/** Monday: new machines due from the dealer arrive in the yard. */
+function dealerWeek(c: Career): void {
+  const due = (c.orders ?? []).filter((o) => o.w <= c.week);
+  if (!due.length) return;
+  c.orders = c.orders!.filter((o) => o.w > c.week);
+  for (const o of due) {
+    const m = newMachine(stream(c), uid(c), o.type, yearOf(c.week), 100, int(stream(c), 5, 25)) as Machine & { paid?: number; paidWk?: number };
+    m.svcAt = m.hours;
+    m.warranty = c.week + NEW_WARRANTY_WEEKS;
+    m.paid = o.price;
+    m.paidWk = c.week;
+    c.fleet.push(m);
+    note(c, { k: 'newArrived', m: mRef(m) });
+  }
+}
+
 /** Fit laser machine control to a scraper, laser bucket or dozer (the real game): it can run off a job's Laser Gear. */
 export function fitLaser(c: Career, id: string): boolean {
   const m = c.fleet.find((x) => x.id === id);
@@ -829,6 +882,7 @@ export function endWeek(c: Career): Report | null {
   salesWeek(rand, c as never, mood(c), ev as SaleEvent[]);
   // the real game: hard calls coming back, and the injured a week further on (workers' compensation, the card at four weeks)
   if (!compat.prototype) {
+    dealerWeek(c);
     laterWeek(worldRand(c, 'later'), c);
     injuryWeek(c);
   }

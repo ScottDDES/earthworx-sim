@@ -145,6 +145,9 @@ export function diaryText(c: Career, e: any): string {
     case 'signFail': return farmerName(e.farm) + "'s wall near " + e.place + ' failed, the one signed off untested. The engineer has lost his ticket. You paid ' + f(e.cost) + ' to rebuild it, and track record −4.';
     case 'fixedProperly': return 'Fixed the ' + e.part + ' on the ' + short(e.type) + ' properly (' + f(e.cost) + ').';
     case 'gps': return 'Fitted GPS machine control to the ' + label(e.m) + ' (' + f(e.cost) + ').';
+    case 'ordered': return 'Ordered a new ' + TYPES[e.type as keyof typeof TYPES].name + ' from the dealer (' + f(e.price) + '). Due week ' + e.w + '.';
+    case 'tradedIn': return 'Traded in the ' + label(e.m) + ' (' + f(e.credit) + ' allowed).';
+    case 'newArrived': return 'Your new ' + label(e.m) + ' arrived. Two years\' warranty.';
     case 'laserFit': return 'Fitted laser control to the ' + label(e.m) + ' (' + f(e.cost) + ').';
     case 'roadtrain': return 'Put a second trailer and dolly behind the ' + label(e.m) + ': it\'s a roadtrain now (' + f(e.cost) + ').';
     case 'whsSetUp': return 'Set up ' + WHS_SYS[e.sys]!.n + ' (' + f(e.cost) + ').';

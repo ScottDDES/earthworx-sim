@@ -30,6 +30,7 @@ export * from './cards';
 export * from './advisory';
 export * from './bulk';
 export * from './later';
+export * from './dealer';
 export * from './fuel';
 export * from './ads';
 export * from './sums';

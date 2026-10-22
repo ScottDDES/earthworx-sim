@@ -4,7 +4,7 @@
 // monthly claims less retention, with damages if you're late. Numbers and codes only; the words live in src/text/.
 
 import { book } from './ledger';
-import { monthIdx } from './calendar';
+import { monthIdx, yearOf } from './calendar';
 import { compat, onCompat } from './compat';
 import { TYPES, breakdown, breaks, ctlMul, dayHours, wear, GPS_Q, LASER_Q, type BulkType, type Machine, type MachineType, type WorkshopCtx } from './machines';
 import { int, pick, type Rand } from './rng';
@@ -121,6 +121,8 @@ export const isDam = (k: unknown): k is DamKind => k === 'ringTank' || k === 'tu
 export interface FarmEnquiry {
   id: string;
   kind: BulkKind;
+  /** A developer's plant standard (the real game). */
+  std?: { age: number; hrs: number };
   /** The farmer, or the developer. */
   farm: string;
   place: string;
@@ -239,9 +241,22 @@ export function genEnquiry(rand: Rand, b: B, fmul: number, only?: BulkKind): Far
     default: {
       // a developer's bulk earthworks: big, tested, monthly claims, and a deadline
       const vol = int(rand, 12, 50) * 10000;
-      return make(vol, noise(0.95, 1.12), noise(3.2, 4.4), 3.6, int(rand, 25, 60) * 10, { tested: true, weeks: Math.ceil(vol / 30000) + 4 });
+      // the real game: developers want late-model gear on site, stricter on the big jobs
+      return make(vol, noise(0.95, 1.12), noise(3.2, 4.4), 3.6, int(rand, 25, 60) * 10, { tested: true, weeks: Math.ceil(vol / 30000) + 4, ...(compat.prototype ? {} : { std: devStd(vol) }) });
     }
   }
+}
+
+/** A developer's plant standard: every machine on the job this many years old or newer, and under these hours. */
+export interface PlantStd { age: number; hrs: number }
+/** Big developer jobs (this many m³ or more) want the strict standard. */
+export const DEV_BIG = 250000;
+export function devStd(vol: number): PlantStd {
+  return vol >= DEV_BIG ? { age: 5, hrs: 6000 } : { age: 10, hrs: 12000 };
+}
+/** Does this machine meet the standard this week? */
+export function meetsStd(m: Pick<Machine, 'year' | 'hours'>, std: PlantStd | undefined, week: number): boolean {
+  return !std || (yearOf(week) - m.year <= std.age && m.hours <= std.hrs);
 }
 
 /** Pay a surveyor: their figure replaces the plans'. */
@@ -455,7 +470,7 @@ function bulkJob(b: B, e: FarmEnquiry): Job {
     id: uid(b), kind: 'bulk', type: 'd8', client: e.farm, place: e.place, days: 0, done: 0, rate: e.rate, fixed: e.quoted, terms: dev ? 4 : 2, fuelPaid: true,
     mId: null, who: null, rollerId: null, hireIn: 0, extra: 0, earned: 0, idleWeeks: 0, state: 'waiting',
     dk: e.kind, tested: !!e.tested, qsum: 0, dam: e.dam, haul: e.haul, per: e.per, rock: e.rock, truth: e.truth, est: pricingVol(e), m3: 0, won: b.week,
-    weeks: e.weeks, claimed: 0, retained: 0, spread: [] as string[], crew: {} as Record<string, string>,
+    weeks: e.weeks, claimed: 0, retained: 0, spread: [] as string[], crew: {} as Record<string, string>, ...(e.std ? { std: e.std } : {}),
   };
   b.jobs.push(j);
   return j;
@@ -585,8 +600,9 @@ export function spreadRate(all: readonly Pick<Machine, 'type'>[], haul: number, 
 }
 
 /** Which machines each kind of job takes, from what's idle. */
-export function freeFor(b: Pick<B, 'fleet'>, kind: BulkKind): Machine[] {
-  const idle = b.fleet.filter((m) => m.status === 'idle' && m.down === 0);
+export function freeFor(b: Pick<B, 'fleet'> & { week?: number }, kind: BulkKind, std?: PlantStd): Machine[] {
+  // a developer's standard: only machines that meet it can go on the job
+  const idle = b.fleet.filter((m) => m.status === 'idle' && m.down === 0 && meetsStd(m, std, b.week ?? 1));
   const pickN = (f: (m: Machine) => boolean, n: number) => idle.filter(f).slice(0, n);
   switch (kind) {
     case 'laser': return [...idle.filter((m) => bulkScraper(m.type) && (compat.prototype || m.laser)), ...pickN((m) => m.type === 'grader', 1)];
@@ -654,7 +670,7 @@ export function bulkStart(b: B, events: BulkEvent[]): void {
 function startOne(b: B, j: Job, events: BulkEvent[]): void {
   if (j.kind !== 'bulk' || j.finished || (j.state !== 'waiting' && j.state !== 'running')) return;
   const mine = b.fleet.filter((m) => m.jobId === j.id);
-  const add = freeFor(b, j.dk as BulkKind);
+  const add = freeFor(b, j.dk as BulkKind, j.std as PlantStd | undefined);
   // the real game: a job runs off one Laser Gear. Levelling can't start without one; other work takes a spare one
   // if its spread has laser machines and no levelling job is waiting for it.
   if (!compat.prototype && j.state === 'waiting' && !j.lzr) {

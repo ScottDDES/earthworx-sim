@@ -2,7 +2,7 @@
 
 import {
   ATTACH, BULK_CASUAL, laserFree, laserOwned, FIRE_MONTHS, KINDS, SURVEY_COST, TYPES, WAIT_WEEKS, damVolume, freeFor, isDam, jobEstimate, monthIdx, pricingVol, quotePrice,
-  rateStep, wallQuality, game, type Attachment, type BulkKind, type FarmEnquiry, type Job,
+  rateStep, wallQuality, meetsStd, game, type PlantStd, type Attachment, type BulkKind, type FarmEnquiry, type Job,
 } from '@engine';
 import { ATTACH_NAME, ATTACH_NOTE, DAM_KIND, SLOWEST, UNIT, damTitle, enquiryLine, needs, qty, surveyFind, surveyLabel, surveyRisk, wallWord } from '@engine/text/bulk';
 import { jobTitle } from '@engine/text/work';
@@ -12,6 +12,17 @@ type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
 const n0 = (n: number) => Math.round(n).toLocaleString('en-AU');
 const money = (n: number) => (Number.isInteger(n) ? f(n) : '$' + n.toFixed(2));
+
+/** A developer's plant standard, and which of your machines for the job fall short of it. */
+function StdLine({ c, kind, std }: { c: Career; kind: BulkKind; std: PlantStd }) {
+  const short = couldUse(c, kind).filter((m) => !meetsStd(m, std, c.week));
+  return (
+    <>
+      <div className="tiny"><b>The developer's standard:</b> every machine on site {std.age} years old or newer and under {n0(std.hrs)} hours.</div>
+      {short.length > 0 && <div className="tiny" style={{ color: 'var(--rust)' }}>Falls short: {short.map((m) => TYPES[m.type].short + ' (' + m.year + ', ' + n0(m.hours) + ' hrs)').join(', ')}. Late-model gear is in the Market, and new under New.</div>}
+    </>
+  );
+}
 
 /** Your machines a bulk job of this kind could use if they were free. */
 function couldUse(c: Career, kind: BulkKind): Career["fleet"] {
@@ -76,6 +87,7 @@ export function EnquiryCard({ c, e, act }: { c: Career; e: FarmEnquiry; act: Act
       {e.tested && isDam(e.kind) && <div className="tiny">An engineer's spec: the wall gets compaction tests at the end, and pays about 15% more. Fail and you rework it at your cost. Roll it, water it, and think about preconditioning the pit.</div>}
       {e.kind === 'rake' && <div className="tiny">Windrows can't be burnt in fire season (August and September). Finish then and you wait for your money.</div>}
       {att && <div className="tiny" style={{ color: 'var(--rust)' }}>Needs the {ATTACH_NAME[att]} ({f(ATTACH[att])} in the Market).</div>}
+      {e.std && <StdLine c={c} kind={e.kind} std={e.std} />}
       {e.kind === 'laser' && !att && laserFree(c as never) <= 0 && <div className="tiny" style={{ color: 'var(--rust)' }}>Your Laser Gear is on another job. Win this and it waits for it, or buy another in the Market.</div>}
       {e.kind === 'laser' && !c.fleet.some((m) => m.laser && TYPES[m.type] && ['pull', 's623', 's627', 's631', 's637', 's651', 's657'].includes(m.type)) && <div className="tiny" style={{ color: 'var(--rust)' }}>Needs Laser Buckets or scrapers fitted with laser control (in the Yard).</div>}
       <div className="tiny" style={{ background: 'var(--soft)', borderRadius: 10, padding: '10px 12px' }}>
@@ -118,6 +130,7 @@ export function DamJobCard({ c, j, act }: { c: Career; j: Job; act: Act }) {
         <>
           <div className="small muted">Waiting to start. {needs(kind)} {left} week{left === 1 ? '' : 's'} before {j.client} gets someone else.</div>
           {heldUp(c, j).map((t) => <div key={t} className="small" style={{ color: 'var(--rust)' }}>{t}</div>)}
+          {j.std ? <StdLine c={c} kind={kind} std={j.std as PlantStd} /> : null}
         </>
       ) : j.state === 'burn' ? (
         <div className="small muted">Raked and windrowed. It's fire season, so the windrows wait to be burnt{FIRE_MONTHS.includes(monthIdx(c.week)) ? ' until October' : ''}, and so does the money.</div>

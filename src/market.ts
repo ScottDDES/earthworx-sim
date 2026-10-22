@@ -3,6 +3,7 @@
 // The market's mood follows the flood money, and flood money follows the rain: a wet year
 // brings recovery work six months to a year and a half later.
 
+import { compat } from './compat';
 import { mRef, note } from './diary';
 import { dayOffset, yearOf } from './calendar';
 import { topUp, type Loan } from './bank';
@@ -177,7 +178,8 @@ export function genMarket(rand: Rand, x: MarketInputs, nextId: () => string): Ma
 
   for (let i = 0; i < 3; i++) {
     const type = pick(rand, (['grader', 'grader', 'roller', 'roller', 'cart'] as MachineType[]).concat(x.won ? ['truck'] : []));
-    const year = int(rand, 2004, 2018), cond = int(rand, 45, 86);
+    let year = int(rand, 2004, 2018), cond = int(rand, 45, 86);
+    [year, cond] = lateModel(rand, yr, year, cond);
     const s = rand(), seller: Seller = s < 0.4 ? 'dealer' : s < 0.8 ? 'private' : 'rival';
     // Private sellers talk it up by up to 14; rivals by 15.
     const claimed = seller === 'dealer' ? cond : Math.min(92, cond + (seller === 'rival' ? 15 : int(rand, 0, 14)));
@@ -218,6 +220,13 @@ const BULK_ODDS: Record<BulkType, number> = {
   d6: 3, d8: 3, d9: 2, d10: 1, pull: 2, s623: 1, s627: 1, s631: 2, s637: 1, s651: 1, s657: 1, padfoot: 2, c815: 2, c825: 1, excavator: 3, moxy: 2, moxycart: 2,
 };
 
+/** The real game: about one listing in four is late-model gear, one to six years old and in good order, so there's something between old and brand new. */
+export const LATE_SHARE = 0.25;
+function lateModel(rand: Rand, yr: number, year: number, cond: number): [number, number] {
+  if (compat.prototype || rand() >= LATE_SHARE) return [year, cond];
+  return [yr - int(rand, 1, 6), int(rand, 80, 95)];
+}
+
 /**
  * The Bulk and Ag pack's listings: three a week, alongside the road gear. They come off their own random stream so
  * the base game's market is the same with the pack on or off.
@@ -225,7 +234,9 @@ const BULK_ODDS: Record<BulkType, number> = {
 export function genBulkListings(rand: Rand, week: number, mood: Mood, nextId: () => string): Listing[] {
   const pm = MOODS[mood].pm, yr = yearOf(week), bag = BULK_TYPES.flatMap((t) => Array(BULK_ODDS[t]).fill(t) as BulkType[]), L: Listing[] = [];
   for (let i = 0; i < 3; i++) {
-    const type = pick(rand, bag), year = int(rand, 2006, 2020), cond = int(rand, 45, 86);
+    const type = pick(rand, bag);
+    let year = int(rand, 2006, 2020), cond = int(rand, 45, 86);
+    [year, cond] = lateModel(rand, yr, year, cond);
     const s = rand(), seller: Seller = s < 0.45 ? 'dealer' : 'private';
     const claimed = seller === 'dealer' ? cond : Math.min(92, cond + int(rand, 0, 14));
     const m: Listing = { id: nextId(), type, year, cond, claimed, hours: (yr - year) * int(rand, 650, 900), seller, revealed: seller === 'dealer', price: 0 };
