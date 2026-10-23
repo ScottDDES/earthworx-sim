@@ -23,13 +23,16 @@ export const LEVY_BACK = 0.5;
 /** The ops manager orders a load when the tank drops below this. */
 export const AUTO_AT = 0.3;
 
-export type TankId = 'small' | 'mid' | 'big';
+export type TankId = 'small' | 'mid' | 'big' | 'xl' | 'farm';
 export const TANKS: Record<TankId, { L: number; cost: number; yard: YardId }> = {
   small: { L: 10000, cost: 18000, yard: 'fenced' },
   mid: { L: 30000, cost: 45000, yard: 'depot' },
   big: { L: 68000, cost: 90000, yard: 'regional' },
+  // Scott, 23 Oct: two more steps for the big outfits
+  xl: { L: 110000, cost: 150000, yard: 'regional' },
+  farm: { L: 200000, cost: 260000, yard: 'hub' },
 };
-export const TANK_ORDER: readonly TankId[] = ['small', 'mid', 'big'];
+export const TANK_ORDER: readonly TankId[] = ['small', 'mid', 'big', 'xl', 'farm'];
 
 export interface FuelWar {
   from: number;

@@ -196,3 +196,13 @@ describe('the hire schedule', () => {
     expect(TYPES.d6).toMatchObject({ wet: 1900, fuel: 700, sub: 2600 });
   });
 });
+
+describe('the bigger tanks (Scott, 23 Oct)', () => {
+  it('110,000 litres at a regional depot, a 200,000 litre fuel farm at a plant hub, each an upgrade on the last', async () => {
+    const { TANKS, TANK_ORDER, tankOk } = await import('../src');
+    expect(TANK_ORDER.map((t) => TANKS[t].L)).toEqual([10000, 30000, 68000, 110000, 200000]);
+    expect(tankOk('regional', 'xl')).toBe(true);
+    expect(tankOk('regional', 'farm')).toBe(false);
+    expect(tankOk('hub', 'farm')).toBe(true);
+  });
+});

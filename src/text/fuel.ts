@@ -11,11 +11,15 @@ export const TANK_NAME: Record<TankId, string> = {
   small: '10,000 litre self-bunded tank',
   mid: '30,000 litre tank and bowser',
   big: '68,000 litre tank, bowser and fuel truck fill point',
+  xl: '110,000 litre double tank, two bowsers and a fill point',
+  farm: '200,000 litre fuel farm: tanks, bowsers and a road tanker fill point',
 };
 export const TANK_NEEDS: Record<TankId, string> = {
   small: 'Needs a fenced yard or bigger.',
   mid: 'Needs a depot or bigger.',
   big: 'Needs a regional depot or a plant hub.',
+  xl: 'Needs a regional depot or a plant hub.',
+  farm: 'Needs a plant hub.',
 };
 
 /** How long the tank will last, in words. */
