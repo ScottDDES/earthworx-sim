@@ -63,7 +63,8 @@ export function genCouncil(rand: Rand, st: CouncilWorld, p: PlanCtx, fmul: numbe
   // the place is picked before the map is touched: making the map rolls dice, so the order matters
   const mp0 = placePos(st.town, pick(rand, T.places)), M = dmap(rand, st), mids = pickRoads(M, mp0[0], mp0[1], 40);
   for (let i = 0; i < n; i++) {
-    const L = int(rand, 5, 11), hk = tenth(L * (0.5 + rand() * 0.3)), lk = tenth(L * (0.05 + rand() * 0.15));
+    // the real game: a package is a handful of roads, 3 to 8 km each, so it stays well under a program's lot
+    const L = compat.prototype ? int(rand, 5, 11) : int(rand, 3, 8), hk = tenth(L * (0.5 + rand() * 0.3)), lk = tenth(L * (0.05 + rand() * 0.15));
     const mr = mids[i] ? M.roads.find((x) => x.id === mids[i]) : undefined;
     const g = 0.85 + rand() * 0.3, extra = rand();
     roads.push({ name: mr ? mr.n : pl[i] + ' Road', mapId: mr ? mr.id : null, L, hfg: hk, mfg: tenth(L - hk - lk), lfg: lk, resheet: round(hk * 300 * g + (L - hk) * extra * 120, 10) });
@@ -96,19 +97,34 @@ export function genCouncil(rand: Rand, st: CouncilWorld, p: PlanCtx, fmul: numbe
  * A fresh program each time, shaped like a real one: some of an area's roads, lengths and gravel varied,
  * hauls shifted, split into lots of about 55–95 km. The prestige version (whole area, one lot) needs canPrestige().
  */
+/** The real game: a program is at least this many km; a smaller area takes in roads from the area next to it. */
+export const PROGRAM_MIN_KM = 70;
+const PROGRAM_NEXT: Record<string, string> = { Toobeah: 'Talwood' };
+
 export function genMajor(rand: Rand, st: CouncilWorld, p: PlanCtx, fmul: number, prestigeOk: boolean): CouncilTender | null {
   if (!st.won3 || st.ctenders.some((t) => t.major) || p.jobs.some((j) => j.major && !j.finished) || rand() > 0.14 * fmul) return null;
   let area: string, roads: [string, number, number, number, number, number, number][], pits: [string, number][];
   if (st.town === 'gdi') {
     const ks = Object.keys(BOQ);
     area = pick(rand, ks);
-    roads = BOQ[area]!.roads.filter(() => rand() < 0.8).map((x) => {
+    const adapt = (x: (typeof BOQ)[string]['roads'][number]): [string, number, number, number, number, number, number] => {
       const k = 0.7 + rand() * 0.6, g = k * (0.85 + rand() * 0.3);
       const haul = x[4] ? Math.max(1, Math.round(x[4] * (0.75 + rand() * 0.5))) : int(rand, 4, 18);
       const xx = (x[5] || 0) + rand() * 2 - 1, yy = (x[6] || 0) + rand() * 2 - 1;
       return [x[0], Math.round(x[1] * k * 10) / 10, Math.round(x[2] * k * 10) / 10, Math.round(x[3] * g), haul, xx, yy];
-    });
+    };
+    roads = BOQ[area]!.roads.filter(() => rand() < 0.8).map(adapt);
     pits = BOQ[area]!.pits.map((x) => [x[0], Math.max(1, Math.round(x[1] * (0.75 + rand() * 0.5)))]);
+    // the real game: a small area takes in roads from the next area along, so a program is a program's worth
+    const nb = PROGRAM_NEXT[area];
+    if (!compat.prototype && nb && roads.reduce((a, x) => a + x[1] + x[2], 0) < PROGRAM_MIN_KM) {
+      for (const x of shuffled(rand, BOQ[nb]!.roads)) {
+        if (roads.reduce((a, y) => a + y[1] + y[2], 0) >= PROGRAM_MIN_KM + 10) break;
+        roads.push(adapt(x));
+      }
+      pits = pits.concat(BOQ[nb]!.pits.map((x) => [x[0], Math.max(1, Math.round(x[1] * (0.75 + rand() * 0.5)))] as [string, number]));
+      area = area + ' and ' + nb;
+    }
   } else {
     const pool: (typeof BOQ)[string]['roads'] = [];
     for (const k of Object.keys(BOQ)) pool.push(...BOQ[k]!.roads);
@@ -129,9 +145,26 @@ export function genMajor(rand: Rand, st: CouncilWorld, p: PlanCtx, fmul: number,
     pits = CT_PITS.map((nm) => [nm, int(rand, 2, 40)]);
   }
   const prest = prestigeOk && rand() < 0.4, tot = roads.reduce((a, x) => a + x[1] + x[2], 0);
-  const lots = prest ? 1 : Math.max(1, Math.min(4, Math.round(tot / int(rand, 55, 95))));
+  // a lot is about 55–95 km in the prototype; the real game aims for 70–110 and rounds down, so no lot comes up short
+  const lots = prest ? 1 : Math.max(1, Math.min(4, compat.prototype ? Math.round(tot / int(rand, 55, 95)) : Math.floor(tot / int(rand, 70, 110))));
   roads = shuffled(rand, roads);
-  const per = Math.ceil(roads.length / lots), lot = int(rand, 0, lots - 1), mine = roads.slice(lot * per, (lot + 1) * per).filter((x) => x[1] + x[2] >= 0.3);
+  const lot = int(rand, 0, lots - 1);
+  let mine: typeof roads;
+  if (compat.prototype) {
+    const per = Math.ceil(roads.length / lots);
+    mine = roads.slice(lot * per, (lot + 1) * per).filter((x) => x[1] + x[2] >= 0.3);
+  } else {
+    // the real game: lots split by kilometres, not by how many roads, so every lot is a program's worth
+    // each road goes in the lot its midpoint falls in, so the lots come out even
+    const share = tot / lots, cut: (typeof roads)[] = Array.from({ length: lots }, () => []);
+    let acc = 0;
+    for (const x of roads) {
+      const len = x[1] + x[2];
+      cut[Math.min(lots - 1, Math.floor((acc + len / 2) / share))]!.push(x);
+      acc += len;
+    }
+    mine = (cut[lot] ?? []).filter((x) => x[1] + x[2] >= 0.3);
+  }
   if (!mine.length) return null;
   const q = { hfg: 0, mfg: 0, lfg: 0, resheet: 0 }, hz: number[] = [];
   const rl: PlanRoad[] = mine.map((x) => {
