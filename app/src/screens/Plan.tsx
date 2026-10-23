@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import {
-  COUNCIL_TERMS, PRICE_CHECK_FEE, RT_HIRE_DAY, compat, FLOAT_KM, FLOAT_MOVE, LD_OWN, TRUCK_DAY, TYPES, awayCounts, cartEff, hm, loadersFree, npOf, odLimit, planCounts, planHasLoader, rtFree, rtRoad, rtShare, roadUnits, stars, subRate, truckM3, weeksFor, game,
+  BORE_FEE, BORE_KM, COUNCIL_TERMS, PRICE_CHECK_FEE, ROY_GOOD, ROY_NEAR, RT_HIRE_DAY, compat, roadAs, FLOAT_KM, FLOAT_MOVE, LD_OWN, TRUCK_DAY, TYPES, awayCounts, cartEff, hm, loadersFree, npOf, odLimit, planCounts, planHasLoader, rtFree, rtRoad, rtShare, roadUnits, stars, subRate, truckM3, weeksFor, game,
   type CouncilTender, type PlanEval, type ProgOp, play,
 } from '@engine';
 import { CREW_COL, bottText, issueText } from '@engine/text/plan';
@@ -273,6 +273,7 @@ function ProgMap({ t }: { t: CouncilTender }) {
 function ProgramSheet({ c, t, act, onClose }: { c: Career; t: CouncilTender; act: Act; onClose: () => void }) {
   const [tab, setTab] = useState<'crews' | 'time' | 'plant' | 'price'>('crews');
   const [selRaw, setSel] = useState(0);
+  const [openRoad, setOpenRoad] = useState<number | null>(null);
   const P = t.pl.prog!, ev = game.evaluate(c, t.id)!, e = ev.e, price = ev.price.price, sel = Math.min(selRaw, P.crews.length - 1);
   const subsUsed = P.crews.filter((x) => x.sub).length, nIss = (e.issues ?? []).length, loose = (e.unassigned ?? []).length;
   const op = (o: ProgOp) => () => act((x) => play.programAct(x, t.id, o));
@@ -321,19 +322,62 @@ function ProgramSheet({ c, t, act, onClose }: { c: Career; t: CouncilTender; act
                   </div>
                 ))}
               <div className="small">{cr.seq.length} road{cr.seq.length !== 1 ? 's' : ''} · {Math.ceil(R.days)} working days · {R.wk} weeks · {R.floats} float{R.floats !== 1 ? 's' : ''}</div>
+              {R.cost != null && (() => {
+                const km = cr.seq.reduce((a, q) => a + (t.roads[q]?.L ?? 0), 0), m3 = cr.seq.reduce((a, q) => a + (t.roads[q]?.resheet ?? 0), 0), wk = Math.max(1, R.wk);
+                return (
+                  <div style={{ background: 'var(--soft)', borderRadius: 10, padding: '8px 10px', display: 'grid', gap: 2 }}>
+                    <div className="kv"><span className="small">Crew cost</span><b className="num">{f(R.cost)} · {fk(R.cost / wk)} a week</b></div>
+                    <div className="kv"><span className="small">Pace</span><span className="num small">{(km / wk).toFixed(1)} km and {Math.round(m3 / wk).toLocaleString('en-AU')} m³ a week</span></div>
+                    <div className="kv"><span className="small">Work</span><span className="num small">{km.toFixed(1)} km, {m3.toLocaleString('en-AU')} m³ of gravel</span></div>
+                    {!cr.sub && <div className="kv"><span className="small">People</span><span className="num small">{R.staff ? R.staff + ' of yours' : 'none of yours'}{R.casuals ? ', ' + R.casuals + ' casual' + (R.casuals > 1 ? 's' : '') : ''}</span></div>}
+                    <div className="kv"><span className="small">Share of the job's cost</span><span className="num small">{Math.round((R.cost / Math.max(1, e.cost)) * 100)}%</span></div>
+                  </div>
+                );
+              })()}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {R.roads.map((x, n) => {
-                  const rd = t.roads[x.ri]!, col = x.b === 'ok' ? 'var(--teal)' : x.b === 'idle' ? 'var(--warn)' : x.b === 'water' ? 'var(--rain)' : 'var(--rust)';
+                  const rd = roadAs(t, P, x.ri), col = x.b === 'ok' ? 'var(--teal)' : x.b === 'idle' ? 'var(--warn)' : x.b === 'water' ? 'var(--rain)' : 'var(--rust)', open = openRoad === x.ri;
+                  const raw = t.roads[x.ri]!, goodHaul = (roadAs(t, { ...P, pits: { [x.ri]: 1 } }, x.ri).haul ?? 0);
                   return (
-                    <div key={x.ri} className="row" style={{ flexWrap: 'nowrap', gap: 6, padding: '4px 0', borderBottom: '1px solid var(--soft)' }}>
-                      <b className="num" style={{ width: 18, color: CREW_COL[sel % 6] }}>{n + 1}</b>
-                      <span className="grow" style={{ minWidth: 0 }}>
-                        <span className="small" style={{ display: 'block' }}>{rd.name}{x.float ? <span className="tiny" style={{ color: 'var(--warn)' }}> float</span> : null}</span>
-                        <span className="tiny muted">{rd.L} km · {rd.resheet.toLocaleString('en-AU')} m³ · haul {rd.haul} km{!compat.prototype && !rtRoad(rd.name) ? ' · singles only' : ''} · water {rd.water} km · {x.days.toFixed(1)} d{x.b !== 'ok' && <> · <b style={{ color: col }}>{x.b === 'idle' ? 'trucks idle' : x.b}</b></>}</span>
-                      </span>
-                      <Btn disabled={!n} onClick={op({ op: 'mv', i: sel, j: n, d: -1 })}>↑</Btn>
-                      <Btn disabled={n >= R.roads.length - 1} onClick={op({ op: 'mv', i: sel, j: n, d: 1 })}>↓</Btn>
-                      <Btn label={'Take this road off Crew ' + L(sel)} onClick={op({ op: 'un', i: sel, j: n })}>✕</Btn>
+                    <div key={x.ri} style={{ borderBottom: '1px solid var(--soft)' }}>
+                      <div className="row" style={{ flexWrap: 'nowrap', gap: 6, padding: '4px 0' }}>
+                        <b className="num" style={{ width: 18, color: CREW_COL[sel % 6] }}>{n + 1}</b>
+                        <button type="button" className="grow" aria-expanded={open} onClick={() => setOpenRoad(open ? null : x.ri)} style={{ minWidth: 0, textAlign: 'left', background: 'none', border: 0, padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer' }}>
+                          <span className="small" style={{ display: 'block' }}>{rd.name}{x.float ? <span className="tiny" style={{ color: 'var(--warn)' }}> float</span> : null}{!compat.prototype && <span className="tiny muted"> {open ? '▴' : '▾'}</span>}</span>
+                          <span className="tiny muted">{rd.L} km · {rd.resheet.toLocaleString('en-AU')} m³ · haul {rd.haul} km{!compat.prototype && !rtRoad(rd.name) ? ' · singles only' : ''} · water {rd.water} km · {x.days.toFixed(1)} d{x.b !== 'ok' && <> · <b style={{ color: col }}>{x.b === 'idle' ? 'trucks idle' : x.b}</b></>}</span>
+                        </button>
+                        <Btn disabled={!n} onClick={op({ op: 'mv', i: sel, j: n, d: -1 })}>↑</Btn>
+                        <Btn disabled={n >= R.roads.length - 1} onClick={op({ op: 'mv', i: sel, j: n, d: 1 })}>↓</Btn>
+                        <Btn label={'Take this road off Crew ' + L(sel)} onClick={op({ op: 'un', i: sel, j: n })}>✕</Btn>
+                      </div>
+                      {open && !compat.prototype && (
+                        <div style={{ background: 'var(--soft)', borderRadius: 10, padding: '8px 10px', margin: '0 0 8px 24px', display: 'grid', gap: 6 }}>
+                          <div className="kv"><span className="small">Heavy formation grading</span><span className="num small">{raw.hfg} km</span></div>
+                          <div className="kv"><span className="small">Medium formation grading</span><span className="num small">{raw.mfg} km</span></div>
+                          <div className="kv"><span className="small">Gravel resheet</span><span className="num small">{raw.resheet.toLocaleString('en-AU')} m³</span></div>
+                          <div className="kv"><span className="small">Days</span><span className="num small">{x.g.toFixed(1)} grading, {x.s.toFixed(1)} resheeting{x.float ? ', ½ floating in' : ''}</span></div>
+                          {raw.resheet > 0 && (
+                            <>
+                              <div className="tiny muted">Gravel from</div>
+                              <div className="seg">
+                                <button type="button" className={rd.good ? '' : 'on'} onClick={op({ op: 'pit', road: x.ri, v: 0 })}>Nearest pit · {raw.haul} km · ${ROY_NEAR}/m³</button>
+                                <button type="button" className={rd.good ? 'on' : ''} onClick={op({ op: 'pit', road: x.ri, v: 1 })}>{t.pits[1]?.name ?? 'Good pit'} · {goodHaul} km · ${ROY_GOOD}/m³</button>
+                              </div>
+                              <div className="tiny muted">{rd.good ? 'Good gravel: it passes its tests.' : 'Borderline on spec: more likely to fail a compaction test, and the pit can run out.'} Royalty on this road: {f(raw.resheet * rd.roy)}.</div>
+                            </>
+                          )}
+                          {(raw.water ?? 0) > BORE_KM && (
+                            <>
+                              <div className="tiny muted">Water from</div>
+                              <div className="seg">
+                                <button type="button" className={rd.bore ? '' : 'on'} onClick={op({ op: 'bore', road: x.ri, v: 0 })}>Water point · {raw.water} km</button>
+                                <button type="button" className={rd.bore ? 'on' : ''} onClick={op({ op: 'bore', road: x.ri, v: 1 })}>Landholder's bore · {BORE_KM} km · {f(BORE_FEE)}</button>
+                              </div>
+                            </>
+                          )}
+                          <div className="small" style={{ color: col, fontWeight: 600 }}>{x.b === 'ok' ? 'Keeping up: nothing holding this road up.' : x.b === 'water' ? 'Short of water: ' + cr.ca + ' water truck' + (cr.ca !== 1 ? 's' : '') + ' on a ' + rd.water + ' km run can\'t keep the grader going. Add one, or water from closer.' : x.b === 'gravel' ? 'Short of gravel: ' + cr.tr + ' truck' + (cr.tr !== 1 ? 's' : '') + ' on a ' + rd.haul + ' km haul can\'t keep up. Add trucks, or gravel from closer.' : 'Trucks waiting: more trucks than this road\'s gravel needs.'}</div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

@@ -248,8 +248,8 @@ export interface Plan {
   hm?: Record<string, 'wet' | 'dry'>;
   /** Cap on how many of your own machines of each type go on it. */
   own?: Partial<Counts>;
-  /** Programs: crew by crew. */
-  prog?: { crews: ProgCrew[] };
+  /** Programs: crew by crew. The real game: a road's pit (1 = the good pit, else the nearest) and water (1 = a landholder's bore). */
+  prog?: { crews: ProgCrew[]; pits?: Record<number, number>; bores?: Record<number, number> };
   /** A loader at the pit (the real game): 1 unless you take it off. */
   loader?: number;
   /** Hire roadtrains rather than single side tippers (the real game): 1 for roadtrains. */
@@ -322,6 +322,23 @@ export function crewRoad(t: Pick<CouncilTender, 'subPace'>, c: Pick<ProgCrew, 's
   const fl = flow(Math.min(c.gr, c.ro), c.ca, c.tr + (rts && rtRoad(rd.name) ? rts * (rtWorth(rd.haul!, loaded) - 1) : 0), rd.water!, rd.haul!, loaded), g = gradeDays(rd) / fl.out, s = rd.resheet ? rd.resheet / fl.sheetRate : 0;
   const b: Block = fl.wf < 0.999 ? 'water' : rd.resheet && fl.gf < 0.95 ? 'gravel' : rd.resheet >= 600 && fl.supply > fl.need * 1.6 ? 'idle' : 'ok';
   return { g, s, b, fl };
+}
+
+/** A landholder's bore near a road: a short water run, for a fee. */
+export const BORE_KM = 2, BORE_FEE = 2500;
+/** Royalty a m³ at the nearest pit (borderline gravel) and the good pit. */
+export const ROY_NEAR = 5, ROY_GOOD = 3;
+
+/**
+ * A program road as it'll be worked (the real game): its gravel from the nearest pit (borderline, $5) or the good
+ * pit further out ($3), and its water from the usual point or a landholder's bore. The prototype keeps the road's own.
+ */
+export function roadAs(t: Pick<CouncilTender, 'pits' | 'roads'>, P: Plan['prog'], ri: number): PlanRoad & { roy: number; good: boolean; bore: boolean } {
+  const rd = t.roads[ri]!;
+  if (compat.prototype || !P) return { ...rd, roy: rd.haul! < 12 ? 5 : 3, good: false, bore: false };
+  const good = !!P.pits?.[ri], bore = !!P.bores?.[ri] && (rd.water ?? 0) > BORE_KM;
+  const extra = Math.max(6, (t.pits[1]?.haul ?? 0) - (t.pits[0]?.haul ?? 0));
+  return { ...rd, haul: good ? rd.haul! + extra : rd.haul, water: bore ? BORE_KM : rd.water, roy: good ? ROY_GOOD : ROY_NEAR, good, bore };
 }
 
 /** A new crew sized for the program's typical road: enough carts for the water, enough trucks for the gravel. */
@@ -423,6 +440,10 @@ export interface CrewResult {
   week: number;
   /** Breakdown allowance. */
   bf?: number;
+  /** The real game: what the crew costs all up (royalty, bores and floats on its roads included), and who's on it. */
+  cost?: number;
+  staff?: number;
+  casuals?: number;
 }
 
 export interface PlanEval {
@@ -486,9 +507,10 @@ export function progEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned: Partial<
     const ownRts = cr.sub ? 0 : Math.min(cr.tr, left.truck, rtLeft), rts = ownRts + (cr.sub || !rtHired(pl) ? 0 : Math.max(0, cr.tr - Math.min(cr.tr, left.truck)));
     rtLeft -= ownRts;
     let at: { x?: number; y?: number } = { x: 0, y: 0 };
+    let crewRoy = 0, crewBores = 0;
     for (const ri0 of cr.seq) {
-      const rd = t.roads[ri0];
-      if (!rd) continue;
+      if (!t.roads[ri0]) continue;
+      const rd = roadAs(t, P, ri0);
       assigned[ri0] = 1;
       const fd = cr.seq.indexOf(ri0) > 0 && roadDist(at, rd) > FLOAT_KM ? FLOAT_DAYS : 0;
       const x = crewRoad(t, cr, rd, loaded, rts), ideal = crewRoad(t, { sub: false, gr: cr.gr, ro: cr.ro, ca: 4, tr: 12 }, rd);
@@ -499,7 +521,12 @@ export function progEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned: Partial<
       gAll += x.g;
       sAll += x.s;
       at = rd;
-      c.royalty += rd.resheet * (rd.haul! < 12 ? 5 : 3);
+      c.royalty += rd.resheet * rd.roy;
+      crewRoy += rd.resheet * rd.roy;
+      if (rd.bore) {
+        c.site += BORE_FEE;
+        crewBores += BORE_FEE;
+      }
     }
     // Breakdowns: your own gear stops a crew now and then; the older it is, the more often.
     const oc = p.fleet.filter((m) => m.type !== 'truck' && m.status !== 'auction' && m.status !== 'listed');
@@ -548,13 +575,19 @@ export function progEval(p: PlanCtx, t: CouncilTender, pl: Plan, owned: Partial<
       c.hire += hireWeek * R.wk;
       c.wear += Math.round(R.days * ownUsed * wearDay);
       c.floats! += R.floats * FLOAT_MOVE;
+      if (!compat.prototype) {
+        R.staff = fr.used.length;
+        R.casuals = fr.casuals;
+      }
     }
+    // the real game: the crew's own bill (its days, sheeting days and hire weeks, plus royalty, bores and floats on its roads)
+    if (!compat.prototype) R.cost = Math.round(R.days * R.day + (cr.sub ? 0 : R.sheet * R.sheetDay + R.week * R.wk + R.floats * FLOAT_MOVE) + crewRoy + crewBores);
     floatsN += R.floats;
     cdAll += R.days;
     res.push(R);
   });
   const wks = res.reduce((a, x) => Math.max(a, x.wk), 0), wetWks = res.reduce((a, x) => Math.max(a, x.wet), 0);
-  c.site = SITE_WEEK * wks;
+  c.site += SITE_WEEK * wks;
   // one loader at the pit serves every crew: it works the days any of them are carting
   if (ld !== undefined) {
     const mine = res.filter((R) => !crews[R.i]!.sub), carting = Math.min(mine.reduce((a, R) => Math.max(a, R.days), 0), mine.reduce((a, R) => a + R.sheet, 0));
@@ -701,8 +734,8 @@ export function progRun(t: CouncilTender, pl: Plan, e: PlanEval) {
       return {
         sub: c.sub, gr: c.gr, ro: c.ro, ca: c.ca, tr: c.tr, day: R.day, sheetDay: R.sheetDay, week: R.week, k: 0, flt: 0, done: !c.seq.length,
         q: c.seq.map((ri0) => {
-          const rd = t.roads[ri0]!;
-          return { mapId: rd.mapId || null, n: rd.name, g: gradeDays(rd), s: rd.resheet, haul: rd.haul, water: rd.water, x: rd.x, y: rd.y, roy: rd.haul! < 12 ? 5 : 3 };
+          const rd = roadAs(t, pl.prog, ri0);
+          return { mapId: rd.mapId || null, n: rd.name, g: gradeDays(rd), s: rd.resheet, haul: rd.haul, water: rd.water, x: rd.x, y: rd.y, roy: rd.roy };
         }),
       };
     }),

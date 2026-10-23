@@ -296,6 +296,11 @@ export function signOwn(st: CouncilWorld & { jobs: Job[] }, p: PlanCtx, t: Counc
   if (!compat.prototype) j.ldr = planHasLoader(pl) && t.q.resheet > 0 ? hm(pl, 'loader') : null;
   if (rtHired(pl)) j.rtHire = true;
   if (!compat.prototype) j.rtShare = rtShare(t);
+  // the real game: a program's gravel is borderline if most of it comes from the nearest pits
+  if (!compat.prototype && t.major && pl.prog) {
+    const near = t.roads.reduce((a, r, i) => a + (pl.prog!.pits?.[i] ? 0 : r.resheet), 0);
+    j.marginal = near > t.q.resheet / 2;
+  }
   st.jobs.push(j);
   st.ownWon = (st.ownWon || 0) + 1;
   mapWork(st.dmap!, t.roads.map((x) => x.mapId).filter(Boolean) as string[], j);
@@ -357,12 +362,24 @@ export function setOh(t: { oh?: number | null; bid: number | null }, d: number, 
 export type ProgOp =
   | { op: 'add' } | { op: 'addsub' } | { op: 'del'; i: number } | { op: 'cfg'; i: number; k: 'gr' | 'ro' | 'ca' | 'tr'; d: number }
   | { op: 'mv'; i: number; j: number; d: number } | { op: 'un'; i: number; j: number } | { op: 'as'; road: number; to: number }
-  | { op: 'auto' } | { op: 'tidy' };
+  | { op: 'auto' } | { op: 'tidy' }
+  | { op: 'pit'; road: number; v: number } | { op: 'bore'; road: number; v: number };
 
 /** Change a program's crews: add one (yours or a subbie's, six at most), remove, resize, reorder or move roads, auto-plan, tidy. */
 export function progAct(t: CouncilTender, a: ProgOp): void {
   if (!t.pl.prog) return;
   const P = t.pl.prog, subs = P.crews.filter((x) => x.sub).length;
+  // the real game: a road's pit and water
+  if (a.op === 'pit' && !compat.prototype && t.roads[a.road]) {
+    P.pits ??= {};
+    if (a.v) P.pits[a.road] = 1;
+    else delete P.pits[a.road];
+  }
+  if (a.op === 'bore' && !compat.prototype && t.roads[a.road]) {
+    P.bores ??= {};
+    if (a.v) P.bores[a.road] = 1;
+    else delete P.bores[a.road];
+  }
   if (a.op === 'add' && P.crews.length < 6) P.crews.push(newCrew(t, false));
   if (a.op === 'addsub' && P.crews.length < 6 && subs < (t.subAvail || 0)) P.crews.push(newCrew(t, true));
   if (a.op === 'del' && P.crews[a.i] && P.crews.length > 1) P.crews.splice(a.i, 1);
