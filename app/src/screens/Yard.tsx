@@ -238,7 +238,7 @@ function MachineCard({ c, m, act, onSell, onClose }: { c: Career; m: Machine; ac
   const paid = m as Machine & { paid?: number; paidWk?: number }, at = brTownOf(c as never, m);
   return (
     <div className="card">
-      <div className="mhead"><MachineIcon type={m.type} rt={m.rt} /><div className="grow"><b>{machineName(m)}</b>{m.laser && !m.gps && <> <span className="chip c-rain">LASER</span></>}{m.gps && <> <span className="chip c-rain">{m.laser ? 'LASER + GPS' : 'GPS'}</span></>}{m.rt && <span className="tiny muted" style={{ display: 'block' }}>A second trailer: carts about half as much again a day as a single, on more fuel.</span>}<span className="tiny muted" style={{ display: 'block' }}>{m.year} model</span></div>{statusChip(m, c)}</div>
+      <div className="mhead"><MachineIcon type={m.type} rt={m.rt} /><div className="grow"><b>{machineName(m)}</b>{m.laser && !m.gps && <> <span className="chip c-rain">LASER</span></>}{m.gps && <> <span className="chip c-rain">{m.laser ? 'LASER + GPS' : 'GPS'}</span></>}<span className="tiny muted" style={{ display: 'block' }}>{m.year} model</span></div>{statusChip(m, c)}</div>
       {onClose && <button type="button" className="btn" onClick={onClose}>Close</button>}
       {j && <div className="small muted">{jobTitle(j)}</div>}
       {m.status === 'listed' && m.sale ? <div className="small muted">Listed at {f((m.sale as { price: number }).price)}. Sells in about {(m.sale as { weeks: number }).weeks} weeks.</div> : null}

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   BID_ODDS, LD_OWN, LD_WEEK, MOB, RETAIN, ROLES, TREAT, TYPES, an, bookable, carryCash, crewDayCost, freeDriver, freeMachine, leftDays, monthIdx,
   npOf, ownFlow, rainChance, rvForm, stars, subTerms, tCost, whyNot, canTakeBack, game, subPrice, otherContracts, canTender,
-  type Job, type Offer, type SubTender, play,
+  type Job, type Offer, type SubTender, play, compat,
 } from '@engine';
 import { KIND_CHIP, councilTitle, jobTitle, offerCatch, offerDetail, offerLabel, offerPay, offerTitle, pmOf, subTenderTitle } from '@engine/text/work';
 import { Mentor } from '../Mentor';
@@ -53,6 +53,7 @@ function OfferCard({ c, o, act, onMsg }: { c: Career; o: Offer; act: Act; onMsg:
           {!why && (() => { const w = waitingOn(c, o.type); return w.won.length + w.priced.length ? <div className="small" style={{ color: 'var(--rust)', fontWeight: 600 }}>Ties up the {TYPES[o.type].short} your farm work needs.</div> : null; })()}
           <button type="button" className="btn ink full" disabled={!!why} onClick={() => act((x) => play.accept(x, o.id))}>Take it</button>
           {why && <div className="why">{WHY[why]}</div>}
+          {why && !compat.prototype && <button type="button" className="btn full" onClick={() => act((x) => play.declineOffer(x, o.id))}>Politely decline</button>}
         </>
       )}
     </div>

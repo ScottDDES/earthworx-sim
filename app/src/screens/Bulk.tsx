@@ -2,7 +2,7 @@
 
 import {
   ATTACH, BULK_CASUAL, laserFree, laserOwned, FIRE_MONTHS, KINDS, SURVEY_COST, TYPES, WAIT_WEEKS, damVolume, freeFor, isDam, jobEstimate, monthIdx, pricingVol, quotePrice,
-  rateStep, wallQuality, meetsStd, projDone, game, type PlantStd, type Attachment, type BulkKind, type FarmEnquiry, type Job, type Stage,
+  rateStep, wallQuality, meetsStd, projDone, game, play, compat, type PlantStd, type Attachment, type BulkKind, type FarmEnquiry, type Job, type Stage,
 } from '@engine';
 import { ATTACH_NAME, ATTACH_NOTE, DAM_KIND, SLOWEST, STAGE_NAME, STAGE_NOTE, UNIT, damTitle, enquiryLine, needs, qty, surveyFind, surveyLabel, surveyRisk, wallWord } from '@engine/text/bulk';
 import { jobTitle } from '@engine/text/work';
@@ -144,6 +144,7 @@ export function EnquiryCard({ c, e, act }: { c: Career; e: FarmEnquiry; act: Act
           {est.perDay > 0 && <div className="tiny muted">After the spread's running costs: {f(price - est.cost)}. Wages, repayments and the yard come out of that.</div>}
           {est.perDay <= 0 && <div className="tiny" style={{ color: 'var(--rust)' }}>Win it and you've {WAIT_WEEKS} weeks to get the gear before {e.farm} gets someone else, and they'll tell people.</div>}
           <button type="button" className="btn dark full" onClick={() => act((x) => game.damQuote(x, e.id))}>{est.perDay > 0 ? 'Send the price' : 'Send the price anyway'}</button>
+          {est.perDay <= 0 && !compat.prototype && <button type="button" className="btn full" onClick={() => act((x) => play.damDecline(x, e.id))}>Politely decline</button>}
         </>
       )}
     </div>

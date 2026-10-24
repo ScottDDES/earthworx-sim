@@ -570,6 +570,22 @@ export function approachRival(c: Career, name: string): void {
   if (!c.queue.some((q) => q.k === 'buyout' && q.name === name)) c.queue.push({ k: 'buyout', name });
 }
 
+/** The real game: tell them you can't do it this time. The work goes, with a line in the diary. */
+export function declineOffer(c: Career, id: string): boolean {
+  const o = c.offers.find((x) => x.id === id);
+  if (compat.prototype || !o) return false;
+  c.offers = c.offers.filter((x) => x !== o);
+  note(c, { k: 'declined', client: o.client, kind: o.kind, type: o.type });
+  return true;
+}
+/** The real game: ring a farmer or developer back and say you can't take it on. */
+export function damDecline(c: Career, id: string): boolean {
+  const S = c.bulk, e = S?.enq.find((x) => x.id === id);
+  if (compat.prototype || !S || !e || e.quoted) return false;
+  S.enq = S.enq.filter((x) => x !== e);
+  note(c, { k: 'damDeclined', farm: e.farm, place: e.place, dk: e.kind });
+  return true;
+}
 export function accept(c: Career, id: string): boolean {
   const ok = !!acceptOffer(c as never, id);
   if (ok) coachTick(c);

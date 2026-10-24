@@ -104,27 +104,44 @@ export async function watchReward(): Promise<boolean> {
 // ---------- the banner ----------
 
 let bannerUp = false;
+/** What the screens last asked for; the banner catches up to it one call at a time. */
+let want = false, busy = false;
 function setInset(h: number): void {
   const root = document.documentElement;
-  root.style.setProperty('--ad-h', (h > 0 ? h : 0) + 'px');
-  root.classList.toggle('ad-on', h > 0);
+  // a size that lands after the banner was hidden doesn't count
+  const on = h > 0 && want;
+  root.style.setProperty('--ad-h', (on ? h : 0) + 'px');
+  root.classList.toggle('ad-on', on);
 }
 
-/** Show or hide the banner: the screens say when (menu tabs, no card open). */
+/**
+ * Show or hide the banner: the screens say when (menu tabs, no card open). The plugin's calls are slow and can
+ * cross (a hide landing before the show it should undo, leaving the banner up on the Work tab), so they're run
+ * one at a time until the banner matches the last ask.
+ */
 export async function showBanner(on: boolean): Promise<void> {
   if (!canAsk || !IDS.banner) return;
-  if (on && noAds()) on = false;
-  if (on === bannerUp) return;
-  bannerUp = on;
+  want = on && !noAds();
+  if (busy) return;
+  busy = true;
   try {
-    if (on) await AdMob.showBanner({ adId: IDS.banner, adSize: BannerAdSize.ADAPTIVE_BANNER, position: BannerAdPosition.BOTTOM_CENTER, margin: 0, isTesting: BETA });
-    else {
-      await AdMob.hideBanner();
-      setInset(0);
+    while (bannerUp !== want) {
+      const go = want;
+      try {
+        if (go) await AdMob.showBanner({ adId: IDS.banner, adSize: BannerAdSize.ADAPTIVE_BANNER, position: BannerAdPosition.BOTTOM_CENTER, margin: 0, isTesting: BETA });
+        else {
+          await AdMob.removeBanner();
+          setInset(0);
+        }
+        bannerUp = go;
+      } catch {
+        bannerUp = false;
+        setInset(0);
+        if (go) break;
+      }
     }
-  } catch {
-    bannerUp = false;
-    setInset(0);
+  } finally {
+    busy = false;
   }
 }
 function hideBanner(): void {

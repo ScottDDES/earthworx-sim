@@ -3,6 +3,8 @@
 
 import { rw } from './real';
 import { bulkLine } from './bulk';
+import { isDam } from '../bulk';
+import { compat } from '../compat';
 import type { Career, Report } from '../game';
 import type { Job } from '../hire';
 import { TYPES } from '../machines';
@@ -123,7 +125,7 @@ export function docketStamps(c: Career, r: Report): string[] {
     const j = e.jobId ? r.jobs?.[e.jobId] ?? c.jobs.find((x) => x.id === e.jobId) : undefined;
     if (e.k === 'finished' && e.kind === 'sub' && j) out.push('Finished · ' + jobTitle(j));
     if (e.k === 'ownFinished' && j) out.push((e.major ? 'Program delivered · ' : 'Contract finished · ') + jobTitle(j));
-    if (e.k === 'damDone' && j) out.push('Dam finished · ' + jobTitle(j));
+    if (e.k === 'damDone' && j) out.push((compat.prototype || isDam(j.dk) ? 'Dam finished · ' : 'Finished · ') + jobTitle(j));
     if (e.k === 'unlocked') out.push('Unlocked');
   }
   return out;

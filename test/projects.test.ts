@@ -150,9 +150,9 @@ describe('feedlot and cotton developments', () => {
     expect(j.plantBy).toBe(plantWeek(j.won as number));
   });
 
-  it('laser work takes a dozer to push open-bowl scrapers in the real game, not in the prototype', () => {
+  it('laser work takes a dozer to push open-bowl scrapers in the real game, and no grader (the laser does the finish); the prototype takes a grader and no dozer', () => {
     const c = outfit();
-    expect(freeFor(c as never, 'laser').map((m) => m.type).sort()).toEqual(['d9', 's651', 's651', 'grader'].sort());
+    expect(freeFor(c as never, 'laser').map((m) => m.type).sort()).toEqual(['d9', 's651', 's651'].sort());
     compat.prototype = true;
     expect(freeFor(c as never, 'laser').map((m) => m.type).sort()).toEqual(['s651', 's651', 'grader'].sort());
     compat.prototype = false;

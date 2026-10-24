@@ -115,7 +115,7 @@ export function surveyFind(e: FarmEnquiry): string {
 /** What the kind needs before it can start. */
 export function needs(k: BulkKind): string {
   switch (k) {
-    case 'laser': return compat.prototype ? 'Scrapers (pull scrapers suit it) and the laser gear, with a grader to trim.' : 'Laser Buckets or scrapers fitted with laser control, a free Laser Gear, and a grader to trim.';
+    case 'laser': return compat.prototype ? 'Scrapers (pull scrapers suit it) and the laser gear, with a grader to trim.' : 'Laser Buckets fitted with laser control (scrapers too, for the big levels), and a free Laser Gear.';
     case 'channel': return 'An excavator.';
     case 'contour': return 'A grader or a dozer.';
     case 'pad': return 'Dirt movers (scrapers, or an excavator and moxies or tippers), a compactor or roller, water and a grader.';

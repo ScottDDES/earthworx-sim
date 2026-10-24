@@ -23,7 +23,7 @@ import { lendCap } from './market';
 import { fleetValue } from './overheads';
 import { nearMissAdvisory, nearMissCard, nearMissReport, nearMissShrug, quietAdvisory, quietDaysOff, quietLeave, quietYarn, seriousAdvisory, seriousCard, seriousHide, seriousNotify, swmsPay, swmsSelf } from './safety';
 import { dryDamBore, dryDamFar, dryDamFarMore, gravelArgue, gravelCart, gravelCartCost, gravelWork, ownFlow, pitFar, pitFarmer, staffOwn, staffSubs, swapCardKeep, swapIn, variationFree, variationLodge, variationValue, variationWriting } from './contracts';
-import { breakCard, breakFitterFix, breakFix, breakPatch, fitterFixCost, fitterFixDays, fitterPatchCost, breakinCamera, breakinClaim, breakinWithout, callGrader, calloutPull, callWork, clearingBorrow, clearingCash, xmasCost, xmasParty, earlyClient, earlyTake, extraAgree, extraAsk, extraFree, hurtAdvisory, hurtCover, hurtHome, hurtKeepGoing, rainBulk, rainCrews, rainDecide, svcFindDays, svcFix, svcPatch, turnoverKeep, turnoverSell } from './cards';
+import { breakCard, breakFitterFix, breakFix, breakPatch, fitterFixCost, fitterFixDays, fitterPatchCost, breakinCamera, breakinClaim, breakinDiesel, breakinWithout, callGrader, calloutPull, callWork, clearingBorrow, clearingCash, xmasCost, xmasParty, earlyClient, earlyTake, extraAgree, extraAsk, extraFree, hurtAdvisory, hurtCover, hurtHome, hurtKeepGoing, rainBulk, rainCrews, rainDecide, svcFindDays, svcFix, svcPatch, turnoverKeep, turnoverSell } from './cards';
 import { bankMoreTime, basInterest, basPay, basPlan, basPlanOk, gstInBank, odLimit, repoPick, repossess } from './office';
 import { weeklyRepay } from './bank';
 import { askSellUp, buyOutAll, buyOutBest, buyOutOffer, buyOutPay, canBuyOut, collapseCard, collapseClaim, collapseSell, insureBroker, sellAll, sellBest, sellBuyer, sellGear, sellPrice, sellTwo, walkAway } from './shocks';
@@ -270,6 +270,11 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
     }
     case 'breakin':
       data.home = c.yard === 'home';
+      // the real game: nothing with GPS in the yard, so only the diesel's gone
+      if (!compat.prototype && !c.fleet.some((m) => m.gps)) {
+        Object.assign(data, { gps: false, camera: !!c.camera });
+        return [...(c.camera ? [] : [o('camera', () => breakinDiesel(st, true))]), o('wear', () => breakinDiesel(st, false))];
+      }
       return [o('claim', () => breakinClaim(st)), o('camera', () => breakinCamera(st)), o('without', () => breakinWithout(r(), st))];
     case 'extra': {
       const j = jobOf(c, q.id);

@@ -252,6 +252,12 @@ export function breakinCamera(b: CardState): void {
   b.bank -= 3800;
   b.camera = true;
 }
+/** The real game: no GPS in the yard to take, so it's only the diesel: wear it, or wear it and put up a camera. */
+export const BREAKIN_DIESEL = 840, CAMERA_COST = 1200;
+export function breakinDiesel(b: CardState, camera: boolean): void {
+  b.bank -= BREAKIN_DIESEL + (camera ? CAMERA_COST : 0);
+  if (camera) b.camera = true;
+}
 export function breakinWithout(rand: Rand, b: CardState): boolean {
   if (rand() < 0.5) {
     b.bank -= 900;

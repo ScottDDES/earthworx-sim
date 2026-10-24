@@ -678,7 +678,8 @@ export function freeFor(b: Pick<B, 'fleet'> & { week?: number }, kind: BulkKind,
       const scr = idle.filter((m) => bulkScraper(m.type) && (compat.prototype || m.laser));
       // the real game: open-bowl scrapers take a dozer to push them, one for every two
       const push = compat.prototype ? 0 : Math.ceil(scr.filter((m) => bulkScraper(m.type)!.pushed).length / 2);
-      return [...scr, ...pickN((m) => !!DOZE[m.type as BulkType], push), ...pickN((m) => m.type === 'grader', 1)];
+      // the real game: the laser control gives the finish, so no grader to trim
+      return [...scr, ...pickN((m) => !!DOZE[m.type as BulkType], push), ...(compat.prototype ? pickN((m) => m.type === 'grader', 1) : [])];
     }
     case 'channel': return [...idle.filter((m) => m.type === 'excavator'), ...pickN((m) => !!DOZE[m.type as BulkType], 1)];
     case 'contour': return pickN((m) => !!CONTOUR_KM[m.type], 2);
@@ -786,7 +787,7 @@ function startOne(b: B, j: Job, events: BulkEvent[]): void {
 /** How good a day's work is, 0 to 1. Dams and pads: rolled, watered, preconditioned, or pushed on wet. Banks: a dozer packs them better than a grader. Laser levelling: trimmed with a grader. */
 export function dayQuality(sr: { compacted: boolean; watered: boolean; precon: boolean; trimmed?: boolean; ctlQ?: number; rates?: Record<string, number> }, wetPush: boolean, kind: BulkKind = 'turkeyNest'): number {
   if (kind === 'contour') return sr.compacted ? 0.88 : 0.72;
-  if (kind === 'laser') return Math.min(1, (sr.trimmed ? 0.92 : 0.65) + (sr.ctlQ ?? 0));
+  if (kind === 'laser') return Math.min(1, (sr.trimmed || (!compat.prototype && (sr.ctlQ ?? 0) > 0) ? 0.92 : 0.65) + (sr.ctlQ ?? 0));
   if (kind === 'channel' || kind === 'rake' || kind === 'cutter') return 1;
   return Math.max(0, Math.min(1, 0.55 + (sr.compacted ? 0.25 : 0) + (sr.watered ? 0.1 : 0) + (sr.precon ? 0.15 : 0) + (sr.ctlQ ?? 0) - (wetPush ? 0.25 : 0)));
 }

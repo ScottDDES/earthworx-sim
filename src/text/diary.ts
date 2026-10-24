@@ -10,7 +10,7 @@ import { ROLES } from '../staff';
 import { MGR } from '../managers';
 import { HC_WEEKS } from '../office';
 import { WHS_SYS } from '../overheads';
-import { TIER_NAME, councilTitle, jobTitle, pmOf, subTenderTitle } from './work';
+import { TIER_NAME, councilTitle, jobTitle, offerTitle, pmOf, subTenderTitle } from './work';
 import { eventText } from './docket';
 import { SERIOUS_STORIES } from './safety';
 import { DAM_KIND, farmer as farmerName } from './bulk';
@@ -36,6 +36,8 @@ export function diaryText(c: Career, e: any): string {
   switch (e.k) {
     case 'started': return 'Started ' + e.co + ' in ' + TOWNS[e.town as keyof typeof TOWNS].name + ' with a ' + fk(e.loan) + ' loan.';
     case 'open': return 'Open for business.';
+    case 'declined': return 'Politely declined: ' + offerTitle(e) + '. They\'ll keep you in mind.';
+    case 'damDeclined': return 'Rang ' + e.farm + ' back about the ' + dk(e.dk) + ' near ' + e.place + ': not this time. They said thanks for letting them know.';
     case 'presetRegional': return 'Two crews, a regional depot and a flood recovery program won at ' + (e.bid != null ? f(e.bid) : '') + '. Deliver it by 30 June.';
     case 'seasonOver': return 'Season over: ' + (e.score >= 0 ? '+' : '') + f(e.score) + ' net worth in ' + e.done + ' weeks.';
     case 'ticket': return 'New ticket: ' + TICKET_TEXT[e.id]!.n + '.';

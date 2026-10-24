@@ -14,6 +14,7 @@ import { HURT_ADVISORY, WELLBEING_ADVISORY, nearMissAdvisoryCost, seriousAdvisor
 import { compat } from '../compat';
 import { DAM_KIND, comeback, comebackDoubt, farmer, firstName } from './bulk';
 import { RTW_ADVISORY } from '../advisory';
+import { BREAKIN_DIESEL, CAMERA_COST } from '../cards';
 import { BID_PTS, onRetainer } from '../ddes';
 import { STAGE_NAME, qty } from './bulk';
 import { KINDS } from '../bulk';
@@ -333,6 +334,11 @@ function cardView0(c: Career, q: Career['queue'][number], d: DrawnCard): CardVie
       put('skip', 'Skip it this year', 'Saves the money. The crew notices.');
       return out('Crew', 'Christmas', 'From next week the district shuts down for two weeks: the council, the head contractors and the farmers all knock off. Your jobs stop and pick up again in January, and any contract deadlines move back two weeks. Wages are still paid. How do you send the crew off?');
     case 'breakin':
+      if (D.gps === false) {
+        if (!D.camera) put('camera', 'Put up a camera · ' + f(BREAKIN_DIESEL + CAMERA_COST), 'The diesel, and a camera on the yard. Halves the chance of it happening again.');
+        put('wear', 'Top it back up · ' + f(BREAKIN_DIESEL), 'Under the insurance excess, so it\'s not worth a claim.');
+        return out('Bad luck', 'Someone\'s been in the yard', '400 litres of diesel have been drained out of the machines overnight.' + (D.home ? ' Behind the house, anyone can walk in.' : '') + (D.camera ? ' The camera caught a ute with no plates.' : ''));
+      }
       put('claim', 'Claim it on insurance', '$1,000 excess. Your premium goes up 8% and eases back over the year.');
       put('camera', 'Replace it yourself and put up a camera', '$3,800 now. Halves the chance of it happening again.');
       put('without', 'Run without GPS for now', 'Grade by eye. Saves money today, if nobody notices.');
@@ -571,6 +577,7 @@ function line(c: Career, k: string, id: string, D: Record<string, any>, R: any):
     case 'dieselWar': return id === 'fill' ? 'Ordered: half a tank, here in two weeks.' : id === 'levy' ? 'Most clients grumbled and paid. One said they\'d remember it.' : 'You\'ll wear it. The fuel bill is going to hurt for a while.';
     case 'xmas': return id === 'party' ? 'Great night. A few sore heads on Saturday, and the crew is still talking about it.' : id === 'bbq' ? 'Good arvo. Everyone heads off for the break in good spirits.' : 'Everyone just knocked off on Friday. Nobody said much.';
     case 'breakin':
+      if (D.gps === false) return id === 'camera' ? 'Topped up, and the camera\'s up.' : 'Topped up. A padlock on the tank won\'t hurt either.';
       if (id === 'claim') return 'Claim paid. Premiums are up for a while.';
       if (id === 'camera') return 'Fixed and the camera\'s up.';
       return R ? 'A client complained about the finish. $900 of rework.' : 'Nobody noticed. You got away with it.';
