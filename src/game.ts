@@ -24,6 +24,7 @@ import { DELIVERY_MAX, DELIVERY_MIN, NEW_DEPOSIT, NEW_WARRANTY_WEEKS, canFinance
 import { injuryWeek, laterWeek, letGoInjured } from './later';
 import { buyAttachment, bulkStart, bulkWeek, damDay, doable, genEnquiry, sendQuote, setPrecon, type Attachment, setRate, survey, type BulkBook, type BulkEvent } from './bulk';
 import { ERP_SETUP, PRICE_CHECK_FEE, erpOk, priceBand } from './advisory';
+import { PLANT_BRK, addMod, bidFee, ddesCharge, ddesWeek, hasMod, modsWeek, onRetainer, retainerFee, setRetainer, startPrep, type DdesState, type ErpMod } from './ddes';
 import { buyTank, cancelFuel, fuelIdle, fuelSettle, fuelStart, fuelWeek, orderFuel, setAuto, type FuelBook, type FuelEvent, type TankId } from './fuel';
 import { BID_ODDS, rvOHFor } from './rivals';
 import { accept as acceptOffer, askWait as askWaitHire, barred, coverOff, genOffers, jobDone, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
@@ -75,6 +76,8 @@ export interface Career {
   youBlocked: number;
   /** Running the DDES ERP. */
   erp?: boolean;
+  /** The real game: DDES on retainer, its claims, the ERP's modules, getting ready to sell (ddes.ts). */
+  ddes?: DdesState;
   /** The bulk fuel tank and the diesel price (the real game). */
   fuel?: FuelBook;
   /** Expansion packs switched on. Bulk and Ag is behind a test switch until it's sold as a pack. */
@@ -188,7 +191,8 @@ export function homeFleet(c: Career): number {
   return c.fleet.filter((m) => m.status !== 'branch').length;
 }
 export function wctx(c: Career) {
-  return workshopCtx(c.staff, homeFleet(c), YARDS[c.yard].svc, DIFFICULTY[diff(c)].brk, costIdx(c));
+  // the real game: the ERP's plant module plans the servicing, and fewer machines break down
+  return workshopCtx(c.staff, homeFleet(c), YARDS[c.yard].svc, DIFFICULTY[diff(c)].brk * (hasMod(c, 'plant') ? PLANT_BRK : 1), costIdx(c));
 }
 export function planCtx(c: Career): PlanCtx {
   return c as unknown as PlanCtx;
@@ -204,7 +208,7 @@ export function hasCrew(c: Career): boolean {
 }
 export function overheads(c: Career): number {
   const prem = premiumOf(premParts(fleetValue(c.fleet, c.week), wages(c.staff)), c, c.whs.sys, c.week);
-  return overheadsOf({ premium: prem, rent: YARDS[c.yard].rent, wages: wages(c.staff), whsSys: c.whs.sys, talks: c.whs.talks, crews: rainCrews(c.jobs), costIdx: costIdx(c), erp: !!c.erp });
+  return overheadsOf({ premium: prem, rent: YARDS[c.yard].rent, wages: wages(c.staff), whsSys: c.whs.sys, talks: c.whs.talks, crews: rainCrews(c.jobs), costIdx: costIdx(c), erp: !!c.erp, ddes: (onRetainer(c) ? retainerFee(c) : 0) + modsWeek(c) });
 }
 
 /** What the DDES ERP saves (or would save) a week, after its own fee. */
@@ -253,7 +257,7 @@ export function priceCheck(c: Career, id: string): boolean {
     const std = tCostOf(t, STD_CREW_DAY);
     const band = priceBand(c.rivals.filter((x) => BID_ODDS.sub[x.tier] > 0).map((x) => (std * x.eff + rvOHFor(x, subWksOf(t))) * (1 + x.margin)), 100);
     if (!band) return false;
-    c.bank -= PRICE_CHECK_FEE.sub;
+    c.bank -= ddesCharge(c, PRICE_CHECK_FEE.sub);
     t.adv = band;
     return true;
   }
@@ -266,9 +270,34 @@ export function priceCheck(c: Career, id: string): boolean {
   if (ct.prestige && c.rivals.some((x) => x.tier === 'big')) who = c.rivals.filter((x) => x.tier === 'big');
   const band = priceBand(who.map((x) => (sp.e.cost * Math.max(ef || 0.95, x.eff) + rvOHFor(x, sp.e.wks)) * (1 + x.margin + (ct.prestige ? 0.06 : 0))), 500);
   if (!band) return false;
-  c.bank -= fee;
+  c.bank -= ddesCharge(c, fee);
   ct.adv = band;
   return true;
+}
+
+// ---------- DDES (the real game) ----------
+
+/** Put DDES on retainer, or let it go. */
+export function ddesRetainer(c: Career, on: boolean): boolean {
+  return setRetainer(c as never, on);
+}
+/** DDES writes the non-price part of a council bid, for a fee: more points on method, safety and capability. */
+export function ddesBid(c: Career, id: string): boolean {
+  const t = c.ctenders.find((x) => x.id === id);
+  if (compat.prototype || !c.won2 || !t || t.dw || t.result) return false;
+  const fee = bidFee(c, t.bid ?? stdPlan(planCtx(c), t).e.cost);
+  if (c.bank < fee) return false;
+  c.bank -= fee;
+  t.dw = fee;
+  return true;
+}
+/** An ERP module. */
+export function erpModule(c: Career, k: ErpMod): boolean {
+  return addMod(c as never, k);
+}
+/** DDES gets the business ready to sell. */
+export function sellPrep(c: Career): boolean {
+  return startPrep(c as never, worth(c));
 }
 export function capFull(c: Career): boolean {
   return !c.staff.some((p) => p.role === 'ops' && p.off === 0) && c.jobs.filter((j) => (j.kind === 'sub' || j.kind === 'own') && !j.finished).length >= 2;
@@ -846,6 +875,7 @@ export function endWeek(c: Career): Report | null {
   rep.costs += fitterWeek(rand, c as never, w, ev as WorkshopEvent[]);
   rep.costs += wsmWeek(rand, c as never, w, odLimit(c), ev as WorkshopEvent[]);
   if (c.branch) branchWeek(rand, c as never, w, fmul(c), DIFFICULTY[d].mg, costIdx(c), c.whs.sys, rep, c.acc, ev as BranchEvent[]);
+  if (!compat.prototype) ddesWeek(rand, c as never);
   rep.costs += safetyWeek(rand, c as never, rep.worked, d, c.queue, ev as SafetyEvent[]);
   for (const j of c.jobs) if ((j.stood ?? 0) > 0) j.stood!--;
 

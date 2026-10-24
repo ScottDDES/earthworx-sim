@@ -84,6 +84,8 @@ export interface OverheadInputs {
   /** Crews out that rain would stop: talks are paid per crew, at least one. */
   crews: number;
   costIdx: number;
+  /** The real game: DDES on retainer and the ERP's modules, a week (ddes.ts). */
+  ddes?: number;
 }
 
 export function talksCost(talks: boolean, crews: number): number {
@@ -93,7 +95,7 @@ export function talksCost(talks: boolean, crews: number): number {
 /** The weekly running costs. */
 export function overheads(o: OverheadInputs): number {
   const whsWk = WHS_SYS[o.whsSys]?.wk ?? 0;
-  if (!o.erp) return Math.round((o.premium + DRAWINGS + o.rent + o.wages + whsWk + talksCost(o.talks, o.crews)) * o.costIdx);
+  if (!o.erp) return Math.round((o.premium + DRAWINGS + o.rent + o.wages + whsWk + talksCost(o.talks, o.crews)) * o.costIdx) + (o.ddes ?? 0);
   const E = ERP_EFFECT;
-  return Math.round((o.premium * E.premium + DRAWINGS + o.rent + o.wages + whsWk * E.whs + talksCost(o.talks, o.crews) * E.talks) * o.costIdx * E.all + ERP_WEEK);
+  return Math.round((o.premium * E.premium + DRAWINGS + o.rent + o.wages + whsWk * E.whs + talksCost(o.talks, o.crews) * E.talks) * o.costIdx * E.all + ERP_WEEK) + (o.ddes ?? 0);
 }

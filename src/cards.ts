@@ -15,6 +15,7 @@ import { ROLES } from './staff';
 import { TOWNS } from './towns';
 import { compat } from './compat';
 import { HURT_ADVISORY } from './advisory';
+import { ddesCharge } from './ddes';
 import { forecast, rainMm, type WeatherCtx } from './weather';
 import { record, type Whs } from './safety';
 
@@ -227,7 +228,7 @@ export function hurtCover(b: CardState & { opCover: number; coverFor: string | n
 }
 /** DDES Advisory manages the injury: the right doctor this week, back in one week instead of two. */
 export function hurtAdvisory(b: CardState, p: { off: number }): void {
-  b.bank -= HURT_ADVISORY;
+  b.bank -= ddesCharge(b as never, HURT_ADVISORY);
   p.off = 1;
   b.whs.cult = Math.min(100, b.whs.cult + 4);
 }

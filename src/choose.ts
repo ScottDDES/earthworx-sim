@@ -5,7 +5,7 @@
 // happened (result). Screens turn all three into words with text/cardView.ts.
 
 import { mRef, news, note } from './diary';
-import { stream, room, hasCrew, tax, tickets, mood, premiumNow, costIdx, type Career } from './game';
+import { stream, room, hasCrew, tax, tickets, mood, premiumNow, costIdx, wctx as wctxOf, service as serviceOf, type Career } from './game';
 import { dieselLevy, loadOf, orderFuel, pumpPrice } from './fuel';
 import { hashN, pick, seedRand, type Rand } from './rng';
 import { lateChase, lateFriendly, latePark, lateWait, release, stars, type Job } from './hire';
@@ -27,7 +27,11 @@ import { breakCard, breakFitterFix, breakFix, breakPatch, fitterFixCost, fitterF
 import { bankMoreTime, basInterest, basPay, basPlan, basPlanOk, gstInBank, odLimit, repoPick, repossess } from './office';
 import { weeklyRepay } from './bank';
 import { askSellUp, buyOutAll, buyOutBest, buyOutOffer, buyOutPay, canBuyOut, collapseCard, collapseClaim, collapseSell, insureBroker, sellAll, sellBest, sellBuyer, sellGear, sellPrice, sellTwo, walkAway } from './shocks';
-import { brOf, brRaise, brTender, brTenderCard } from './branch';
+import { brOf, brRaise, brTender, brTenderCard, branches, closeBranch } from './branch';
+import { claimFee, contractClient, eotClaim, healthFind, onRetainer, overrunValue } from './ddes';
+import { brProfit } from './books';
+import { DEV_LD, claimLate } from './bulk';
+import { svcCost } from './machines';
 import type { TownId } from './towns';
 import { pullOut, signSub } from './tenders';
 import { pullOutCouncil, signOwn } from './council';
@@ -40,6 +44,7 @@ export interface CardOpt {
   go: () => unknown;
 }
 const o = (id: string, go: () => unknown): CardOpt => ({ id, go });
+const round100 = (n: number) => Math.round(n / 100) * 100;
 
 /** A drawn card: its options, and the numbers on it. */
 export interface DrawnCard {
@@ -358,6 +363,47 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
       j.varAsked = true;
       Object.assign(data, { job: j, value: variationValue(j) });
       return [o('lodge', () => variationLodge(r(), j)), o('writing', () => variationWriting(j)), o('free', () => variationFree(st, j))];
+    }
+    // the real game: DDES's claims
+    case 'overrun': {
+      // the job may be done by now: then the card carries its numbers and the claim settles straight away
+      if (q.done) {
+        Object.assign(data, { job: q.job, value: q.v, fee: claimFee(c), ret: onRetainer(c), contract: q.contract, done: true });
+        return [o('ddes', () => claimLate(r(), st, q as never, 'ddes')), o('self', () => claimLate(r(), st, q as never, 'self')), o('wear', () => {})];
+      }
+      const j = jobOf(c, q.id);
+      if (!j || j.finished) return null;
+      Object.assign(data, { job: j, value: overrunValue(j as never), fee: claimFee(c), ret: onRetainer(c), contract: contractClient(j as never) });
+      return [o('ddes', () => { j.ov = 'ddes'; }), o('self', () => { j.ov = 'self'; }), o('wear', () => {})];
+    }
+    case 'eot': {
+      const j = jobOf(c, q.id);
+      if (!j || j.finished) return null;
+      const ld = round100(DEV_LD * (j.fixed as number));
+      Object.assign(data, { job: j, wetD: j.wetD, wks: Math.max(1, Math.round(((j.wetD as number) || 0) / 5)), ld, fee: claimFee(c), ret: onRetainer(c) });
+      return [o('ddes', () => eotClaim(r(), st, j as never, 'ddes', ld)), o('self', () => eotClaim(r(), st, j as never, 'self', ld)), o('none', () => { j.eot = true; })];
+    }
+    case 'ddescheck': {
+      const br = branches(c as never);
+      const fd = healthFind({ bank: c.bank, od: odLimit(c), hist: c.hist, jobs: c.jobs as never, branches: br.map((B) => ({ hist: B.hist, profit: brProfit(B, 13), town: B.town })), overdue: c.fleet.filter((m) => overdue(m) && m.status !== 'auction' && m.status !== 'branch').length });
+      Object.assign(data, { find: fd.k });
+      if (fd.k === 'over') {
+        const j = jobOf(c, fd.id)!;
+        Object.assign(data, { job: j, value: overrunValue(j as never), fee: claimFee(c) });
+        return [o('claim', () => { j.ov = 'ddes'; j.ovAsked = true; }), o('later', () => {})];
+      }
+      if (fd.k === 'branch') {
+        const B = brOf(c as never, fd.town as TownId)!;
+        Object.assign(data, { town: B.town, loss: -brProfit(B, 13) });
+        return [o('close', () => closeBranch(st, B.town)), o('keep', () => {})];
+      }
+      if (fd.k === 'svc') {
+        const w = wctxOf(c), ms = c.fleet.filter((m) => overdue(m) && m.status === 'idle' && m.down === 0);
+        Object.assign(data, { n: c.fleet.filter((m) => overdue(m) && m.status !== 'auction' && m.status !== 'branch').length, idle: ms.length, cost: ms.reduce((a, m) => a + svcCost(m, w), 0) });
+        return [o('book', () => { for (const m of ms) serviceOf(c, m.id); }), o('later', () => {})];
+      }
+      if (fd.k === 'cash') data.od = odLimit(c);
+      return [o('ok', () => {})];
     }
     case 'gravel': {
       const j = jobOf(c, q.id);

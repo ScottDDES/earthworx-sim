@@ -6,6 +6,7 @@
 import { mRef, note } from './diary';
 import { book, type Accounts } from './ledger';
 import { compat } from './compat';
+import { SITE_WORK, hasMod } from './ddes';
 import { brProfit } from './books';
 import { TYPES, breaks, isBulk, isRoad, svcLeft, wear, type Machine, type WorkshopCtx } from './machines';
 import { invoice, type Biz, type WeekReport } from './hire';
@@ -191,7 +192,7 @@ export function brBulkWork(town: TownId): number {
 function oneBranch(rand: Rand, b: BranchState, B: Branch, w: WorkshopCtx, fmul: number, mg: number, costIdx: number, whsSys: number, rep: WeekReport, acc: Accounts, events: BranchEvent[]): void {
   const ms = compat.prototype ? brMachines(b.fleet) : brAt(b, B.town);
   const C = brCrews(ms), sk = B.mgr ? { green: 0.85, solid: 1, gun: 1.12 }[B.mgr.skill] : 0.6;
-  const util = Math.max(0.15, Math.min(0.95, (0.5 + (0.4 * B.rep) / 100) * Math.min(1.25, fmul) * sk));
+  const util = Math.max(0.15, Math.min(0.95, (0.5 + (0.4 * B.rep) / 100) * Math.min(1.25, fmul) * sk * (hasMod(b as never, 'site') ? SITE_WORK : 1)));
   let dry = 0;
   for (let d = 0; d < 5; d++) if (!wetDay({ town: B.town, wxStart: b.wxStart }, b.week, d)) dry++;
   const days = Math.round(C.n * dry * util * 10) / 10;

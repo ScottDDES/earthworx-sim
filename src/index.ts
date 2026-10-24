@@ -27,6 +27,7 @@ export * from './office';
 export * from './shocks';
 export * from './branch';
 export * from './projects';
+export * from './ddes';
 export * from './cards';
 export * from './advisory';
 export * from './bulk';

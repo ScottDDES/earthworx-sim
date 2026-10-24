@@ -16,6 +16,7 @@ import { note } from './diary';
 import { fuelUse } from './fuel';
 import { STD_EASY, STD_STRICT } from './plantStd';
 import { bulkLapse, bulkLoss, bulkRivalsWeek, keenness, mkBulkRivals, type BulkRival } from './bulkRivals';
+import { EOT_MIN_DAYS, OVER_ASK, claimPay, contractClient, overrunValue, settleOverrun, type ClaimWho } from './ddes';
 import { ASK_BACK_Q, COTTON_BLOCKS, PLANT_DOCK, genProject, isProj, plantWeek, projOdds, type ProjKind, type Stage } from './projects';
 
 const round = (n: number, to: number) => Math.round(n / to) * to;
@@ -378,6 +379,7 @@ export type BulkEvent =
   | { k: 'burnt'; jobId: string; price: number }
   | { k: 'devClaim'; jobId: string; amt: number }
   | { k: 'stageDone'; jobId: string; stage: string; amt: number }
+  | { k: 'overrunPaid'; jobId: string; who: string; amt: number; fee: number }
   | { k: 'plantMissed'; jobId: string; dock: number }
   | { k: 'devBust'; jobId: string; lost: number };
 
@@ -385,6 +387,13 @@ export type BulkEvent =
 export function bulkWeek(rand: Rand, b: B, fmul: number, events: BulkEvent[], mm = 0): void {
   const S = (b.bulk ??= { enq: [] });
   if (!compat.prototype) plantCheck(b, events);
+  // the real game: the finish date's here and the wet has cost days: an extension of time is worth asking for
+  if (!compat.prototype) for (const j of b.jobs) {
+    if (j.kind === 'bulk' && j.state === 'running' && !j.finished && j.due != null && b.week >= (j.due as number) && !j.eot && !j.eotAsked && ((j.wetD as number) || 0) >= EOT_MIN_DAYS) {
+      j.eotAsked = true;
+      b.queue.push({ k: 'eot', id: j.id });
+    }
+  }
   if (!compat.prototype) bulkRivalsWeek(rand, (S.rv ??= mkBulkRivals(b.town)), TOWNS[b.town].places, fmul);
   for (const L of (S.leaks ?? []).slice()) {
     if (L.w <= b.week) {
@@ -533,7 +542,7 @@ function setStage(j: Job, i: number): void {
   const s = (j.stages as (Stage & { est: number })[])[i]!;
   j.si = i;
   Object.assign(j, { dk: s.dk, truth: s.truth, est: s.est, haul: s.haul, per: s.per, dam: s.dam, tested: !!s.tested, m3: 0, qsum: 0 });
-  for (const k of ['precon', 'signAsked', 'signed', 'slowest', 'wetPush', 'dry']) delete (j as Record<string, unknown>)[k];
+  for (const k of ['precon', 'signAsked', 'signed', 'slowest', 'wetPush', 'dry', 'ovAsked', 'ov']) delete (j as Record<string, unknown>)[k];
   if (s.dk === 'laser') j.lzr = true;
   else delete j.lzr;
 }
@@ -806,7 +815,12 @@ export function leakOdds(q: number): number {
 // ---------- the day ----------
 
 export function damDay(rand: Rand, b: B, j: Job, wet: boolean, w: WorkshopCtx, rep: WeekReport, events: BulkEvent[]): void {
-  if (j.state !== 'running' || j.finished || wet) return;
+  if (j.state !== 'running' || j.finished) return;
+  if (wet) {
+    // the real game: wet days on the job, for an extension of time
+    if (!compat.prototype) j.wetD = ((j.wetD as number) || 0) + 1;
+    return;
+  }
   if (((j.dry as number) || 0) > 0) {
     j.dry = (j.dry as number) - 1;
     rep.lost++;
@@ -830,6 +844,11 @@ export function damDay(rand: Rand, b: B, j: Job, wet: boolean, w: WorkshopCtx, r
   const moved = sr.perHour * dayHours();
   j.m3 = (j.m3 as number) + moved;
   j.qsum = ((j.qsum as number) || 0) + moved * dayQuality(sr, j.wetPush === b.week, kind);
+  // the real game: well past the plans on a fixed price, and it's worth a variation
+  if (!compat.prototype && !j.ovAsked && !j.cash && (j.m3 as number) > (j.est as number) * OVER_ASK && !b.queue.some((q) => q.k === 'overrun' && q.id === j.id)) {
+    j.ovAsked = true;
+    b.queue.push({ k: 'overrun', id: j.id });
+  }
   j.slowest = sr.slowest;
   rep.worked++;
   // cutter barring is brutal on a dozer
@@ -854,6 +873,7 @@ export function damDay(rand: Rand, b: B, j: Job, wet: boolean, w: WorkshopCtx, r
 
 /** A project's stage is done: tested if it's tested, paid for, and on to the next (or finished). */
 function stageDone(rand: Rand, b: B, j: Job, rep: WeekReport, events: BulkEvent[]): void {
+  claimSettle(rand, b, j, rep, events);
   const S = j.stages as (Stage & { est: number })[], i = j.si as number, s = S[i]!, last = i === S.length - 1;
   const q = wallQuality(j);
   // quality across the job, by its share of the price
@@ -912,6 +932,16 @@ function stageDone(rand: Rand, b: B, j: Job, rep: WeekReport, events: BulkEvent[
   }
 }
 
+/** The real game: a variation answered after the job's done: lodged now, and settled. */
+export function claimLate(rand: Rand, b: B, q: { v: number; contract: boolean; client: string; place: string; dk: string; terms: number }, who: ClaimWho) {
+  const x = claimPay(rand, b as never, who, q.v, q.contract);
+  if (!x) return null;
+  if (x.amt > 0) invoice(b, q.client, x.amt - x.fee, q.terms, { invoiced: 0 });
+  if (x.cool) (b.bulk ??= { enq: [] }).cool = { farm: q.client, until: b.week + 26 };
+  note(b, { k: 'overrunPaid', farm: q.client, place: q.place, dk: q.dk, who: x.who, amt: x.amt, fee: x.fee, cool: x.cool });
+  return x;
+}
+
 /** The real game: a cotton block not levelled by planting. The grower docks you, and there's no next block. */
 export function plantCheck(b: B, events: BulkEvent[]): void {
   for (const j of b.jobs) {
@@ -946,7 +976,22 @@ function devClaim(b: B, j: Job, events: BulkEvent[], final = false): void {
   events.push({ k: 'devClaim', jobId: j.id, amt: Math.round(due - ret) });
 }
 
+/** The real game: a variation lodged on this job (or stage) is paid, or knocked back. */
+function claimSettle(rand: Rand, b: B, j: Job, rep: WeekReport, events: BulkEvent[]): void {
+  // done before the overrun card's answered: the card keeps the numbers, and settles when it is
+  const q = !j.ov ? b.queue.find((x) => x.k === 'overrun' && x.id === j.id && !x.done) : undefined;
+  if (q) Object.assign(q, { done: true, v: overrunValue(j as never), contract: contractClient(j as never), client: j.client, place: j.place, dk: j.proj ?? j.dk, terms: j.terms, job: { ...j } });
+  const x = settleOverrun(rand, b as never, j as never);
+  if (!x) return;
+  // DDES takes its fee out of what it gets back
+  if (x.amt > 0) invoice(b, j.client, x.amt - x.fee, j.terms, rep);
+  if (x.cool) (b.bulk ??= { enq: [] }).cool = { farm: j.client, until: b.week + 26 };
+  events.push({ k: 'overrunPaid', jobId: j.id, who: x.who, amt: x.amt, fee: x.fee });
+  note(b, { k: 'overrunPaid', farm: j.client, place: j.place, dk: j.proj ?? j.dk, who: x.who, amt: x.amt, fee: x.fee, cool: x.cool });
+}
+
 function finishJob(rand: Rand, b: B, j: Job, rep: WeekReport, events: BulkEvent[]): void {
+  claimSettle(rand, b, j, rep, events);
   const kind = j.dk as BulkKind;
   endJob(b, j);
   j.earned = j.fixed as number;

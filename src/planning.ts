@@ -260,6 +260,8 @@ export interface CouncilTender {
   id: string;
   /** DDES Advisory's read on the sharpest rival price. */
   adv?: { lo: number; hi: number };
+  /** The real game: DDES wrote the non-price part of the bid, for this fee. */
+  dw?: number;
   roads: PlanRoad[];
   q: Quantities & { lfg: number };
   km: number;

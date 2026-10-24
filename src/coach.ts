@@ -14,7 +14,7 @@ import { hashN } from './rng';
 
 export type CoachStep = 'earn' | 'end' | 'late' | 'health' | 'goal';
 export type TabId = 'yard' | 'work' | 'map' | 'market' | 'bank' | 'career';
-export type MentorNote = 'office' | 'overheads' | 'score' | 'plan' | 'bas' | 'year' | 'rel' | 'runon';
+export type MentorNote = 'office' | 'overheads' | 'score' | 'plan' | 'bas' | 'year' | 'rel' | 'runon' | 'ddes' | 'claims';
 
 export interface CoachState {
   /** The step you're on. */

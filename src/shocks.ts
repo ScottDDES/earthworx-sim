@@ -15,6 +15,7 @@ import { rvPhase, type Rival } from './rivals';
 import { NAMES, ROLES, type Person, type Role } from './staff';
 import type { Difficulty } from './difficulty';
 import { yearOf } from './calendar';
+import { prepMul } from './ddes';
 
 const round = (n: number, to: number) => Math.round(n / to) * to;
 
@@ -173,7 +174,7 @@ export function sellBest(b: Biz): Machine[] {
 /** Whole business: 60% of the gear's value, moved by the market, plus $15k a star. */
 export function sellPrice(b: Biz, mood: Mood, starsN: number): { v: number; price: number } {
   const v = sellGear(b.fleet).reduce((a, m) => a + value(m, b.week), 0);
-  return { v, price: round(v * 0.6 * MOODS[mood].pm + starsN * 15000, 1000) };
+  return { v, price: round((v * 0.6 * MOODS[mood].pm + starsN * 15000) * prepMul(b as never), 1000) };
 }
 /** What you'd walk away with after the loan, the subbies and any GST you're holding. */
 export function walkAway(b: SellUpState, price: number, gstHeldInBank: number): number {
@@ -193,7 +194,7 @@ export interface RetireOffer {
 /** Sell up on your own terms: 85% of the gear (moved by the market), $25k a star, and up to $60k for contracts delivered. */
 export function retireOffer(b: SellUpState & { ownDone?: number; majorDone?: number }, mood: Mood, starsN: number, gstHeldInBank: number): RetireOffer {
   const x = sellBuyer(b.rivals), v = sellGear(b.fleet).reduce((a, m) => a + value(m, b.week), 0);
-  const price = round(v * 0.85 * MOODS[mood].pm + starsN * 25000 + Math.min(10, (b.ownDone || 0) + (b.majorDone || 0) * 3) * 6000, 1000);
+  const price = round((v * 0.85 * MOODS[mood].pm + starsN * 25000 + Math.min(10, (b.ownDone || 0) + (b.majorDone || 0) * 3) * 6000) * prepMul(b as never), 1000);
   return { who: x ? x.name : null, price, v, walk: walkAway(b, price, gstHeldInBank) };
 }
 

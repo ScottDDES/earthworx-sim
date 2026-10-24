@@ -8,6 +8,7 @@ import {
   rainCrews, type ForecastWeek, type WeekRow, play, AD_TOPUP, adTopUp, adTopUpReady,
 } from '@engine';
 import { ownerFlags, ERP_NAME } from '@engine/text/office';
+import { PREP_ERP, PREP_ISO, PREP_LIFT, PREP_WEEKS, RET_SHARE, prepDone, prepFee, prepOk, onRetainer, retainerFee, retainerOk, modsWeek } from '@engine';
 import { Mentor } from '../Mentor';
 import { watchReward } from '../ads';
 import { fyName } from '@engine/text/cardView';
@@ -291,12 +292,14 @@ function Dashboard({ c, act, go, toBank }: { c: Career; act: Act; go: Go; toBank
         </Fold>
       )}
 
+      <DdesCard c={c} act={act} />
+
       {(c.years || []).length > 0 && (
         <Fold title="Past years" sum={c.years!.length + ' financial year' + (c.years!.length > 1 ? 's' : '') + ' · last ' + fks(c.years![c.years!.length - 1]!.profit) + ' profit'}>
           <div className="card">
             {c.years!.slice().reverse().map((y) => (
               <div key={y.w} className="kv">
-                <span><b>{fyName(y)}</b><span className="tiny muted" style={{ display: 'block' }}>No. {y.rank} of {y.of} in town · net worth {fk(y.nw)}</span></span>
+                <span><b>{fyName(y)}</b><span className="tiny muted" style={{ display: 'block' }}>No. {y.rank} of {y.of} in town · net worth {fk(y.nw)}{y.ddes ? ' · DDES saved ' + fk(y.ddes) : ''}</span></span>
                 <span className="num" style={{ textAlign: 'right' }}>{fk(y.rev)}<span className="tiny" style={{ display: 'block', color: y.profit < 0 ? 'var(--rust)' : 'var(--teal)' }}>{fks(y.profit)} · {y.rev ? pct(y.profit, y.rev) : 0}%</span></span>
               </div>
             ))}
@@ -451,7 +454,7 @@ function Bank({ c, act, go }: { c: Career; act: Act; go: Go }) {
         {(c.odOver ?? 0) > 0 && <div className="why">Over your limit {c.odOver} of 3 weeks. Get back under it or the bank takes a machine.</div>}
         {L.arrears > 0 && <div className="kv" style={{ color: 'var(--rust)', fontWeight: 600 }}><span>Missed so far</span><span className="num">{f(L.arrears)}</span></div>}
         <div className="kv"><span>Running costs each week</span><span className="num">{f(game.overheads(c))}</span></div>
-        <div className="tiny muted">Insurance {f(game.premiumNow(c))}, your drawings $800{Wk.wk ? ', safety system ' + f(Wk.wk) : ''}{tk ? ', toolbox talks ' + f(tk) : ''}{rent ? ', yard rent ' + f(rent) : ''}{wg ? ', wages ' + f(wg) : ''}{c.erp ? ', less what ' + ERP_NAME + ' saves (' + f(game.erpSaving(c)) + ')' : ''}.</div>
+        <div className="tiny muted">Insurance {f(game.premiumNow(c))}, your drawings $800{Wk.wk ? ', safety system ' + f(Wk.wk) : ''}{tk ? ', toolbox talks ' + f(tk) : ''}{rent ? ', yard rent ' + f(rent) : ''}{wg ? ', wages ' + f(wg) : ''}{c.erp ? ', less what ' + ERP_NAME + ' saves (' + f(game.erpSaving(c)) + ')' : ''}{onRetainer(c) ? ', DDES retainer ' + f(retainerFee(c)) : ''}{modsWeek(c) ? ', ERP modules ' + f(modsWeek(c)) : ''}.</div>
         {pays.length > 0 && <>
           <div className="sub" style={{ marginTop: 6 }}>You owe subbies</div>
           {pays.map((x, i) => <div key={i} className="kv"><span>{x.to} <span className="tiny muted">due week {x.due}</span></span><span className="num">{f(x.amt)}</span></div>)}
@@ -504,5 +507,38 @@ export function OfficeTab({ c, act, go }: { c: Career; act: Act; go: Go }) {
       </div>
       {v === 'bank' ? <Bank c={c} act={act} go={go} /> : <Dashboard c={c} act={act} go={go} toBank={() => setV('bank')} />}
     </>
+  );
+}
+
+/** DDES in the mid and late game: the retainer, what it's saved you, and getting ready to sell. */
+function DdesCard({ c, act }: { c: Career; act: Act }) {
+  if (!retainerOk(c)) return null;
+  const on = onRetainer(c), fee = retainerFee(c), got = c.ddes?.got ?? 0, P = c.ddes?.prep, done = prepDone(c);
+  const lift = Math.round((PREP_LIFT + (c.erp ? PREP_ERP : 0) + (c.whs.sys >= 3 ? PREP_ISO : 0)) * 100);
+  return (
+    <Fold title="DDES" sum={(on ? 'On retainer · ' + f(fee) + ' a week' : 'Not on retainer') + (got ? ' · saved you ' + fk(got) : '')}>
+      <div className="card">
+        <Mentor c={c} k="ddes" act={act} />
+        <div className="row"><b className="grow">DDES on retainer</b>{on ? <span className="chip c-job">ON</span> : <span className="num small">{f(fee)}/wk</span>}</div>
+        <div className="small muted">A weekly fee, {Math.round(RET_SHARE * 1000) / 10}% of what you invoice (at least $1,000), in your running costs.</div>
+        <ul className="small" style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 2 }}>
+          <li>Every "Ring DDES Advisory" call covered, and every price check.</li>
+          <li>A health check every quarter that flags the one thing to fix.</li>
+          <li>Variations and extensions of time at 10% of what they get back, not 15%.</li>
+          <li>Tender write-ups 30% off, and getting ready to sell 40% off.</li>
+        </ul>
+        {got > 0 && <div className="kv"><span>Saved or got back for you, after fees</span><b className="num" style={{ color: 'var(--teal)' }}>{f(got)}</b></div>}
+        <button type="button" className={'btn full' + (on ? '' : ' dark')} onClick={() => act((x) => play.ddesRetainer(x, !on))}>{on ? 'Stop the retainer' : 'Put DDES on retainer · ' + f(fee) + ' a week'}</button>
+      </div>
+      {(c.won3 || P) && (
+        <div className="card">
+          <div className="row"><b className="grow">Get the business ready to sell</b>{done ? <span className="chip c-job">READY</span> : P ? <span className="chip c-rain">UNDER WAY</span> : <span className="num small">{f(prepFee(c, game.worth(c)))}</span>}</div>
+          <div className="small muted">Six months of DDES tidying the books, contracts and systems so a buyer pays for what you've built. Offers to sell up or retire come in {lift}% higher{c.erp ? '' : ' (more with ' + ERP_NAME + ')'}{c.whs.sys >= 3 ? '' : ' (more with ISO 45001)'}.</div>
+          {P && !done && <div className="small">Ready by week {P.w + PREP_WEEKS}.</div>}
+          {done && <div className="small">Done. Any offer from here is {lift}% better.</div>}
+          {prepOk(c) && <button type="button" className="btn full" disabled={c.bank < prepFee(c, game.worth(c))} onClick={() => act((x) => play.sellPrep(x))}>Start · {f(prepFee(c, game.worth(c)))}</button>}
+        </div>
+      )}
+    </Fold>
   );
 }

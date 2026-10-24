@@ -22,6 +22,7 @@ import { forecast, type WeatherCtx } from './weather';
 import { yearOf } from './calendar';
 import { STD_STRICT } from './plantStd';
 import { PENS_PREMIUM, PENS_WEEKS } from './projects';
+import { hasMod } from './ddes';
 
 /** Head contractors: weeks to pay, and how often they pay late. */
 export const CLIENTS: Record<string, { terms: number; late: number }> = {
@@ -553,6 +554,8 @@ export function release(b: Biz, j: Job, events: HireEvent[]): void {
 export function invoice(b: Biz, client: string, amt: number, terms: number, rep: { invoiced: number }): void {
   if (amt <= 0) return;
   if (frozen(b) && client === TOWNS[b.town].council) terms += 4;
+  // the real game: the ERP's claims module gets them in on time, and you're paid a week sooner
+  if (hasMod(b as never, 'claims') && terms > 1) terms--;
   b.recv.push({ id: uid(b), client, amt: Math.round(amt), due: b.week + terms, lateRolled: false });
   rep.invoiced += amt;
 }

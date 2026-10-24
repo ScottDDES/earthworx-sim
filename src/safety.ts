@@ -9,6 +9,7 @@ import { WHS_SYS } from './overheads';
 import { int, pick, type Rand } from './rng';
 import { ROLES, type Person } from './staff';
 import { WELLBEING_ADVISORY, nearMissAdvisoryCost, seriousAdvisoryCost } from './advisory';
+import { ddesCharge } from './ddes';
 
 export type Severity = 'serious' | 'lti' | 'medical' | 'first aid' | 'near miss';
 
@@ -221,7 +222,7 @@ export function seriousNotify(st: SafetyState, c: SeriousCard): void {
  */
 export function seriousAdvisory(st: SafetyState, c: SeriousCard): number {
   if (c.who) hurtOff(st, c.who, 16);
-  const cost = seriousAdvisoryCost(c.fine);
+  const cost = ddesCharge(st as never, seriousAdvisoryCost(c.fine));
   st.bank -= cost;
   st.ins += 0.1;
   st.rep = Math.max(0, st.rep - 1);
@@ -274,7 +275,7 @@ export function nearMissReport(st: SafetyState, c: NearMissCard): void {
 
 /** DDES Advisory investigates it and updates the SWMS: cheaper than stopping the crew, and a better fix. Returns the cost. */
 export function nearMissAdvisory(st: SafetyState, c: NearMissCard): number {
-  const cost = nearMissAdvisoryCost(c.cost);
+  const cost = ddesCharge(st as never, nearMissAdvisoryCost(c.cost));
   st.bank -= cost;
   st.whs.nm++;
   st.whs.hz = Math.max(0, st.whs.hz - 0.2);
@@ -300,7 +301,7 @@ export function quietYarn(rand: Rand, st: SafetyState, p: Person): number {
 
 /** DDES Advisory runs a wellbeing check-in for the whole crew: counts as a yarn with everyone. */
 export function quietAdvisory(st: SafetyState): void {
-  st.bank -= WELLBEING_ADVISORY;
+  st.bank -= ddesCharge(st as never, WELLBEING_ADVISORY);
   for (const p of st.staff) p.yarn = st.week;
   st.whs.cult = Math.min(100, st.whs.cult + 8);
 }

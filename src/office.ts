@@ -11,6 +11,7 @@ import { RV_MACH, type Rival } from './rivals';
 import type { Whs } from './safety';
 import { TOWNS, type TownId } from './towns';
 import { compat } from './compat';
+import { ddesYear } from './ddes';
 
 const round = (n: number, to: number) => Math.round(n / to) * to;
 
@@ -294,6 +295,8 @@ export interface YearReview {
   rank: number; of: number;
   wonS: number; bidS: number; wonC: number; bidC: number;
   staff: number; fleet: number;
+  /** The real game: what DDES saved or got back for you this year, after its fees. */
+  ddes?: number;
 }
 
 export interface YearInputs {
@@ -328,6 +331,8 @@ export function yearEnd(st: YearInputs, w: number, nw: number): YearReview | nul
     ltifr: hrs >= 2000 ? Math.round((ltis * 1e7) / hrs) / 10 : null, rank: all.indexOf(nw) + 1, of: all.length,
     wonS: TB.s[1] - t0.s[1], bidS: TB.s[0] - t0.s[0], wonC: TB.c[1] - t0.c[1], bidC: TB.c[0] - t0.c[0], staff: st.staffN, fleet: st.fleetN,
   };
+  const dd = ddesYear(st as never);
+  if (dd !== undefined) y.ddes = dd;
   st.tbYear = JSON.parse(JSON.stringify({ s: TB.s, c: TB.c, since: TB.since }));
   (st.years = st.years || []).push(y);
   if (st.years.length > 30) st.years.shift();

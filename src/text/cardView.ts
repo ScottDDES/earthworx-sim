@@ -14,6 +14,9 @@ import { HURT_ADVISORY, WELLBEING_ADVISORY, nearMissAdvisoryCost, seriousAdvisor
 import { compat } from '../compat';
 import { DAM_KIND, comeback, comebackDoubt, farmer, firstName } from './bulk';
 import { RTW_ADVISORY } from '../advisory';
+import { BID_PTS, onRetainer } from '../ddes';
+import { STAGE_NAME, qty } from './bulk';
+import { KINDS } from '../bulk';
 import { COMP_SHARE, COMP_AFTER } from '../staff';
 import { UFD_ODDS } from '../later';
 import { yearOf } from '../calendar';
@@ -27,6 +30,8 @@ const fk = (n: number) => (n >= 1e6 ? '$' + Math.round(n / 1e4) / 100 + 'M' : n 
 const round = (n: number, to: number) => Math.round(n / to) * to;
 const s = (n: number) => (n > 1 ? 's' : '');
 const cap = (t: string) => t.replace(/^./, (x) => x.toUpperCase());
+/** The real game: an advisory fee, or nothing on retainer. */
+const adv = (c: Career, fee: string) => (onRetainer(c) ? 'on your retainer' : fee);
 const label = (m: Pick<Machine, 'type' | 'multi' | 'year'>) => machineName(m) + ', ' + m.year;
 const short = (k: MachineType) => TYPES[k].short;
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -102,7 +107,7 @@ function cardView0(c: Career, q: Career['queue'][number], d: DrawnCard): CardVie
       put('notify', 'Notify the regulator and cooperate', 'The site stands down for a week while they investigate. ' + (D.sys >= 2 ? 'Your system shows you did what you could, so a fine is unlikely.' : 'With ' + (D.sys ? 'only SWMS' : 'nothing written down') + ', expect a fine of ' + fk(D.fineLo) + ' to ' + fk(D.fineHi) + '.') + ' Insurance up 25%, track record −2.');
       put('hide', 'Keep it quiet and get the job going', 'No stand-down today. If it comes out, and these things do, it\'s a much bigger fine and the council won\'t touch you for six months.');
       if (compat.prototype) return out('Serious incident', nm + ' is in hospital', nm + ' ' + what + '. They\'re in hospital and will be off for months. It\'s a notifiable incident: the safety regulator must be told, and the site preserved.' + (D.job ? ' It happened on ' + jt(D.job) + '.' : ''));
-      put('advisory', 'Ring DDES Advisory · ' + (D.sys >= 2 ? f(seriousAdvisoryCost(0)) : fk(seriousAdvisoryCost(D.fineLo)) + ' to ' + fk(seriousAdvisoryCost(D.fineHi))) + ' all up', 'They deal with the regulator, run the investigation and do the paperwork, and any fine is in that price. Cheaper than going it alone. The site still stands down for a week. Insurance up 10%, track record −1.');
+      put('advisory', 'Ring DDES Advisory · ' + adv(c, (D.sys >= 2 ? f(seriousAdvisoryCost(0)) : fk(seriousAdvisoryCost(D.fineLo)) + ' to ' + fk(seriousAdvisoryCost(D.fineHi))) + ' all up'), 'They deal with the regulator, run the investigation and do the paperwork, and any fine is in that price. Cheaper than going it alone. The site still stands down for a week. Insurance up 10%, track record −1.');
       {
         // the client on the phone, the hush with nothing in the small print about how it ends
         const pm = D.hc ? pmOf(D.hc) : null;
@@ -117,7 +122,7 @@ function cardView0(c: Career, q: Career['queue'][number], d: DrawnCard): CardVie
       put('report', 'Report it and talk it through · ' + f(D.card.cost), 'Stop the crew for an hour, change the SWMS, log it. The hazard gets fixed and the crew sees you mean it.');
       put('shrug', 'Have a word and move on', 'No time lost. The hazard\'s still there, and the crew learns near misses don\'t matter.');
       if (!compat.prototype) {
-        put('advisory', 'Ring DDES Advisory · ' + f(nearMissAdvisoryCost(D.card.cost)), 'They look into it, update your SWMS and run the talk. The crew barely stops, and the fix is a proper one.');
+        put('advisory', 'Ring DDES Advisory · ' + adv(c, f(nearMissAdvisoryCost(D.card.cost))), 'They look into it, update your SWMS and run the talk. The crew barely stops, and the fix is a proper one.');
         put('report', (D.job ? 'Stop the job and sort it out · ' : 'Stop and sort it out · ') + f(D.card.cost), D.job ? 'The crew stands down for a day while you redo the plan with them. A day more behind.' : 'Stop the crew, change the SWMS, log it.');
         put('shrug', 'Have a word and keep going', D.job ? 'You stay on program.' : 'No time lost.');
         return out('Near miss', 'That was close', NEAR_MISS_STORIES[D.card.story] + ' Nobody was hurt.' + (D.job ? ' It was on ' + jt(D.job) + ', and ' + (D.job.kind === 'sub' ? pmOf(D.job.client) + ' has rung twice this week asking when you\'ll be done.' : 'the council wants it finished.') : ''));
@@ -129,7 +134,7 @@ function cardView0(c: Career, q: Career['queue'][number], d: DrawnCard): CardVie
       put('daysOff', 'Give ' + n + ' a few days off, paid', 'Their wage for nothing back this week, and their seat goes to a casual.');
       put('leave', 'Leave it, they\'ll be right', 'None of your business. Probably.');
       if (!compat.prototype) {
-        put('advisory', 'Ring DDES Advisory · ' + f(WELLBEING_ADVISORY), 'They run a wellbeing check-in for the whole crew and leave a support line number in the smoko room.');
+        put('advisory', 'Ring DDES Advisory · ' + adv(c, f(WELLBEING_ADVISORY)), 'They run a wellbeing check-in for the whole crew and leave a support line number in the smoko room.');
         put('yarn', 'Take ' + n + ' for a feed anyway', '$80 and an hour. They might not want to talk.');
         put('daysOff', 'Give ' + n + ' a few days off, paid', 'Their wage for nothing back, and a casual on their machine. They might take it the wrong way.');
         put('leave', 'Take ' + n + ' at their word', 'They asked you to leave it.');
@@ -224,7 +229,7 @@ function cardView0(c: Career, q: Career['queue'][number], d: DrawnCard): CardVie
       const Y = D.y;
       put('ok', 'On to the new financial year', 'It\'s all in the Office under Past years.');
       const yr = !compat.prototype && Y.first && Y.weeks < 26 ? 'start' : 'year';
-      return out('Year in review', fyName(Y) + ' in review', (Y.profit >= 0 ? 'A profitable ' + yr + ': ' + f(Y.profit) + ' on ' + f(Y.rev) + ' of work.' : 'A losing ' + yr + ': ' + f(-Y.profit) + ' down on ' + f(Y.rev) + ' of work.') + ' Net worth went from ' + f(Y.nw0) + ' to ' + f(Y.nw) + '.');
+      return out('Year in review', fyName(Y) + ' in review', (Y.profit >= 0 ? 'A profitable ' + yr + ': ' + f(Y.profit) + ' on ' + f(Y.rev) + ' of work.' : 'A losing ' + yr + ': ' + f(-Y.profit) + ' down on ' + f(Y.rev) + ' of work.') + ' Net worth went from ' + f(Y.nw0) + ' to ' + f(Y.nw) + '.' + (Y.ddes ? ' DDES saved or got back ' + f(Y.ddes) + ' for you, after its fees.' : ''));
     }
     case 'late': {
       const x = D.x;
@@ -247,7 +252,7 @@ function cardView0(c: Career, q: Career['queue'][number], d: DrawnCard): CardVie
       put('cover', 'Jump on the machine yourself', 'Their job keeps going. Yours stops for a week.');
       put('keepGoing', 'Let ' + n + ' keep going', 'No lost time. A real risk of a WHS incident.');
       if (!compat.prototype) {
-        put('advisory', 'Ring DDES Advisory · ' + f(HURT_ADVISORY), 'They manage the injury: the right doctor this week and a return-to-work plan. ' + n + ' is back in a week, not two.');
+        put('advisory', 'Ring DDES Advisory · ' + adv(c, f(HURT_ADVISORY)), 'They manage the injury: the right doctor this week and a return-to-work plan. ' + n + ' is back in a week, not two.');
         put('homePaid', 'Send ' + n + ' home on full pay', 'Two weeks\' wages for nothing back' + (D.sub ? '. ' + D.sub + ' takes their machine.' : ', and their job stops.'));
         put('home', 'Send ' + n + ' home', (D.sub ? D.sub + ' takes their machine. ' : 'Their job stops, and ') + (D.sub ? n + '\'s pay stops for the two weeks.' : 'so does their pay.'));
         put('keepGoing', 'Let ' + n + ' keep going', 'It\'s their back, and their call.');
@@ -295,7 +300,7 @@ function cardView0(c: Career, q: Career['queue'][number], d: DrawnCard): CardVie
       const n = D.person.name, wk = D.left as number;
       put('keep', 'Keep ' + n + ' on and plan the return to work', 'You pay a quarter of their wage until they\'re back, and find them light duties when the doctor says so.');
       put('letGo', 'Let ' + n + ' go and take on the new operator', 'Saves the wage, and you\'ve a full-time operator now.');
-      put('advisory', 'Ring DDES Advisory · ' + f(RTW_ADVISORY), 'They run the return-to-work plan with the insurer and the doctor.');
+      put('advisory', 'Ring DDES Advisory · ' + adv(c, f(RTW_ADVISORY)), 'They run the return-to-work plan with the insurer and the doctor.');
       return out('Crew', 'What about ' + n + '?', n + ' has been off ' + COMP_AFTER + ' weeks. Workers\' compensation now pays ' + Math.round(COMP_SHARE * 100) + '% of their wage and you pay the rest. The doctor says light duties in about six weeks, full duties in ' + wk + '. A casual\'s been on their machine, and a good operator from the next town is looking for work.');
     }
     case 'cashjob': {
@@ -379,6 +384,46 @@ function cardView0(c: Career, q: Career['queue'][number], d: DrawnCard): CardVie
       put('writing', 'Get it in writing first', 'A day lost to paperwork, then you\'re covered.');
       put('free', 'Do it free to keep them sweet', 'Two unpaid days. They\'ll remember it.');
       return out('Contract', 'The supervisor wants extra culverts', 'On ' + jt(D.job) + ', the supervisor asks you to also clear 6 blocked culverts "while you\'re there". It isn\'t in your scope. About 2 crew-days.');
+    // the real game: DDES's claims and the quarter's health check
+    case 'overrun': {
+      const j = D.job, pc = Math.round(((j.m3 as number) / (j.est as number) - 1) * 100);
+      const what = j.stages ? STAGE_NAME[j.stages[j.si].id as keyof typeof STAGE_NAME].toLowerCase() + ' on the ' + jt(j).replace(/^./, (x: string) => x.toLowerCase()) : jt(j).replace(/^./, (x: string) => x.toLowerCase());
+      put('ddes', 'Get DDES to claim it', 'They pull together the plans, the survey and your dockets and lodge a variation. Paid only if it\'s paid: ' + Math.round(D.fee * 100) + '% of what they get back.' + (D.contract ? ' Contract clients usually pay a well-made claim.' : ' Farmers pay less often, and they don\'t hold it against DDES.'));
+      put('self', 'Claim it yourself', 'No fee, but a claim on the back of a docket gets knocked back more often, and gets you less.' + (D.contract ? '' : ' A farmer might take it personally.'));
+      put('wear', 'Wear it', 'Your price was your price.');
+      if (D.done) return out('DDES', 'More dirt than the plans', 'The ' + what + ' is finished, ' + pc + '% past what you priced off the plans. At your own rate the extra was worth about ' + f(D.value) + '.');
+      return out('DDES', 'More dirt than the plans', 'The ' + what + ' is ' + pc + '% past what you priced, and there\'s more to come. You priced ' + qty(Math.round(j.est as number), KINDS[j.dk as keyof typeof KINDS].unit) + ' off the plans. At your own rate the extra is worth about ' + f(D.value) + ' so far.');
+    }
+    case 'eot': {
+      const j = D.job;
+      put('ddes', 'Get DDES to claim an extension of time', 'They lodge it with the rain records and your diary. Usually granted. Their fee is ' + Math.round(D.fee * 100) + '% of the damages it saves you.');
+      put('self', 'Claim it yourself', 'No fee. Less often granted.');
+      put('none', 'Take the damages', f(D.ld) + ' a week until it\'s done.');
+      return out('DDES', 'The finish date\'s here', jt(j) + ' was due this week and isn\'t finished. The wet cost ' + D.wetD + ' working days on it. That\'s about ' + D.wks + ' week' + s(D.wks) + ' of extension, and damages are ' + f(D.ld) + ' a week.');
+    }
+    case 'ddescheck': {
+      const T = 'Your quarterly health check';
+      switch (D.find) {
+        case 'cash':
+          put('ok', 'Thanks', 'Slow the buying and chase what you\'re owed.');
+          return out('DDES', T, 'DDES went through your books. "You\'re ' + f(-c.bank) + ' into the overdraft and it\'s going the wrong way. The bank will ring before ' + fk(D.od) + '. Chase your debtors this week, and hold off on gear until the forecast turns."');
+        case 'over':
+          put('claim', 'Get DDES to claim it', 'A variation, paid only if it\'s paid: ' + Math.round(D.fee * 100) + '% of what they get back.');
+          put('later', 'Leave it for now', 'You can still be asked when it\'s further over.');
+          return out('DDES', T, 'DDES went through your jobs. "' + cap(jt(D.job)) + ' is running past what you priced off the plans: about ' + f(D.value) + ' of extra work at your rate. That\'s claimable. Want us to put it in?"');
+        case 'branch':
+          put('close', 'Close the ' + TOWNS[D.town as keyof typeof TOWNS].name + ' branch', 'The gear floats home and the losses stop.');
+          put('keep', 'Give it more time', 'Its reputation builds the longer it runs.');
+          return out('DDES', T, 'DDES went through your branches. "' + TOWNS[D.town as keyof typeof TOWNS].name + ' has lost ' + fk(D.loss) + ' over the last quarter. Give the manager more gear, or cut it loose."');
+        case 'svc':
+          put('book', 'Book them in' + (D.idle ? ' · ' + f(D.cost) : ''), D.idle ? D.idle + ' idle machine' + s(D.idle) + ' serviced this week.' : 'They\'re all busy: the workshop will catch them when they\'re free.');
+          put('later', 'Leave it', 'They\'ll run. Breakdowns are likelier.');
+          return out('DDES', T, 'DDES went through your plant register. "' + D.n + ' machines are past their service. That\'s where your breakdowns are coming from."');
+        default:
+          put('ok', 'Good to hear', '');
+          return out('DDES', T, 'DDES went through your books, jobs, branches and plant. "Nothing to worry about this quarter. Keep doing what you\'re doing."');
+      }
+    }
     case 'gravel':
       put('cart', 'Cart from the better pit further out', 'About ' + f(D.cost) + ' more in cartage for the rest of the job. A sure thing.');
       put('work', 'Work it harder: more water, more passes', '2 more crew-days, unpaid. It might not pass.');
@@ -429,7 +474,7 @@ function line(c: Career, k: string, id: string, D: Record<string, any>, R: any):
     case 'swms': return id === 'pay' ? (compat.prototype ? 'SWMS, WHS plan and induction pack in the ute.' : 'DDES Advisory dropped off your SWMS, WHS plan and induction pack.') : 'Late nights, but they\'re done. You\'re catching up on sleep next week.';
     case 'serious': {
       const nm = whoName(c, D.who);
-      if (id === 'advisory') return 'DDES Advisory handled it start to finish: ' + f(R) + ' all up.' + ' ' + nm + (nm === 'You' ? ' are' : ' is') + ' off for months.';
+      if (id === 'advisory') return 'DDES Advisory handled it start to finish: ' + (R ? f(R) + ' all up.' : 'covered by your retainer.') + ' ' + nm + (nm === 'You' ? ' are' : ' is') + ' off for months.';
       if (id === 'notify') return 'The inspectors have been and gone.' + (R ? ' The fine: ' + f(R) + '.' : ' No fine: your records showed the controls were in place.') + ' ' + nm + ' is off for months.';
       return R.found ? 'The hospital reported it. The regulator fined you ' + f(R.fine) + ', insurance is up 40%, track record −5, and the council has suspended you for six months.' : 'Nobody asked. The crew know what happened, though, and they\'re not happy.';
     }
@@ -509,6 +554,18 @@ function line(c: Career, k: string, id: string, D: Record<string, any>, R: any):
       return n + ' got a letter and a week\'s pay. The new operator is on the labour board in the Yard this week.';
     }
     case 'cashjob': return id === 'cash' ? 'Shook on it. Cash when it\'s done.' : R ? firstName(D.job.client) + ' grumbled about the GST and paid it.' : firstName(D.job.client) + ' said fair enough.';
+    case 'overrun': {
+      if (id === 'wear') return 'Your price was your price.';
+      if (!D.done) return id === 'ddes' ? 'DDES is on it. You\'ll hear when the job\'s done.' : 'You\'ve put it in writing. You\'ll hear when the job\'s done.';
+      const x = R as { amt: number; fee: number } | null;
+      return x && x.amt ? (id === 'ddes' ? 'DDES got ' + f(x.amt) + ' back for the extra work, less its ' + f(x.fee) + ' fee.' : 'They paid ' + f(x.amt) + ' for the extra work.') : 'Knocked back.';
+    }
+    case 'eot': {
+      const r = R as { wks: number; fee: number } | undefined;
+      if (id === 'none') return 'No claim. The damages run until it\'s done.';
+      return r && r.wks ? 'Granted: ' + r.wks + ' week' + s(r.wks) + ' more before damages.' + (r.fee ? ' DDES\'s fee: ' + f(r.fee) + '.' : '') : 'Knocked back. The damages run from now.';
+    }
+    case 'ddescheck': return id === 'claim' ? 'DDES is lodging the variation.' : id === 'close' ? 'Closed. The gear\'s on its way home.' : id === 'book' ? 'Booked in.' : 'Noted.';
     case 'signoff': return id === 'sign' ? 'Paid him. The paperwork will say it passed.' : 'He shrugged and started pulling cores.';
     case 'tip': return id === 'use' ? 'Priced at ' + f(R) + ', a hair under ' + D.t.tip.name + '. Don\'t mention it.' : 'You told them you\'d rather not know. They laughed and bought the next round.';
     case 'dieselWar': return id === 'fill' ? 'Ordered: half a tank, here in two weeks.' : id === 'levy' ? 'Most clients grumbled and paid. One said they\'d remember it.' : 'You\'ll wear it. The fuel bill is going to hurt for a while.';

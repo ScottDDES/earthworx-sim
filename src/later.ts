@@ -12,6 +12,7 @@ import { int, pick, type Rand } from './rng';
 import { COMP_AFTER, NAMES, ROLES, SKILLS, type Person } from './staff';
 import { RTW_ADVISORY } from './advisory';
 import { genProject } from './projects';
+import { ddesCharge } from './ddes';
 import { PRICE_LIFT } from './bulk';
 import { uid } from './hire';
 
@@ -158,10 +159,11 @@ export function injuredKeep(c: Career, p: Person): void {
 
 /** DDES Advisory runs the return to work with the insurer and the doctor: back two weeks sooner. */
 export function injuredAdvisory(c: Career, p: Person): number {
-  c.bank -= RTW_ADVISORY;
+  const cost = ddesCharge(c, RTW_ADVISORY);
+  c.bank -= cost;
   p.off = Math.min(p.off, 4);
   c.whs.cult = Math.min(100, c.whs.cult + 8);
-  return RTW_ADVISORY;
+  return cost;
 }
 
 /** Let an injured worker go: a week's pay, and odds they make an unfair dismissal claim. Returns whether they will. */

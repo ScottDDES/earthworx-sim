@@ -7,6 +7,7 @@ import {
 import { ATTACH_NAME, ATTACH_NOTE, DAM_KIND, SLOWEST, STAGE_NAME, STAGE_NOTE, UNIT, damTitle, enquiryLine, needs, qty, surveyFind, surveyLabel, surveyRisk, wallWord } from '@engine/text/bulk';
 import { jobTitle } from '@engine/text/work';
 import { f } from '../format';
+import { Mentor } from '../Mentor';
 
 type Career = game.Career;
 type Act = (fn: (c: Career) => unknown) => void;
@@ -186,7 +187,8 @@ export function DamJobCard({ c, j, act }: { c: Career; j: Job; act: Act }) {
         <>
           <div className="row tiny"><span className="grow">{qty(Math.round(done * 10) / 10, u)} done of about {qty(Math.round(est * 10) / 10, u)} priced</span><span className="num">{pct}%</span></div>
           <div className="bar"><i style={{ width: pct + '%', background: 'var(--teal)' }} /></div>
-          {(j.m3 as number) > est && <div className="tiny" style={{ color: 'var(--rust)' }}>Past what you priced: there's more in it than you allowed for, and the price is fixed.</div>}
+          {(j.m3 as number) > est && <div className="tiny" style={{ color: 'var(--rust)' }}>Past what you priced: there's more in it than you allowed for, and the price is fixed.{j.ov ? (j.ov === 'ddes' ? ' DDES has a variation in for the extra.' : ' You\'ve claimed the extra yourself.') : ''}</div>}
+          {(j.m3 as number) > est && <Mentor c={c} k="claims" act={act} />}
           {kind === 'dev' && <div className="tiny muted">Claimed {f((j.claimed as number) || 0)}, {f((j.retained as number) || 0)} held in retention. Due by the end of week {j.due as number}{c.week > (j.due as number) ? ': late, damages are running' : ''}.</div>}
           <div className="tiny muted">{ms.map((m) => TYPES[m.type].short + (m.down > 0 ? ' (broken down)' : '') + ': ' + who(crew[m.id] ?? 'casual')).join(' · ')}</div>
           {kind !== 'channel' && kind !== 'rake' && kind !== 'cutter' && <div className="tiny">The work so far: <b>{wallWord(wallQuality(j))}</b>{j.tested ? ' (tested at the end)' : ''}.</div>}

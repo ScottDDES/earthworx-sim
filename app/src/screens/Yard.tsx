@@ -9,6 +9,7 @@ import {
   RT_COST, compat, game, type Machine, type MachineType, type YardId, play,
 } from '@engine';
 import { ERP_NAME, alertText } from '@engine/text/office';
+import { ERP_MODS, PLANT_BRK, PLANT_MIN, SITE_WORK, hasMod, modOk, type ErpMod } from '@engine';
 import { jobTitle } from '@engine/text/work';
 import { MachineIcon, WeatherIcon } from '../Icon';
 import { FuelCard } from './Fuel';
@@ -512,6 +513,7 @@ function Safety({ c, act }: { c: Career; act: Act }) {
             <div className="small muted">One system for the whole outfit: prestarts, inductions, SWMS, incidents, timesheets and servicing, all in one place. Takes the grind out of WHS and compliance.</div>
             <div className="small">{c.erp ? 'Saving' : 'Would save'} about {f(game.erpSaving(c))} a week, after its own {f(ERP_WEEK)} a week: half the safety-system upkeep, a quarter off toolbox talks, 5% off insurance and 3% off your overheads.</div>
             {!c.erp && <button type="button" className="btn dark" disabled={c.bank < ERP_SETUP} onClick={() => act((x) => play.buyErp(x))}>Put it in</button>}
+            {c.erp && !compat.prototype && <ErpModules c={c} act={act} />}
           </div>
         ) : YARD_ORDER.indexOf(c.yard) >= YARD_ORDER.indexOf('depot') ? <div className="tiny muted">{ERP_NAME}, which cuts WHS and compliance costs, comes with a regional depot.</div> : null}
       </div>
@@ -587,3 +589,26 @@ export function YardTab({ c, act, go }: { c: Career; act: Act; go: Go }) {
   );
 }
 
+
+const MOD_TEXT: Record<ErpMod, { t: string; d: string; need: string }> = {
+  site: { t: 'Multi-site', d: 'Every branch on the one system: its manager sees what\'s coming and finds about ' + Math.round((SITE_WORK - 1) * 100) + '% more work.', need: 'Needs a branch.' },
+  plant: { t: 'Plant', d: 'Services planned off the hour meters: about ' + Math.round((1 - PLANT_BRK) * 100) + '% fewer breakdowns.', need: 'For ' + PLANT_MIN + ' machines or more.' },
+  claims: { t: 'Claims', d: 'Dockets to invoices the day the work\'s done: paid about a week sooner.', need: '' },
+};
+/** The ERP's add-on modules (the real game). */
+function ErpModules({ c, act }: { c: Career; act: Act }) {
+  return (
+    <div style={{ display: 'grid', gap: 6, paddingTop: 6 }}>
+      <div className="sub">Modules</div>
+      {(Object.keys(ERP_MODS) as ErpMod[]).map((k) => {
+        const M = ERP_MODS[k], T = MOD_TEXT[k], have = hasMod(c, k), ok = modOk(c, k);
+        return (
+          <div key={k} className="row" style={{ alignItems: 'flex-start', gap: 10 }}>
+            <span className="grow"><b className="small">{T.t}</b><br /><span className="tiny muted">{T.d} {f(M.week)} a week.{!ok && !have && T.need ? ' ' + T.need : ''}</span></span>
+            {have ? <span className="chip c-job">IN</span> : <button type="button" className="btn" disabled={!ok || c.bank < M.setup} onClick={() => act((x) => play.erpModule(x, k))}>Add · {fk(M.setup)}</button>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

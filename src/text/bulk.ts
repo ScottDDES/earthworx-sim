@@ -187,6 +187,11 @@ export function bulkLine(e: { k: string; [x: string]: any }, title?: string): st
     case 'devClaim': return 'Claim in' + (title ? ' for ' + title : '') + ': ' + f(e.amt) + ' after retention.';
     case 'stageDone': return (title ?? (e.farm + '\'s ' + what + ' near ' + e.place)) + ': ' + STAGE_NAME[e.stage as StageId].toLowerCase() + ' done' + (e.n ? ', stage ' + e.n + ' of ' + e.of : '') + '. ' + f(e.amt) + ' invoiced.';
     case 'plantMissed': return (title ?? (e.farm + '\'s cotton block near ' + e.place)) + ': not level for planting. The grower has docked ' + f(e.dock) + ', and there\'ll be no next block.';
+    case 'overrunPaid': {
+      const who = e.who === 'ddes' ? 'DDES' : 'You';
+      if (!e.amt) return (title ?? (e.farm + '\'s ' + what + ' near ' + e.place)) + ': the variation ' + (e.who === 'ddes' ? 'DDES lodged' : 'you lodged') + ' was knocked back.' + (e.cool ? ' ' + e.farm + ' didn\'t like being asked.' : '');
+      return (title ?? (e.farm + '\'s ' + what + ' near ' + e.place)) + ': ' + who + ' got ' + f(e.amt) + ' back for the extra work' + (e.fee ? ', ' + f(e.fee) + ' of it DDES\'s fee' : '') + '.' + (e.cool ? ' ' + e.farm + ' paid, but didn\'t like it.' : '');
+    }
     case 'cottonBlockRang': return e.farm + ' rang about block ' + e.block + ' near ' + e.place + ', as promised. A price is in Work.';
     case 'feedlotMoreRang': return e.farm + ' is putting more pens on the feedlot near ' + e.place + ' and rang you first. A price is in Work.';
     case 'devBust': return (e.farm ?? 'The developer') + ' has gone under' + (title ? ' on ' + title : '') + '. ' + f(e.lost) + ' you were owed is gone. The gear\'s back in the yard.';

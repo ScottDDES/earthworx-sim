@@ -25,6 +25,8 @@ export const MENTOR: Record<MentorNote, string> = {
   bas: 'The GST was never yours. Put it aside every week and the BAS is just paperwork. Spend it and the tax office becomes your biggest creditor.',
   year: 'Read it the way the bank will. Margin and net worth tell you more than turnover. A big year at 3% is a lot of work for nothing.',
   rel: 'The project managers talk. Every job you finish on time is a reference, and every one you finish late is a story that gets around. Look after the two or three who send you the most work.',
+  ddes: 'Once you\'re this size the little fees stop mattering and the big leaks start: a job running over, a branch going backwards, a claim nobody lodged. Have someone looking at the books every quarter, before the bank does.',
+  claims: 'That job\'s past what you priced. Fixed price is for the work on the plans, not whatever\'s in the ground. More dirt than they showed you is a variation. Get it claimed properly, not on the back of a docket.',
   runon: 'Quiet stretch? Run on plays up to four weeks. It makes the small calls for you, like rain days and slow payers, and stops the moment something bigger needs you: a breakdown, a new tender, a win, the bank.',
 };
 

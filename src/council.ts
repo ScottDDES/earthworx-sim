@@ -6,6 +6,7 @@
 import { jobRef, note } from './diary';
 import { BASE_YEAR, yearOf } from './calendar';
 import { TOWNS, type TownId } from './towns';
+import { BID_PTS } from './ddes';
 import { BOQ, PITS, ROADS, dmap, mapRival, mapWork, pickRoads, placePos } from './map';
 import type { Mood } from './market';
 import { int, pick, type Rand } from './rng';
@@ -248,7 +249,8 @@ export function closeCouncil(rand: Rand, st: CouncilWorld, p: PlanCtx, t: Counci
     const method = int(rand, 3, 6), oh = rvOHFor(x, sp.e.wks), dc = sp.e.cost * Math.max(ef || 0.95, x.eff);
     return { name: x.name, stars: x.stars, method, oh, dc, price: round((dc + oh) * (1 + x.margin + (t.prestige ? 0.06 : 0)) * (0.94 + rand() * 0.12), 500), rv: x };
   });
-  if (t.bid) E.push({ name: coName, stars: 0, method: t.mine!.method, price: t.bid, you: true, oh: t.mine!.oh, dc: t.mine!.cost });
+  // the real game: DDES wrote the non-price part of your bid
+  if (t.bid) E.push({ name: coName, stars: 0, method: t.mine!.method + (!compat.prototype && t.dw ? BID_PTS : 0), price: t.bid, you: true, oh: t.mine!.oh, dc: t.mine!.cost });
   const low = Math.min(...E.map((e) => e.price));
   for (const e of E) {
     e.pp = (60 * low) / e.price;

@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import {
   BORE_FEE, BORE_KM, COUNCIL_TERMS, PRICE_CHECK_FEE, ROY_GOOD, ROY_NEAR, RT_HIRE_DAY, compat, roadAs, FLOAT_KM, FLOAT_MOVE, LD_OWN, TRUCK_DAY, TYPES, awayCounts, cartEff, hm, loadersFree, npOf, odLimit, planCounts, planHasLoader, rtFree, rtRoad, rtShare, roadUnits, stars, subRate, truckM3, weeksFor, game,
-  type CouncilTender, type PlanEval, type ProgOp, play,
+  type CouncilTender, type PlanEval, type ProgOp, play, BID_PTS, bidFee, onRetainer,
 } from '@engine';
 import { CREW_COL, bottText, issueText } from '@engine/text/plan';
 import { councilTitle } from '@engine/text/work';
@@ -24,7 +24,16 @@ export function AdviceRow({ c, t, kind, act }: { c: Career; t: { id: string; adv
       <b>DDES Advisory's read:</b> the sharpest price out there will likely land between {f(t.adv.lo)} and {f(t.adv.hi)}. Safety, track record and method are scored too, so the lowest price doesn't always win.
     </div>
   );
-  return <button type="button" className="btn full" disabled={c.bank < fee} onClick={() => act((x) => play.priceCheck(x, t.id))}>Ask DDES Advisory to check your price · {f(fee)}</button>;
+  const ret = onRetainer(c);
+  return <button type="button" className="btn full" disabled={!ret && c.bank < fee} onClick={() => act((x) => play.priceCheck(x, t.id))}>Ask DDES Advisory to check your price · {ret ? 'on your retainer' : f(fee)}</button>;
+}
+
+/** The real game: DDES writes the non-price part of a council bid. */
+export function BidWriteRow({ c, t, act }: { c: Career; t: { id: string; dw?: number; bid?: number | null; result?: unknown }; act: Act }) {
+  if (compat.prototype || !c.won2 || t.result) return null;
+  if (t.dw) return <div className="tiny" style={{ background: 'var(--soft)', borderRadius: 10, padding: '10px 12px' }}><b>DDES is writing your bid:</b> the methodology, safety and capability, worth about {BID_PTS} more points on method. Fee paid: {f(t.dw)}.</div>;
+  const fee = bidFee(c, t.bid ?? 0);
+  return <button type="button" className="btn full" disabled={c.bank < fee} onClick={() => act((x) => play.ddesBid(x, t.id))}>Get DDES to write the bid · {f(fee)}<span className="tiny" style={{ display: 'block', fontWeight: 400 }}>Methodology, safety and capability, written properly: about {BID_PTS} more points.</span></button>;
 }
 
 /** Profit margin: ±5% steps, or tap the number and type your own (−10% to 60%). */
@@ -164,6 +173,7 @@ function Price({ c, t, act }: { c: Career; t: CouncilTender; act: Act }) {
         <MarginRow mk={t.mk} id={t.id} act={act} />
         <div className="kv"><b>Your tender price</b><b className="num" style={{ fontSize: 18 }}>{f(price)}</b></div>
         <AdviceRow c={c} t={t} kind={t.major ? 'major' : 'council'} act={act} />
+        <BidWriteRow c={c} t={t as never} act={act} />
         <div className="tiny muted">Profit if the plan holds, after overheads: {f(price - e.cost - CP.oh)}. Cash to carry it until the first claim is paid: about {f(Math.round((e.cost / Math.max(1, e.wks)) * Math.min(e.wks, COUNCIL_TERMS + 1) / 1000) * 1000)}. You have {f(c.bank)} plus a {f(odLimit(c))} overdraft.</div>
         <button type="button" className="btn full" onClick={() => setLines(!lines)}>{lines ? 'Hide the cost lines' : 'Show the cost lines'}</button>
       </div>
