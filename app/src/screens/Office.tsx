@@ -3,7 +3,7 @@
 
 import { Fragment, useState, type ReactNode } from 'react';
 import {
-  CLIENTS, CLIENT_PM, ROLES, TOWNS, WHS_SYS, alertMachines, brCrews, brProfit, claimFinance, debtors, fleetValue, gstInBank, hsum, lastInc,
+  CLIENTS, CLIENT_PM, ROLES, TOWNS, WHS_SYS, alertMachines, brAt, branches, brCrews, brProfit, claimFinance, debtors, fleetValue, gstInBank, hsum, lastInc,
   lendCap, meStretched, plOf, recentInc, relOf, relTier, talksCost, trackAllow, utilOf, wages, whsNp, workInHand, YARDS, game,
   rainCrews, type ForecastWeek, type WeekRow, play, AD_TOPUP, adTopUp, adTopUpReady,
 } from '@engine';
@@ -157,7 +157,6 @@ function Dashboard({ c, act, go, toBank }: { c: Career; act: Act; go: Go; toBank
   const byC: Record<string, number> = {};
   for (const x of c.recv) byC[x.client] = (byC[x.client] || 0) + x.amt;
   const topC = Object.keys(byC).sort((a, b) => byC[b]! - byC[a]!)[0], pays = (c.payables || []).reduce((a, x) => a + x.amt, 0);
-  const BR = c.branch, BRh = BR ? (BR.hist || []).slice(-13) : [];
   return (
     <>
       <div className="card">
@@ -258,21 +257,24 @@ function Dashboard({ c, act, go, toBank }: { c: Career; act: Act; go: Go; toBank
         </Fold>
       )}
 
-      {BR && (
-        <Fold title={TOWNS[BR.town].name + ' branch'} sum={<><span style={{ color: brProfit(BR, 13) < 0 ? 'var(--rust)' : 'var(--teal)', fontWeight: 700 }}>{fks(brProfit(BR, 13))}</span> on {fk(BRh.reduce((a, x) => a + x.rev, 0))} over {BRh.length} wks · {brCrews(c.fleet).n} crew{brCrews(c.fleet).n !== 1 ? 's' : ''}</>}>
-          <div className="card">
-            <div className="pl">
-              <span className="ph">Week</span><span className="ph">Invoiced</span><span className="ph">Costs</span>
-              {BRh.slice(-6).reverse().map((x) => (
-                <Fragment key={x.w}>
-                  <span>{x.w} <span className="tiny muted">{x.days} crew-days</span></span><span style={{ color: 'var(--teal)' }}>{fk(x.rev)}</span><span style={{ color: 'var(--rust)' }}>−{fk(x.cost)}</span>
-                </Fragment>
-              ))}
+      {branches(c as never).map((BR) => {
+        const BRh = (BR.hist || []).slice(-13), n = brCrews(brAt(c as never, BR.town)).n;
+        return (
+          <Fold key={BR.town} title={TOWNS[BR.town].name + ' branch'} sum={<><span style={{ color: brProfit(BR, 13) < 0 ? 'var(--rust)' : 'var(--teal)', fontWeight: 700 }}>{fks(brProfit(BR, 13))}</span> on {fk(BRh.reduce((a, x) => a + x.rev, 0))} over {BRh.length} wks · {n} crew{n !== 1 ? 's' : ''}</>}>
+            <div className="card">
+              <div className="pl">
+                <span className="ph">Week</span><span className="ph">Invoiced</span><span className="ph">Costs</span>
+                {BRh.slice(-6).reverse().map((x) => (
+                  <Fragment key={x.w}>
+                    <span>{x.w} <span className="tiny muted">{x.crews || !x.bd ? x.days + ' crew-days' : ''}{x.bd ? (x.crews ? ', ' : '') + x.bd + ' bulk days' : ''}</span></span><span style={{ color: 'var(--teal)' }}>{fk(x.rev)}</span><span style={{ color: 'var(--rust)' }}>−{fk(x.cost)}</span>
+                  </Fragment>
+                ))}
+              </div>
+              <button type="button" className="btn full" onClick={() => go('yard')}>Manage the branch in the Yard</button>
             </div>
-            <button type="button" className="btn full" onClick={() => go('yard')}>Manage the branch in the Yard</button>
-          </div>
-        </Fold>
-      )}
+          </Fold>
+        );
+      })}
 
       {c.won && HCs.length > 0 && (
         <Fold title="Head contractors" sum={pref ? pref + ' treat you as a preferred subbie' : 'Your standing with the four you work for'}>

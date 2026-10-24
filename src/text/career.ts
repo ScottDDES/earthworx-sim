@@ -1,5 +1,6 @@
 // Words for the career ladder, unlocks and tickets. Keep ticket ids and list orders as they are: saved careers point into them.
 
+import { compat, onCompat } from '../compat';
 import { rw } from './real';
 
 export const STAGES = ['', 'Owner-operator', 'Small fleet', 'Ready to subcontract', 'Subcontractor', 'Your own contract', 'Regional contractor', 'Flood recovery contractor', 'Prestige contractor'] as const;
@@ -75,6 +76,13 @@ export const BULK_STEPS: { t: string; d: string; u?: string }[] = [
   { t: 'Earthmoving heavyweight', d: 'Three developers\' jobs delivered.' },
   { t: 'Prestige contractor', d: 'Five developers\' jobs, certified to ISO 45001, run from a plant hub.' },
 ];
+
+// the real game: up to three branches, in any town
+onCompat(() => {
+  const [a, b] = compat.prototype ? ['branch depots in other towns', 'a branch depot in the other town'] : ['a branch depot in the other town', 'branch depots in other towns'];
+  UNLOCK_TEXT.won3 = UNLOCK_TEXT.won3!.replace(a, b);
+  for (const x of [STEPS[5]!, BULK_STEPS[5]!]) x.u = x.u!.replace(a, b);
+});
 
 /** The ladder for the outfit you started: roads or bulk. */
 export function stepsFor(path?: string): { t: string; d: string; u?: string }[] {

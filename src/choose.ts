@@ -27,7 +27,8 @@ import { breakCard, breakFitterFix, breakFix, breakPatch, fitterFixCost, fitterF
 import { bankMoreTime, basInterest, basPay, basPlan, basPlanOk, gstInBank, odLimit, repoPick, repossess } from './office';
 import { weeklyRepay } from './bank';
 import { askSellUp, buyOutAll, buyOutBest, buyOutOffer, buyOutPay, canBuyOut, collapseCard, collapseClaim, collapseSell, insureBroker, sellAll, sellBest, sellBuyer, sellGear, sellPrice, sellTwo, walkAway } from './shocks';
-import { brRaise, brTender, brTenderCard } from './branch';
+import { brOf, brRaise, brTender, brTenderCard } from './branch';
+import type { TownId } from './towns';
 import { pullOut, signSub } from './tenders';
 import { pullOutCouncil, signOwn } from './council';
 import { checkWin, rung, tcAdd } from './career';
@@ -173,16 +174,16 @@ function draw(c: Career, q: Career['queue'][number], data: Record<string, any>):
     }
     case 'brtender':
     case 'brraise': {
-      const B = c.branch;
+      const at = q.town as TownId | undefined, B = at ? brOf(c as never, at) : c.branch;
       if (!B || !B.mgr) return null;
       Object.assign(data, { town: B.town, mgr: B.mgr.name });
       if (q.k === 'brtender') {
         const card = brTenderCard(cr);
         data.card = card;
-        const go = (sharp: boolean) => () => { const won = brTender(r(), st, card, sharp); if (won) note(c, { k: 'brWon', town: B.town, val: card.val }); return won; };
+        const go = (sharp: boolean) => () => { const won = brTender(r(), st, card, sharp, at); if (won) note(c, { k: 'brWon', town: B.town, val: card.val }); return won; };
         return [o('sharp', go(true)), o('proper', go(false)), o('letGo', () => {})];
       }
-      return [o('pay', () => brRaise(r(), st, true)), o('no', () => { const nm = B.mgr!.name, res = brRaise(r(), st, false); if (res === 'quit') note(c, { k: 'brQuit', name: nm, town: B.town }); return res; })];
+      return [o('pay', () => brRaise(r(), st, true, at)), o('no', () => { const nm = B.mgr!.name, res = brRaise(r(), st, false, at); if (res === 'quit') note(c, { k: 'brQuit', name: nm, town: B.town }); return res; })];
     }
     case 'collapse': {
       const card = collapseCard(cr, q.debt);

@@ -72,7 +72,11 @@ export function eventText(c: Career, r: Report, e: any): string | null {
     case 'medical': return whoName(c, e.who) + ' needed stitches after a slip on the steps. Medical treatment: $600, and the insurer notes it.';
     case 'firstAid': return 'First aid for ' + whoName(c, e.who) + ': a cut hand. Logged in the register.';
     // the branch
-    case 'branchWeek': return TOWNS[e.town as keyof typeof TOWNS].name + ' branch: ' + (e.crews ? e.days + ' crew-days, ' + f(e.rev) + ' invoiced' : 'no full crew there, so no work') + (e.broke ? ', ' + e.broke + ' breakdown' + s(e.broke) : '') + '.';
+    case 'branchWeek': {
+      const bn = TOWNS[e.town as keyof typeof TOWNS].name + ' branch: ', bk = e.broke ? ', ' + e.broke + ' breakdown' + s(e.broke) : '';
+      if (!e.bulk) return bn + (e.crews ? e.days + ' crew-days, ' + f(e.rev) + ' invoiced' : 'no full crew there, so no work') + bk + '.';
+      return bn + (e.crews ? e.days + ' crew-days and ' : '') + e.bd + ' days on the bulk gear, ' + f(e.rev) + ' invoiced' + bk + '.';
+    }
     // the bank
     case 'caughtUp': return 'Caught up ' + f(e.amt) + ' of missed repayments.';
     case 'missedRepay': return 'Missed a loan repayment (' + e.n + ' of 3).';

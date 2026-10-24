@@ -1,10 +1,10 @@
 // The Yard: the forecast, what the workshop should look at, your yard and the branch depot, your machines
 // (cards, or a compact list for a big fleet), your people and the labour board, managers, and safety.
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import {
   BULK_TYPES, ERP_SETUP, ERP_WEEK, erpOk, BR_FLOAT, BR_MGR, BR_RENT, BR_SETUP, BR_SLOTS, GPS_COST, LASER_COST, canGps, canLaser, MGR, ROLES, SKILLS, TOWNS, COMP_AFTER, COMP_SHARE, wageNow, WHS_SYS, YARDS, YARD_ORDER,
-  bigNoWsm, brCrews, brMachines, brProfit, brTown, canBranch, fitPer, fitters, forecast, lastInc, machineAlerts, machineName,
+  BR_MAX, BR_PROVE, bigNoWsm, brAt, brCrews, brFloat, brMachines, brProfit, brTownOf, brTowns, branchWhy, branches, isBulk, townKm, type Branch, type BranchWhy, type TownId, fitPer, fitters, forecast, lastInc, machineAlerts, machineName,
   mgrOf, mgrUnlocked, monthIdx, nextWhs, odLimit, premParts, recentInc, riskMult, svcCost, unlocked, value, whsNp, fleetValue, wages,
   RT_COST, compat, game, type Machine, type MachineType, type YardId, play,
 } from '@engine';
@@ -107,54 +107,93 @@ function YardCard({ c, act }: { c: Career; act: Act }) {
   );
 }
 
-/** The branch depot in the other town: open one, or run the one you've got. */
+/** Branch depots: open one in another town, or run the ones you've got (the real game: up to three, anywhere in Queensland). */
 function BranchCard({ c, act }: { c: Career; act: Act }) {
-  const [closing, setClosing] = useState(false);
-  const B = c.branch, other = TOWNS[brTown(c.town)].name;
-  if (!B) {
-    if (!c.won3) return null;
-    const why = !(c.yard === 'regional' || c.yard === 'hub') ? 'You need a regional depot or a plant hub at home first.' : c.bank < BR_SETUP ? 'You need ' + f(BR_SETUP) + ' to set it up.' : '';
-    return (
-      <>
-        <div className="sub">Grow into {other}</div>
-        <div className="card">
-          <b>Open a branch depot in {other}</b>
-          <div className="small muted">A shed, a yard and a manager in {other}, working its own rain and its own shires. Send machines there and the manager keeps them busy. Set-up {f(BR_SETUP)}, rent {f(BR_RENT)} a week, floating a machine there {f(BR_FLOAT)}.</div>
-          {why || !canBranch(c as never) ? <div className="why">{why || 'Not yet.'}</div> : (Object.keys(BR_MGR) as (keyof typeof BR_MGR)[]).map((k) => (
-            <button key={k} type="button" className="choice" onClick={() => act((x) => play.openBranchDepot(x, k))}>
-              <b>Open it with {BR_MGR[k].t.toLowerCase()} · {f(BR_MGR[k].wage)}/wk</b><span>{BR_MGR[k].d}</span>
-            </button>
-          ))}
-        </div>
-      </>
-    );
-  }
-  const C = brCrews(c.fleet), H = (B.hist || []).slice(-13), days = H.reduce((a, x) => a + x.days, 0), can = H.reduce((a, x) => a + x.crews * x.dry, 0), p13 = brProfit(B, 13);
+  const all = branches(c as never);
   return (
     <>
-      <div className="sub">{other} branch</div>
+      {all.map((B) => <OneBranch key={B.town} c={c} B={B} act={act} />)}
+      <OpenBranch c={c} act={act} />
+    </>
+  );
+}
+
+const BR_WHY: Record<Exclude<BranchWhy, null>, string> = {
+  notYet: '',
+  yard: 'You need a regional depot or a plant hub at home first.',
+  max: '',
+  proving: 'Each branch needs ' + BR_PROVE + ' weeks in profit before you open another.',
+};
+
+function OpenBranch({ c, act }: { c: Career; act: Act }) {
+  const [to, setTo] = useState<TownId | null>(null);
+  const why = branchWhy(c as never), have = branches(c as never).length;
+  if (!c.won3 || why === 'notYet' || why === 'max') return null;
+  const towns = brTowns(c as never), one = compat.prototype || towns.length === 1, at = one ? towns[0]! : to;
+  const home = c.town as TownId, cash = c.bank < BR_SETUP ? 'You need ' + f(BR_SETUP) + ' to set it up.' : '';
+  const block = BR_WHY[why as Exclude<BranchWhy, null>] || cash;
+  const title = have ? 'Open another branch' : one ? 'Grow into ' + TOWNS[towns[0]!].name : 'Grow into another town';
+  return (
+    <>
+      <div className="sub">{title}</div>
       <div className="card">
-        <div className="row"><b className="grow">{other} depot</b><span className="chip c-rain">{brMachines(c.fleet).length} OF {BR_SLOTS} MACHINES</span></div>
+        <b>{one ? 'Open a branch depot in ' + TOWNS[towns[0]!].name : have ? 'A branch in another town (' + (have + 1) + ' of ' + BR_MAX + ')' : 'Open a branch depot'}</b>
+        <div className="small muted">A shed, a yard and a manager in another town, working its own rain and its own shires. Send machines there and the manager keeps them busy: road crews on the council work{compat.prototype ? '' : ', and dozers, scrapers and diggers on the farms and mines'}. Set-up {f(BR_SETUP)}, rent {f(BR_RENT)} a week.</div>
+        {block ? <div className="why">{block}</div> : (
+          <>
+            {(one ? [towns[0]!] : towns).map((t) => (
+              <Fragment key={t}>
+                {!one && (
+                  <button type="button" className={'pick' + (to === t ? ' on' : '')} onClick={() => setTo(to === t ? null : t)}>
+                    <span className="row"><b className="grow">{TOWNS[t].name}</b><span className="small muted num">{townKm(home, t).toLocaleString('en-AU')} km · float {fk(brFloat(home, t))}</span></span>
+                    <span className="small muted">{TOWNS[t].blurb}</span>
+                  </button>
+                )}
+                {at === t && (Object.keys(BR_MGR) as (keyof typeof BR_MGR)[]).map((k) => (
+                  <button key={k} type="button" className="choice" onClick={() => { act((x) => play.openBranchDepot(x, k, t)); setTo(null); }}>
+                    <b>Open {one ? 'it' : 'in ' + TOWNS[t].name} with {BR_MGR[k].t.toLowerCase()} · {f(BR_MGR[k].wage)}/wk</b><span>{BR_MGR[k].d}</span>
+                  </button>
+                ))}
+              </Fragment>
+            ))}
+            {!at && <div className="tiny muted">Pick a town. Floating a machine there or back costs more the further it is.</div>}
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+function OneBranch({ c, B, act }: { c: Career; B: Branch; act: Act }) {
+  const [closing, setClosing] = useState(false);
+  const name = TOWNS[B.town].name, ms = brAt(c as never, B.town), fl = brFloat(c.town as TownId, B.town);
+  const C = brCrews(ms), bu = ms.filter((m) => isBulk(m.type)).length, H = (B.hist || []).slice(-13), days = H.reduce((a, x) => a + x.days, 0), can = H.reduce((a, x) => a + x.crews * x.dry, 0), p13 = brProfit(B, 13);
+  return (
+    <>
+      <div className="sub">{name} branch</div>
+      <div className="card">
+        <div className="row"><b className="grow">{name} depot</b><span className="chip c-rain">{ms.length} OF {BR_SLOTS} MACHINES</span></div>
         {B.mgr ? (
           <div className="small muted">Run by {B.mgr.name}, {BR_MGR[B.mgr.skill as keyof typeof BR_MGR].t.toLowerCase()}, {f(B.mgr.wage)} a week.</div>
         ) : (
           <>
             <div className="why">No manager. The crews are only getting scraps of work.</div>
-            {(Object.keys(BR_MGR) as (keyof typeof BR_MGR)[]).map((k) => <button key={k} type="button" className="btn full" onClick={() => act((x) => play.hireBranchManager(x, k))}>Hire {BR_MGR[k].t.toLowerCase()} · {f(BR_MGR[k].wage)}/wk</button>)}
+            {(Object.keys(BR_MGR) as (keyof typeof BR_MGR)[]).map((k) => <button key={k} type="button" className="btn full" onClick={() => act((x) => play.hireBranchManager(x, k, B.town))}>Hire {BR_MGR[k].t.toLowerCase()} · {f(BR_MGR[k].wage)}/wk</button>)}
           </>
         )}
         <div className="kv"><span>Full crews there</span><span className="num">{C.n}{C.n && C.pace < 1 ? ' · short a water truck each' : ''}</span></div>
+        {!compat.prototype && <div className="kv"><span>Bulk gear there</span><span className="num">{bu}</span></div>}
         <div className="kv"><span>Profit, last {H.length} weeks</span><span className="num" style={{ color: p13 < 0 ? 'var(--rust)' : 'var(--teal)' }}>{fks(p13)}</span></div>
         {can > 0 && <div className="kv"><span>Crews worked</span><span className="num">{Math.round((days / can) * 100)}% of dry days</span></div>}
         {B.boost && B.boost.until >= c.week && <div className="kv"><span>Council package on</span><span className="num">to week {B.boost.until}</span></div>}
         <div className="row tiny"><span className="grow">Local reputation</span><span className="num">{Math.round(B.rep)} of 100</span></div>
         <div className="bar"><i style={{ width: B.rep + '%', background: 'var(--teal)' }} /></div>
-        <div className="tiny muted">A full crew is a grader, a roller and a water truck (two water trucks keep it at full pace). Reputation grows with every week the crews work, faster with a good safety system. Send idle machines from the list below; floating one either way costs {f(BR_FLOAT)}.</div>
+        <div className="tiny muted">A full crew is a grader, a roller and a water truck (two water trucks keep it at full pace).{compat.prototype ? '' : ' Dozers, scrapers, compactors and diggers each find their own work around ' + name + '.'} Reputation grows with every week the gear works, faster with a good safety system. Send idle machines from the list below; floating one either way costs {f(fl)}.</div>
         {closing ? (
           <>
-            <div className="why">Close the branch? The gear floats home and the set-up is gone.</div>
+            <div className="why">Close the {name} branch? The gear floats home and the set-up is gone.</div>
             <div className="btns">
-              <button type="button" className="btn dark" onClick={() => { act((x) => play.closeBranchDepot(x)); setClosing(false); }}>Close it</button>
+              <button type="button" className="btn dark" onClick={() => { act((x) => play.closeBranchDepot(x, B.town)); setClosing(false); }}>Close it</button>
               <button type="button" className="btn" onClick={() => setClosing(false)}>Keep it</button>
             </div>
           </>
@@ -164,12 +203,12 @@ function BranchCard({ c, act }: { c: Career; act: Act }) {
   );
 }
 
-function statusChip(m: Machine) {
+function statusChip(m: Machine, c?: Career) {
   if (m.status === 'auction') return <span className="chip c-bad">AT AUCTION</span>;
   if (m.status === 'listed') return <span className="chip c-bad">FOR SALE</span>;
   if (m.down > 0) return <span className="chip c-bad">BROKEN DOWN</span>;
   if (m.status === 'job') return <span className="chip c-job">ON A JOB</span>;
-  if (m.status === 'branch') return <span className="chip c-rain">AT THE BRANCH</span>;
+  if (m.status === 'branch') { const at = c && !compat.prototype && brTownOf(c as never, m); return <span className="chip c-rain">{at ? 'AT ' + TOWNS[at].name.toUpperCase() : 'AT THE BRANCH'}</span>; }
   return <span className="chip c-idle">IDLE</span>;
 }
 
@@ -195,10 +234,10 @@ const condColour = (m: Machine) => (m.cond < 45 ? 'var(--rust)' : m.cond < 65 ? 
 
 function MachineCard({ c, m, act, onSell, onClose }: { c: Career; m: Machine; act: Act; onSell: () => void; onClose?: () => void }) {
   const left = svcLeftOf(m), w = game.wctx(c), cost = svcCost(m, w), j = m.jobId ? c.jobs.find((x) => x.id === m.jobId) : undefined;
-  const paid = m as Machine & { paid?: number; paidWk?: number }, B = c.branch;
+  const paid = m as Machine & { paid?: number; paidWk?: number }, at = brTownOf(c as never, m);
   return (
     <div className="card">
-      <div className="mhead"><MachineIcon type={m.type} rt={m.rt} /><div className="grow"><b>{machineName(m)}</b>{m.laser && !m.gps && <> <span className="chip c-rain">LASER</span></>}{m.gps && <> <span className="chip c-rain">{m.laser ? 'LASER + GPS' : 'GPS'}</span></>}{m.rt && <span className="tiny muted" style={{ display: 'block' }}>A second trailer: carts about half as much again a day as a single, on more fuel.</span>}<span className="tiny muted" style={{ display: 'block' }}>{m.year} model</span></div>{statusChip(m)}</div>
+      <div className="mhead"><MachineIcon type={m.type} rt={m.rt} /><div className="grow"><b>{machineName(m)}</b>{m.laser && !m.gps && <> <span className="chip c-rain">LASER</span></>}{m.gps && <> <span className="chip c-rain">{m.laser ? 'LASER + GPS' : 'GPS'}</span></>}{m.rt && <span className="tiny muted" style={{ display: 'block' }}>A second trailer: carts about half as much again a day as a single, on more fuel.</span>}<span className="tiny muted" style={{ display: 'block' }}>{m.year} model</span></div>{statusChip(m, c)}</div>
       {onClose && <button type="button" className="btn" onClick={onClose}>Close</button>}
       {j && <div className="small muted">{jobTitle(j)}</div>}
       {m.status === 'listed' && m.sale ? <div className="small muted">Listed at {f((m.sale as { price: number }).price)}. Sells in about {(m.sale as { weeks: number }).weeks} weeks.</div> : null}
@@ -220,8 +259,11 @@ function MachineCard({ c, m, act, onSell, onClose }: { c: Career; m: Machine; ac
         {(m.type === 'grader' ? c.won : !compat.prototype && canGps(m)) && !m.gps && m.status !== 'auction' && m.status !== 'listed' && <button type="button" className="btn" disabled={c.bank < GPS_COST} onClick={() => act((x) => play.fitGps(x, m.id))}>Fit GPS · {fk(GPS_COST)}</button>}
         {!compat.prototype && m.type === 'truck' && !m.rt && m.status !== 'auction' && m.status !== 'listed' && <button type="button" className="btn" disabled={c.bank < RT_COST} onClick={() => act((x) => play.upgradeRoadtrain(x, m.id))}>Make it a roadtrain · {fk(RT_COST)}</button>}
         {m.status === 'idle' && <button type="button" className="btn" onClick={onSell}>Sell</button>}
-        {B && m.status === 'idle' && m.down === 0 && brMachines(c.fleet).length < BR_SLOTS && <button type="button" className="btn" disabled={c.bank < BR_FLOAT} onClick={() => act((x) => play.sendToBranch(x, m.id))}>Send to {TOWNS[B.town].name} · {fk(BR_FLOAT)}</button>}
-        {m.status === 'branch' && <button type="button" className="btn" disabled={c.bank < BR_FLOAT || game.room(c) <= 0} onClick={() => act((x) => play.bringHome(x, m.id))}>Bring home · {fk(BR_FLOAT)}</button>}
+        {m.status === 'idle' && m.down === 0 && branches(c as never).filter((B) => (compat.prototype ? brMachines(c.fleet) : brAt(c as never, B.town)).length < BR_SLOTS).map((B) => {
+          const fl = brFloat(c.town as TownId, B.town);
+          return <button key={B.town} type="button" className="btn" disabled={c.bank < fl} onClick={() => act((x) => play.sendToBranch(x, m.id, B.town))}>Send to {TOWNS[B.town].name} · {fk(fl)}</button>;
+        })}
+        {m.status === 'branch' && at && <button type="button" className="btn" disabled={c.bank < brFloat(c.town as TownId, at) || game.room(c) <= 0} onClick={() => act((x) => play.bringHome(x, m.id))}>Bring home · {fk(brFloat(c.town as TownId, at))}</button>}
         {m.status === 'listed' && <button type="button" className="btn" onClick={() => act((x) => play.unlistMachine(x, m.id))}>Take off sale</button>}
       </div>
     </div>
@@ -233,7 +275,7 @@ function MachineRow({ c, m, onOpen }: { c: Career; m: Machine; onOpen: () => voi
   const left = svcLeftOf(m), j = m.jobId ? c.jobs.find((x) => x.id === m.jobId) : undefined;
   return (
     <button type="button" className="card" onClick={onOpen} style={{ textAlign: 'left', cursor: 'pointer', padding: '10px 14px', gap: 4, font: 'inherit', color: 'inherit', width: '100%' }}>
-      <span className="mhead"><MachineIcon type={m.type} rt={m.rt} /><span className="grow"><b>{machineName(m)}, {m.year}</b>{m.laser && !m.gps && <> <span className="chip c-rain">LASER</span></>}{m.gps && <> <span className="chip c-rain">{m.laser ? 'LASER + GPS' : 'GPS'}</span></>}<br /><span className="tiny muted">{j ? jobTitle(j) : m.status === 'idle' ? 'In the yard' : ''}</span></span>{statusChip(m)}</span>
+      <span className="mhead"><MachineIcon type={m.type} rt={m.rt} /><span className="grow"><b>{machineName(m)}, {m.year}</b>{m.laser && !m.gps && <> <span className="chip c-rain">LASER</span></>}{m.gps && <> <span className="chip c-rain">{m.laser ? 'LASER + GPS' : 'GPS'}</span></>}<br /><span className="tiny muted">{j ? jobTitle(j) : m.status === 'idle' ? 'In the yard' : ''}</span></span>{statusChip(m, c)}</span>
       <span className="row tiny">
         <span className="grow" style={{ color: condColour(m), fontWeight: 600 }}>{Math.round(m.cond)}%</span>
         <span style={{ color: left < 0 ? 'var(--rust)' : left <= 45 ? 'var(--warn)' : 'var(--muted)' }}>{left < 0 ? 'Service overdue' : 'Service in ' + left + ' hrs'}</span>

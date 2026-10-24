@@ -135,6 +135,8 @@ export interface Career {
   jlog?: JobLog[];
   years?: YearReview[];
   branch?: Branch | null;
+  /** The real game: branches after the first. */
+  more?: Branch[];
   payables?: Payable[];
   unl?: Record<string, number>;
   /** The getting-started coach, the tabs unlocked so far (and which are new), and the mentor notes read. */
@@ -698,20 +700,20 @@ export function toggleTalks(c: Career): void {
 
 // ---------- the branch depot ----------
 
-export function openBranchDepot(c: Career, k: BranchMgrKind): boolean {
-  return openBranch(stream(c), c as never, k);
+export function openBranchDepot(c: Career, k: BranchMgrKind, town?: TownId): boolean {
+  return openBranch(stream(c), c as never, k, town);
 }
-export function hireBranchManager(c: Career, k: BranchMgrKind): void {
-  hireBrMgr(stream(c), c as never, k);
+export function hireBranchManager(c: Career, k: BranchMgrKind, town?: TownId): void {
+  hireBrMgr(stream(c), c as never, k, town);
 }
-export function sendToBranch(c: Career, id: string): boolean {
-  return toBranch(c as never, id);
+export function sendToBranch(c: Career, id: string, town?: TownId): boolean {
+  return toBranch(c as never, id, town);
 }
 export function bringHome(c: Career, id: string): boolean {
   return toHome(c as never, id, room(c));
 }
-export function closeBranchDepot(c: Career): void {
-  closeBranch(c as never);
+export function closeBranchDepot(c: Career, town?: TownId): void {
+  closeBranch(c as never, town);
 }
 
 export function hireManager(c: Career, role: MgrRole, id: string): boolean {

@@ -45,7 +45,7 @@ describe('across Queensland', () => {
   });
 
   it("Weipa's wet season stops nearly everything; its dry season hardly stops at all", () => {
-    const wx = { town: 'wei' as TownId, wxStart: wxStartFor(2000) }, by = Array.from({ length: 12 }, () => [0, 0]);
+    const wx = { town: 'wei' as TownId, wxStart: wxStartFor(2000) }, by = Array.from({ length: 12 }, () => [0, 0] as [number, number]);
     for (let w = 1; w < 52 * 20; w++) for (let d = 0; d < 5; d++) { const m = by[monthIdx(w)]!; m[1]++; if (wetDay(wx, w, d)) m[0]++; }
     const pc = (m: number) => by[m]![0] / by[m]![1];
     expect(pc(1)).toBeGreaterThan(0.6); // February
