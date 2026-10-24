@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   BID_ODDS, LD_OWN, LD_WEEK, MOB, RETAIN, ROLES, TREAT, TYPES, an, bookable, carryCash, crewDayCost, freeDriver, freeMachine, leftDays, monthIdx,
   npOf, ownFlow, rainChance, rvForm, stars, subTerms, tCost, whyNot, canTakeBack, game, subPrice, otherContracts, canTender,
-  type Job, type Offer, type SubTender, play, compat,
+  type Job, type Offer, type SubTender, play, compat, HEAD_CONTRACTORS,
 } from '@engine';
 import { KIND_CHIP, councilTitle, jobTitle, offerCatch, offerDetail, offerLabel, offerPay, offerTitle, pmOf, subTenderTitle } from '@engine/text/work';
 import { Mentor } from '../Mentor';
@@ -54,6 +54,7 @@ function OfferCard({ c, o, act, onMsg }: { c: Career; o: Offer; act: Act; onMsg:
           <button type="button" className="btn ink full" disabled={!!why} onClick={() => act((x) => play.accept(x, o.id))}>Take it</button>
           {why && <div className="why">{WHY[why]}</div>}
           {why && !compat.prototype && <button type="button" className="btn full" onClick={() => act((x) => play.declineOffer(x, o.id))}>Politely decline</button>}
+          {why && !compat.prototype && (HEAD_CONTRACTORS as readonly string[]).includes(o.client) && <div className="tiny muted">A straight answer goes down well with a head contractor.</div>}
         </>
       )}
     </div>

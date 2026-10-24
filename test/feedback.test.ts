@@ -101,4 +101,34 @@ describe('TestFlight feedback, 25 Oct', () => {
     expect(game.declineOffer(c, 'o2')).toBe(false);
     compat.prototype = false;
   });
+  it('politely declining a head contractor: a point of standing while it is middling or worse, once in 8 weeks', () => {
+    const c = outfit();
+    const offer = (id: string, type = 'd9', client = 'Border Civil') => { c.offers = [{ id, kind: 'dry', type, client, place: 'Jimbour', days: 15, rate: 900, terms: 28 } as never]; };
+    offer('a');
+    game.declineOffer(c, 'a');
+    expect(c.rel?.['Border Civil']).toBe(1);
+    // again too soon: nothing
+    offer('b');
+    game.declineOffer(c, 'b');
+    expect(c.rel?.['Border Civil']).toBe(1);
+    c.week += game.DECLINE_WEEKS;
+    offer('c');
+    game.declineOffer(c, 'c');
+    expect(c.rel?.['Border Civil']).toBe(2);
+    // already in good standing: no more from declining
+    c.rel!['Border Civil'] = game.DECLINE_CAP;
+    c.week += game.DECLINE_WEEKS;
+    offer('d');
+    game.declineOffer(c, 'd');
+    expect(c.rel?.['Border Civil']).toBe(game.DECLINE_CAP);
+    // work you could have done: no credit for turning it down
+    c.rel!['Hartley Bros'] = -4;
+    offer('e', 'pull', 'Hartley Bros');
+    game.declineOffer(c, 'e');
+    expect(c.rel?.['Hartley Bros']).toBe(-4);
+    // a farmer or a council isn't a head contractor
+    offer('f', 'd9', 'Council');
+    game.declineOffer(c, 'f');
+    expect(c.rel?.['Council']).toBeUndefined();
+  });
 });

@@ -7,7 +7,7 @@ import { yearOf } from './calendar';
 import { DIFFICULTY, costIdx as costIdxOf, difficultyOf, type Difficulty } from './difficulty';
 import { book, newAccounts, type Accounts } from './ledger';
 import { GPS_COST, LASER_COST, RT_COST, TYPES, canGps, canLaser, isBulk, newMachine, serviced, svcCost, value, type Machine, type MachineType } from './machines';
-import { MOODS, fmul as fmulOf, genBulkListings, genLoaderListings, genRoadtrainListings, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, unlist, inspect as inspectL, bid as bidL, hammer as hammerL, type HammerResult, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
+import { HEAD_CONTRACTORS, MOODS, fmul as fmulOf, genBulkListings, genLoaderListings, genRoadtrainListings, genMarket, marketWeek, newMarketMood, salesWeek, buyListing, lendCap, sell, unlist, inspect as inspectL, bid as bidL, hammer as hammerL, type HammerResult, type SellMode, type Market, type MarketMood, type Mood, type Listing, type SaleEvent } from './market';
 import { fromState, hashN, int, pick, seedRand, type Rand } from './rng';
 import { mkRivals, rivalsWeek, type Rival, type RivalEvent } from './rivals';
 import { newWhs, safetyWeek, upgradeWhs, type SafetyEvent, type Whs } from './safety';
@@ -28,7 +28,7 @@ import { PLANT_BRK, addMod, bidFee, ddesCharge, ddesWeek, hasMod, modsWeek, onRe
 import { buyTank, cancelFuel, fuelIdle, fuelSettle, fuelStart, fuelWeek, orderFuel, setAuto, type FuelBook, type FuelEvent, type TankId } from './fuel';
 import { BID_ODDS, rvOHFor } from './rivals';
 import { accept as acceptOffer, askWait as askWaitHire, barred, coverOff, genOffers, jobDone, recvWeek, startWeek, stars, uid, whyNot, type Offer, type Job, type JobLog, type HireEvent } from './hire';
-import { relWeek } from './relations';
+import { relAdd, relOf, relWeek } from './relations';
 import { seasonWeek } from './seasons';
 import { coachTick, tabsWeek, type CoachState } from './coach';
 import { mRef, note, noteNews, type DiaryEntry } from './diary';
@@ -78,6 +78,8 @@ export interface Career {
   erp?: boolean;
   /** The real game: DDES on retainer, its claims, the ERP's modules, getting ready to sell (ddes.ts). */
   ddes?: DdesState;
+  /** The real game: the week you last politely declined each head contractor's work. */
+  declW?: Record<string, number>;
   /** The bulk fuel tank and the diesel price (the real game). */
   fuel?: FuelBook;
   /** Expansion packs switched on. Bulk and Ag is behind a test switch until it's sold as a pack. */
@@ -570,12 +572,21 @@ export function approachRival(c: Career, name: string): void {
   if (!c.queue.some((q) => q.k === 'buyout' && q.name === name)) c.queue.push({ k: 'buyout', name });
 }
 
+/** Politely declining a head contractor's work: standing up a point while it's under this, once in this many weeks. */
+export const DECLINE_CAP = 3, DECLINE_WEEKS = 8;
 /** The real game: tell them you can't do it this time. The work goes, with a line in the diary. */
 export function declineOffer(c: Career, id: string): boolean {
   const o = c.offers.find((x) => x.id === id);
   if (compat.prototype || !o) return false;
+  // a head contractor you've no gear for, told straight: a point of standing, while it's middling or worse, once
+  // in DECLINE_WEEKS each (so it mends a bad name, but never makes you their favourite)
+  const D = (c.declW ??= {}), good = !!whyNot(c as never, o) && relOf(c.rel, o.client) < DECLINE_CAP && c.week - (D[o.client] ?? -1e9) >= DECLINE_WEEKS;
   c.offers = c.offers.filter((x) => x !== o);
   note(c, { k: 'declined', client: o.client, kind: o.kind, type: o.type });
+  if (good && (HEAD_CONTRACTORS as readonly string[]).includes(o.client)) {
+    relAdd(c as never, o.client, 1);
+    D[o.client] = c.week;
+  }
   return true;
 }
 /** The real game: ring a farmer or developer back and say you can't take it on. */
