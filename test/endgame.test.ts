@@ -3,7 +3,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  DEV_GAP, MINES, MINE_STD, MINE_WEEKS, bulkWeek, clientOdds, compat, game, genEnquiry, genOffers, mkBulkRivals, seedRand, whyNot, yearOf, yesOdds,
+  DEV_BIG, DEV_GAP, MINES, devStd, MINE_STD, MINE_WEEKS, bulkWeek, clientOdds, compat, game, genEnquiry, genOffers, mkBulkRivals, seedRand, whyNot, yearOf, yesOdds,
 } from '../src';
 import { bulkLine } from '../src/text/bulk';
 
@@ -115,6 +115,8 @@ describe('the end game', () => {
     expect(o!.type).toBe('d10');
     expect(MINES.gdi).toContain(o!.client);
     expect(o!.std).toEqual(MINE_STD);
+    // the same standard as a developer's big job
+    expect(MINE_STD).toEqual(devStd(DEV_BIG));
     const wks = o!.kind === 'wet' ? o!.days / 5 : o!.days;
     expect(wks).toBeGreaterThanOrEqual(MINE_WEEKS[0]);
     c.offers = [o!];

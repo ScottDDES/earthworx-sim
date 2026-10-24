@@ -43,3 +43,4 @@ export * from './books';
 export * from './coach';
 export * from './seasons';
 export * from './bulkRivals';
+export * from './plantStd';

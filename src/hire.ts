@@ -20,6 +20,7 @@ import { SKILLS, ROLES, type Person } from './staff';
 import { TOWNS, type TownId } from './towns';
 import { forecast, type WeatherCtx } from './weather';
 import { yearOf } from './calendar';
+import { STD_STRICT } from './plantStd';
 
 /** Head contractors: weeks to pay, and how often they pay late. */
 export const CLIENTS: Record<string, { terms: number; late: number }> = {
@@ -237,7 +238,8 @@ export function offerMachine(b: Pick<Biz, 'fleet' | 'week'>, o: Offer): Machine 
 /** The real game's mines: the big gear on six months or more, late-model and low-hour only. */
 export const MINES: Record<TownId, readonly string[]> = { gdi: ['Surat Basin Coal', 'Moonie Ridge Coal'], ct: ['Gilbert Range Gold', 'Ironstone Creek Gold'] };
 export const MINE_TYPES: readonly MachineType[] = ['d9', 'd10', 's651', 's657', 'c825', 'excavator', 'moxy'];
-export const MINE_STD = { age: 4, hrs: 6000 } as const;
+/** The same as a developer's big job. */
+export const MINE_STD = STD_STRICT;
 /** A week's odds a mine rings, the share that want your operator too, what they pay over the usual rate, and their terms (weeks). */
 export const MINE_ODDS = 0.12, MINE_WET = 0.3, MINE_PREMIUM = 1.25, MINE_TERMS = 4;
 export const MINE_WEEKS = [26, 52] as const;

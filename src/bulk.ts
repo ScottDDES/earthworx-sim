@@ -14,6 +14,7 @@ import { invoice, uid, type Biz, type Job, type WeekReport } from './hire';
 import { compactorRate, damVolume, pushedSpread, scraperCycle, scraperRate, waterCartRate, waterNeeded, type DamPit } from './sums';
 import { note } from './diary';
 import { fuelUse } from './fuel';
+import { STD_EASY, STD_STRICT } from './plantStd';
 import { bulkLapse, bulkLoss, bulkRivalsWeek, keenness, mkBulkRivals, type BulkRival } from './bulkRivals';
 
 const round = (n: number, to: number) => Math.round(n / to) * to;
@@ -262,7 +263,7 @@ export interface PlantStd { age: number; hrs: number }
 /** Big developer jobs (this many m³ or more) want the strict standard. */
 export const DEV_BIG = 250000;
 export function devStd(vol: number): PlantStd {
-  return vol >= DEV_BIG ? { age: 5, hrs: 6000 } : { age: 10, hrs: 12000 };
+  return { ...(vol >= DEV_BIG ? STD_STRICT : STD_EASY) };
 }
 /** Does this machine meet the standard this week? */
 export function meetsStd(m: Pick<Machine, 'year' | 'hours'>, std: PlantStd | undefined, week: number): boolean {
