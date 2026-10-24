@@ -6,7 +6,7 @@
 import { book } from './ledger';
 import { monthIdx, yearOf } from './calendar';
 import { compat, onCompat } from './compat';
-import { TYPES, breakdown, breaks, ctlMul, dayHours, wear, GPS_Q, LASER_Q, type BulkType, type Machine, type MachineType, type WorkshopCtx } from './machines';
+import { TYPES, breakdown, breaks, ctlMul, dayHours, isBulk, wear, GPS_Q, LASER_Q, type BulkType, type Machine, type MachineType, type WorkshopCtx } from './machines';
 import { int, pick, type Rand } from './rng';
 import { ROLES } from './staff';
 import { TOWNS } from './towns';
@@ -14,6 +14,7 @@ import { invoice, uid, type Biz, type Job, type WeekReport } from './hire';
 import { compactorRate, damVolume, pushedSpread, scraperCycle, scraperRate, waterCartRate, waterNeeded, type DamPit } from './sums';
 import { note } from './diary';
 import { fuelUse } from './fuel';
+import { bulkLapse, bulkLoss, bulkRivalsWeek, keenness, mkBulkRivals, type BulkRival } from './bulkRivals';
 
 const round = (n: number, to: number) => Math.round(n / to) * to;
 
@@ -115,6 +116,12 @@ export const KINDS: Record<BulkKind, KindSpec> = {
   cutter: { unit: 'ha', odds: 6, att: 'cutter', survey: false },
   dev: { unit: 'm3', odds: 4, survey: true, tested: true, big: true },
 };
+// the real game: developers ring more often once you're doing them
+onCompat(() => { KINDS.dev.odds = compat.prototype ? 4 : 7; });
+/** The real game: a bigger bulk fleet hears about more work. The odds the phone rings, a try. */
+export const ENQ_ODDS = 0.6;
+/** The real game: weeks without a developer ringing before one does. */
+export const DEV_GAP = 20;
 
 export const isDam = (k: unknown): k is DamKind => k === 'ringTank' || k === 'turkeyNest';
 
@@ -174,6 +181,9 @@ export interface BulkBook {
   promise?: { farm: string; until: number };
   /** A client you let down a little: less keen next time. */
   cool?: { farm: string; until: number };
+  /** The real game: the bulk and ag outfits, and the last week a developer rang. */
+  rv?: BulkRival[];
+  devLast?: number;
 }
 export type BulkState = Biz & { bulk?: BulkBook; won2?: boolean; bulkDone?: number; devDone?: number; testsPassed?: number };
 type B = BulkState;
@@ -301,8 +311,9 @@ export function clientOdds(S: BulkBook, e: FarmEnquiry, week: number): number {
   const on = (x?: { farm: string; until: number }) => !!x && x.farm === e.farm && week < x.until;
   if (on(S.grudge)) return (e.quoted ?? 0) <= e.budget * GRUDGE_PRICE ? yesOdds(e) : 0;
   if (on(S.promise)) return (e.quoted ?? 0) <= e.budget * 1.25 ? 1 : yesOdds(e);
-  if (on(S.cool)) return yesOdds(e) * 0.6;
-  return yesOdds(e);
+  const k = Math.min(1, keenness(S.rv, e.kind));
+  if (on(S.cool)) return yesOdds(e) * 0.6 * k;
+  return Math.min(1, yesOdds(e) * keenness(S.rv, e.kind));
 }
 /** Under a grudge, he only says yes at this share of his budget or less. */
 export const GRUDGE_PRICE = 0.7;
@@ -339,8 +350,8 @@ export function buyAttachment(b: B, a: Attachment): boolean {
 
 export type BulkEvent =
   | { k: 'damWon'; jobId: string; price: number }
-  | { k: 'damLost'; farm: string; place: string }
-  | { k: 'damLapsed'; farm: string; place: string }
+  | { k: 'damLost'; farm: string; place: string; who?: string; wp?: number; yours?: number; dk?: BulkKind }
+  | { k: 'damLapsed'; farm: string; place: string; who?: string }
   | { k: 'damStarted'; jobId: string }
   | { k: 'damDone'; jobId: string; price: number; m3: number; est: number }
   | { k: 'damGone'; jobId: string }
@@ -355,6 +366,7 @@ export type BulkEvent =
 /** Once a week: clients answer last week's prices, comebacks ring, windrows get burnt, developers pay or fold, and the phone might ring. */
 export function bulkWeek(rand: Rand, b: B, fmul: number, events: BulkEvent[], mm = 0): void {
   const S = (b.bulk ??= { enq: [] });
+  if (!compat.prototype) bulkRivalsWeek(rand, (S.rv ??= mkBulkRivals(b.town)), TOWNS[b.town].places, fmul);
   for (const L of (S.leaks ?? []).slice()) {
     if (L.w <= b.week) {
       S.leaks = S.leaks!.filter((x) => x !== L);
@@ -428,12 +440,15 @@ export function bulkWeek(rand: Rand, b: B, fmul: number, events: BulkEvent[], mm
         if (!compat.prototype && e.kind !== 'dev' && !e.tested && rand() < CASH_ASK) b.queue.push({ k: 'cashjob', id: j.id });
         note(b, { k: 'damWon', farm: e.farm, place: e.place, dk: e.kind, price: e.quoted });
       } else {
-        events.push({ k: 'damLost', farm: e.farm, place: e.place });
-        note(b, { k: !compat.prototype && S.grudge?.farm === e.farm && b.week < S.grudge.until ? 'grudgeLost' : 'damLost', farm: e.farm, place: e.place, dk: e.kind });
+        // the real game: you hear who got it, and what they went for
+        const lw = S.rv ? bulkLoss(rand, S.rv, e) : null, by = lw ? { who: lw.who, wp: lw.price, yours: e.quoted, dk: e.kind } : {};
+        events.push({ k: 'damLost', farm: e.farm, place: e.place, ...by });
+        note(b, { k: !compat.prototype && S.grudge?.farm === e.farm && b.week < S.grudge.until ? 'grudgeLost' : 'damLost', farm: e.farm, place: e.place, dk: e.kind, ...by });
       }
     } else if (!e.quoted && b.week - e.week >= ENQ_WEEKS) {
       S.enq = S.enq.filter((x) => x !== e);
-      events.push({ k: 'damLapsed', farm: e.farm, place: e.place });
+      const who = S.rv ? bulkLapse(rand, S.rv, e) : null;
+      events.push({ k: 'damLapsed', farm: e.farm, place: e.place, ...(who ? { who } : {}) });
     }
   }
   for (const j of b.jobs.slice()) {
@@ -444,10 +459,17 @@ export function bulkWeek(rand: Rand, b: B, fmul: number, events: BulkEvent[], mm
       note(b, { k: 'damGone', farm: j.client, place: j.place, dk: j.dk });
     }
   }
-  if (S.enq.filter((e) => !e.quoted).length < 3 && rand() < 0.5) {
+  const bulkN = compat.prototype ? 0 : b.fleet.filter((m) => isBulk(m.type) && m.status !== 'auction').length;
+  const tries = 1 + (bulkN >= 6 ? 1 : 0) + (bulkN >= 12 ? 1 : 0);
+  for (let t = 0; t < tries; t++) {
+    if (!(S.enq.filter((e) => !e.quoted).length < 2 + tries && rand() < (compat.prototype ? 0.5 : ENQ_ODDS))) continue;
+    // the real game: a developer rings every so often once you're doing them
+    const devDue = !compat.prototype && b.won2 && b.week - (S.devLast ??= b.week) >= DEV_GAP
+      && !S.enq.some((e) => e.kind === 'dev') && !b.jobs.some((j) => j.kind === 'bulk' && j.dk === 'dev' && !j.finished);
     // half the time it's work your gear can already do, so a small outfit isn't left looking at jobs it can't touch
     const can = doable(b);
-    const e = genEnquiry(rand, b, fmul, can.length && rand() < 0.5 ? pick(rand, can) : undefined);
+    const e = genEnquiry(rand, b, fmul, devDue ? 'dev' : can.length && rand() < 0.5 ? pick(rand, can) : undefined);
+    if (!compat.prototype && e.kind === 'dev') S.devLast = b.week;
     // the real game: a grazier with a grudge keeps ringing for prices, just to give the work to someone else
     if (!compat.prototype && S.grudge && b.week < S.grudge.until && e.kind !== 'dev' && rand() < 0.35) e.farm = S.grudge.farm;
     S.enq.push(e);

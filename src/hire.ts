@@ -19,6 +19,7 @@ import { fuelIdle, fuelUse } from './fuel';
 import { SKILLS, ROLES, type Person } from './staff';
 import { TOWNS, type TownId } from './towns';
 import { forecast, type WeatherCtx } from './weather';
+import { yearOf } from './calendar';
 
 /** Head contractors: weeks to pay, and how often they pay late. */
 export const CLIENTS: Record<string, { terms: number; late: number }> = {
@@ -57,6 +58,9 @@ export interface Offer {
   /** Council pit work: cubic metres of gravel to rip and stockpile, and how hard the pit rips (0 soft, 1 firm, 2 hard). type is the smallest dozer for it. */
   gravel?: number;
   rock?: 0 | 1 | 2;
+  /** The real game: a mine's long hire, and the plant standard its machine has to meet. */
+  mine?: boolean;
+  std?: { age: number; hrs: number };
 }
 
 /** A job on the books. Hire jobs use the fields below; contracts add their own later. */
@@ -219,7 +223,8 @@ export function pitDozer(gravel: number, rock: number): MachineType {
 }
 
 /** The machine that would go on an offer: its own type, or for pit work the smallest free dozer that's big enough. */
-export function offerMachine(b: Pick<Biz, 'fleet'>, o: Offer): Machine | undefined {
+export function offerMachine(b: Pick<Biz, 'fleet' | 'week'>, o: Offer): Machine | undefined {
+  if (o.std) return b.fleet.find((m) => m.type === o.type && m.status === 'idle' && m.down === 0 && fitFor(m, o.std, b.week));
   if (!o.gravel) return freeMachine(b, o.type);
   const min = PIT_DOZERS.indexOf(o.type);
   for (const t of PIT_DOZERS.slice(min)) {
@@ -227,6 +232,19 @@ export function offerMachine(b: Pick<Biz, 'fleet'>, o: Offer): Machine | undefin
     if (m) return m;
   }
   return undefined;
+}
+
+/** The real game's mines: the big gear on six months or more, late-model and low-hour only. */
+export const MINES: Record<TownId, readonly string[]> = { gdi: ['Surat Basin Coal', 'Moonie Ridge Coal'], ct: ['Gilbert Range Gold', 'Ironstone Creek Gold'] };
+export const MINE_TYPES: readonly MachineType[] = ['d9', 'd10', 's651', 's657', 'c825', 'excavator', 'moxy'];
+export const MINE_STD = { age: 4, hrs: 6000 } as const;
+/** A week's odds a mine rings, the share that want your operator too, what they pay over the usual rate, and their terms (weeks). */
+export const MINE_ODDS = 0.12, MINE_WET = 0.3, MINE_PREMIUM = 1.25, MINE_TERMS = 4;
+export const MINE_WEEKS = [26, 52] as const;
+
+/** Does this machine meet a plant standard this week? */
+export function fitFor(m: Pick<Machine, 'year' | 'hours'>, std: Offer['std'], week: number): boolean {
+  return !std || (yearOf(week) - m.year <= std.age && m.hours <= std.hrs);
 }
 
 /** This week's hire offers. fmul is how busy the work is (market.ts). */
@@ -289,23 +307,36 @@ export function genOffers(rand: Rand, b: Biz, fmul: number, won: boolean, won2: 
   // Word gets round that you've got gear: idle machines bring in their own dry-hire calls.
   if (won && contractors.length) {
     const idle = b.fleet.filter((m) => m.status === 'idle' && m.down === 0);
-    const extra = Math.min(6, Math.round(idle.length * (won2 ? 0.6 : 0.3) * (0.6 + rand() * 0.8)));
+    const extra = Math.min(compat.prototype ? 6 : 3, Math.round(idle.length * (won2 && compat.prototype ? 0.6 : 0.3) * (0.6 + rand() * 0.8)));
     shuffled(rand, idle).slice(0, extra).forEach((m) => {
       const Ty = TYPES[m.type], client = pick(rand, contractors), place = pick(rand, T.places), id = uid(b);
       const days = int(rand, 2, 6), rate = round(Ty.dry * rf * (0.92 + rand() * 0.16), 100);
       out.push({ id, kind: 'dry', type: m.type, place, client, days, rate, terms: CLIENTS[client]!.terms, enq: true });
     });
   }
+  // the real game: a mine rings about your big gear, for six months or more
+  if (!compat.prototype && won) {
+    const big = b.fleet.filter((m) => MINE_TYPES.includes(m.type) && m.status !== 'auction');
+    if (big.length && rand() < MINE_ODDS) {
+      const type = pick(rand, big).type, Ty = TYPES[type], wet = rand() < MINE_WET, wks = int(rand, MINE_WEEKS[0], MINE_WEEKS[1]), r = 0.95 + rand() * 0.1;
+      const base = { id: uid(b), type, place: pick(rand, T.places), client: pick(rand, MINES[b.town]), terms: MINE_TERMS, mine: true, std: { ...MINE_STD } };
+      out.push(wet ? { ...base, kind: 'wet', days: wks * 5, rate: round(Ty.wet * MINE_PREMIUM * r, 50), fuelPaid: false } : { ...base, kind: 'dry', days: wks, rate: round(Ty.dry * MINE_PREMIUM * r, 100) });
+    }
+  }
   return out;
 }
 
-export type WhyNot = 'busy' | 'noMachine' | 'noDriver' | null;
+export type WhyNot = 'busy' | 'noMachine' | 'noDriver' | 'tooOld' | null;
 
 /** Why you can't take an offer, or null if you can. */
 export function whyNot(b: Biz, o: Offer): WhyNot {
   const m = offerMachine(b, o);
   const fits = (t: string) => (o.gravel ? PIT_DOZERS.indexOf(t as MachineType) >= PIT_DOZERS.indexOf(o.type) : t === o.type);
-  if (!m) return b.fleet.some((x) => fits(x.type) && x.status !== 'auction') ? 'busy' : 'noMachine';
+  if (!m) {
+    // a mine: yours is free but too old or too worked
+    if (o.std && freeMachine(b, o.type)) return 'tooOld';
+    return b.fleet.some((x) => fits(x.type) && x.status !== 'auction') ? 'busy' : 'noMachine';
+  }
   if (o.kind !== 'dry' && !freeDriver(b, m.type)) return 'noDriver';
   return null;
 }
@@ -334,6 +365,7 @@ export function accept(b: Biz, id: string): Job | null {
   // pit work: the dozer you send goes on the job (a bigger one burns more fuel for the same rate)
   const j = newJob(b, { ...o, type: m.type }, m.id);
   if (o.gravel) j.gravel = o.gravel;
+  if (o.mine) j.mine = true;
   m.status = 'job';
   m.jobId = j.id;
   if (o.kind !== 'dry') {

@@ -6,7 +6,7 @@ import {
   npOf, ownFlow, rainChance, rvForm, stars, subTerms, tCost, whyNot, canTakeBack, game, subPrice, otherContracts, canTender,
   type Job, type Offer, type SubTender, play,
 } from '@engine';
-import { KIND_CHIP, KIND_LABEL, councilTitle, jobTitle, offerCatch, offerDetail, offerPay, offerTitle, pmOf, subTenderTitle } from '@engine/text/work';
+import { KIND_CHIP, councilTitle, jobTitle, offerCatch, offerDetail, offerLabel, offerPay, offerTitle, pmOf, subTenderTitle } from '@engine/text/work';
 import { Mentor } from '../Mentor';
 import { f, fk } from '../format';
 import { AdviceRow, CouncilCard, MarginRow, PlanSheet } from './Plan';
@@ -27,7 +27,8 @@ const who = (c: Career, id: string | null) => (id === 'you' ? 'You' : c.staff.fi
 function OfferCard({ c, o, act, onMsg }: { c: Career; o: Offer; act: Act; onMsg: (s: string) => void }) {
   const why = whyNot(c as never, o), bk = why ? bookable(c as never, o) : null;
   const big = o.gravel && o.type !== 'd10' ? ' or bigger' : '';
-  const WHY: Record<string, string> = { busy: 'Your ' + TYPES[o.type].short + big + (big ? ' dozers are' : ' is') + ' busy', noMachine: 'You don\'t own ' + an(TYPES[o.type].short) + big, noDriver: 'Nobody free who can drive ' + an(TYPES[o.type].short) + '. Hire staff in the Yard.' };
+  const WHY: Record<string, string> = { busy: 'Your ' + TYPES[o.type].short + big + (big ? ' dozers are' : ' is') + ' busy', noMachine: 'You don\'t own ' + an(TYPES[o.type].short) + big, noDriver: 'Nobody free who can drive ' + an(TYPES[o.type].short) + '. Hire staff in the Yard.',
+    tooOld: 'Your free ' + TYPES[o.type].short + ' is too old or has too many hours for the mine. Late-model gear is in the Market, and new under New.' };
   const ring = () => act((x) => {
     const a = play.askWait(x, o.id);
     if (!a) return;
@@ -38,7 +39,7 @@ function OfferCard({ c, o, act, onMsg }: { c: Career; o: Offer; act: Act; onMsg:
   const left = bk ? bk.days - bk.done : 0;
   return (
     <div className="card">
-      <div className="row"><span className={'chip ' + KIND_CHIP[o.kind]}>{KIND_LABEL[o.kind]}</span><span className="grow" /><span className="num" style={{ fontWeight: 600 }}>{offerPay(o)}</span></div>
+      <div className="row"><span className={'chip ' + (o.mine ? 'c-bad' : KIND_CHIP[o.kind])}>{offerLabel(o)}</span><span className="grow" /><span className="num" style={{ fontWeight: 600 }}>{offerPay(o)}</span></div>
       <b>{offerTitle(o)}</b>
       <div className="small muted">{offerDetail(o)}</div>
       <div className="small" style={{ color: 'var(--rust)' }}>{offerCatch(o)}</div>
@@ -111,7 +112,7 @@ function JobCard({ c, j, act }: { c: Career; j: Job; act: Act }) {
     const can = canTakeBack(c as never, j);
     return (
       <div className="card">
-        <div className="row"><span className={'chip ' + KIND_CHIP[j.kind]}>{KIND_LABEL[j.kind]}</span><span className="chip c-idle">SUBBED OUT</span><span className="grow" /><span className="tiny" style={{ color: late ? 'var(--rust)' : 'var(--muted)', fontWeight: late ? 700 : 400 }}>{late ? 'Late: ' + f((c.week - due) * ldw) + ' damages so far' : 'Due by end of week ' + due}</span></div>
+        <div className="row"><span className={'chip ' + KIND_CHIP[j.kind]}>{offerLabel(j as never)}</span><span className="chip c-idle">SUBBED OUT</span><span className="grow" /><span className="tiny" style={{ color: late ? 'var(--rust)' : 'var(--muted)', fontWeight: late ? 700 : 400 }}>{late ? 'Late: ' + f((c.week - due) * ldw) + ' damages so far' : 'Due by end of week ' + due}</span></div>
         <b>{jobTitle(j)}</b>
         <div className="row tiny"><span className="grow">{prog}% done by {q.name}</span><span className="num">Claimed {f(j.earned)}</span></div>
         <div className="bar"><i style={{ width: prog + '%', background: 'var(--teal)' }} /></div>
@@ -159,7 +160,7 @@ function JobCard({ c, j, act }: { c: Career; j: Job; act: Act }) {
     const pj = c.jobs.find((x) => x.id === j.after);
     return (
       <div className="card">
-        <div className="row"><span className={'chip ' + KIND_CHIP[j.kind]}>{KIND_LABEL[j.kind]}</span><span className="grow" /><span className="chip c-idle">BOOKED IN</span></div>
+        <div className="row"><span className={'chip ' + KIND_CHIP[j.kind]}>{offerLabel(j as never)}</span><span className="grow" /><span className="chip c-idle">BOOKED IN</span></div>
         <b>{jobTitle(j)}</b>
         <div className="small muted">Starts the day after {pj ? jobTitle(pj) : 'the current job'} finishes. {j.days} days of work.</div>
       </div>
@@ -168,7 +169,7 @@ function JobCard({ c, j, act }: { c: Career; j: Job; act: Act }) {
   const pct = Math.min(100, (j.done / j.days) * 100), unit = j.kind === 'dry' ? 'weeks' : 'days';
   return (
     <div className="card">
-      <div className="row"><span className={'chip ' + KIND_CHIP[j.kind]}>{KIND_LABEL[j.kind]}</span><span className="grow" /><span className="tiny muted">{j.kind === 'dry' ? 'Their operator' : driving(c, j)}</span></div>
+      <div className="row"><span className={'chip ' + KIND_CHIP[j.kind]}>{offerLabel(j as never)}</span><span className="grow" /><span className="tiny muted">{j.kind === 'dry' ? 'Their operator' : driving(c, j)}</span></div>
       <b>{jobTitle(j)}</b>
       <div className="row tiny"><span className="grow">{j.done} of {j.days} {unit}</span><span className="num">{j.kind === 'private' ? 'Fixed ' + f((j.fixed || 0) + j.extra) : 'Earned ' + f(j.earned)}</span></div>
       <div className="bar"><i style={{ width: pct + '%', background: 'var(--teal)' }} /></div>
@@ -301,7 +302,8 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
   const pt = pricing ? c.tenders.find((t) => t.id === pricing) : undefined;
   const can = canTender((t) => game.owns(c, t), c.rep, c.whs.sys);
   const [showAll, setShowAll] = useState(false);
-  const shut = (o: Offer) => !!whyNot(c as never, o) && !bookable(c as never, o);
+  // a mine your gear's too old for stays in view: it's the reason to buy late-model
+  const shut = (o: Offer) => { const w = whyNot(c as never, o); return !!w && w !== 'tooOld' && !bookable(c as never, o); };
   const offersNow = c.offers.filter((o) => !shut(o)).sort((a, b) => Number(!!whyNot(c as never, a)) - Number(!!whyNot(c as never, b)));
   const offersNot = c.offers.filter(shut);
   // farmers and developers ringing (the Bulk and Ag pack)

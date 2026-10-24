@@ -3,6 +3,7 @@
 import { compat } from '../compat';
 import type { Job } from '../hire';
 import { KINDS, type Attachment, type BulkKind, type FarmEnquiry, type Unit } from '../bulk';
+import type { BulkLine, BulkRival } from '../bulkRivals';
 
 const f = (n: number) => '$' + Math.round(n).toLocaleString('en-AU');
 const n0 = (n: number) => Math.round(n).toLocaleString('en-AU');
@@ -11,6 +12,16 @@ export const DAM_KIND: Record<BulkKind, string> = {
   ringTank: 'Ring tank', turkeyNest: 'Turkey nest dam', laser: 'Laser levelling', channel: 'Irrigation channel', contour: 'Contour banks',
   pad: 'Shed pad', rake: 'Stick raking', cutter: 'Cutter barring', dev: 'Bulk earthworks',
 };
+
+/** The bulk and ag outfits: what they do, and what they're on. */
+export const BULK_LINE: Record<BulkLine, string> = { dams: 'Dams and farm work', laser: 'Laser levelling', scrapers: 'Scrapers: dams and pads', dev: "Developers' bulk earthworks" };
+export function bulkRivalNow(x: BulkRival): string {
+  if (!x.on) return 'Looking for work';
+  const what = DAM_KIND[x.on.dk].toLowerCase();
+  return 'On ' + (x.on.farm ? x.on.farm + "'s " + what : NO_A.includes(x.on.dk) ? what : an0(what)) + ' near ' + x.on.place + ', ' + x.busy + ' week' + (x.busy === 1 ? '' : 's') + ' to go';
+}
+const NO_A: readonly BulkKind[] = ['laser', 'contour', 'rake', 'cutter', 'dev'];
+const an0 = (w: string) => (/^[aeiou]/.test(w) ? 'an ' : 'a ') + w;
 
 /** The unit, short ("m³") and as a rate ("a m³"). */
 export const UNIT: Record<Unit, { short: string; per: string; dp: number }> = {
@@ -130,8 +141,10 @@ export function bulkLine(e: { k: string; [x: string]: any }, title?: string): st
   const what = (DAM_KIND[e.dk as BulkKind] ?? 'job').toLowerCase();
   switch (e.k) {
     case 'damWon': return e.farm ? e.farm + ' said yes: the ' + what + ' near ' + e.place + ' for ' + f(e.price) + '.' : 'Your price was accepted' + (title ? ': ' + title : '') + '.';
-    case 'damLost': return (e.farm ?? 'The client') + ' went with someone else' + (e.place ? ' for the ' + what + ' near ' + e.place : '') + '.';
-    case 'damLapsed': return (e.farm ?? 'A client') + ' near ' + e.place + ' stopped waiting for your price.';
+    case 'damLost':
+      if (e.who) return (e.farm ?? 'The client') + ' gave the ' + what + (e.place ? ' near ' + e.place : '') + ' to ' + e.who + ' at ' + f(e.wp) + (e.yours ? ' (yours was ' + f(e.yours) + (e.wp > e.yours ? ': they went with who they know' : '') + ')' : '') + '.';
+      return (e.farm ?? 'The client') + ' went with someone else' + (e.place ? ' for the ' + what + ' near ' + e.place : '') + '.';
+    case 'damLapsed': return (e.farm ?? 'A client') + ' near ' + e.place + ' stopped waiting for your price' + (e.who ? ': ' + e.who + ' got it' : '') + '.';
     case 'damStarted': return 'Started: ' + (title ?? (e.farm + '\'s ' + what + ' near ' + e.place)) + '.';
     case 'damDone': return 'Finished: ' + (title ?? (e.farm + '\'s ' + what + ' near ' + e.place)) + '. ' + f(e.price) + ' all up' + (e.spent != null ? ', ' + f(e.spent) + ' spent on fuel, servicing and casuals.' : '.');
     case 'damGone': return (e.farm ? e.farm + ' got someone else in: the ' + what + ' near ' + e.place + ' never started' : 'A client got someone else in: the job never started') + '. Track record −1.';

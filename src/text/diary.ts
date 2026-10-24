@@ -139,7 +139,7 @@ export function diaryText(c: Career, e: any): string {
     case 'ufdClaim': return e.name + "'s unfair dismissal claim settled: " + f(e.cost) + ' in compensation and legal costs. Track record −2, and the crew knows why.';
     case 'hiddenOut': return 'The claim brought out the incident you kept quiet. The regulator fined you ' + f(e.fine) + ', insurance is up 40%, track record −5, and the council has suspended you for six months.';
     case 'rzDamRang': return e.permit ? farmerName(e.farm) + "'s permit came through. The dam's back on: a price is in Work." : farmerName(e.farm) + ' rang about the dam, as promised. A price is in Work.';
-    case 'grudgeLost': return farmerName(e.farm) + ' gave the ' + dk(e.dk) + ' near ' + e.place + ' to someone else. Still hasn\'t forgotten.';
+    case 'grudgeLost': return farmerName(e.farm) + ' gave the ' + dk(e.dk) + ' near ' + e.place + ' to ' + (e.who ?? 'someone else') + '. Still hasn\'t forgotten.';
     case 'cashAudit': return 'The tax office audited your cash jobs. The ' + farmerName(e.farm) + ' job: ' + f(e.amt) + ' in back tax and penalties, and track record −2.';
     case 'tipOut': return e.hc + ' found out you priced off ' + (e.rival ? e.rival + "'s" : 'a rival\'s') + ' number. No more packages from them for six months, and track record −3.';
     case 'signFail': return farmerName(e.farm) + "'s wall near " + e.place + ' failed, the one signed off untested. The engineer has lost his ticket. You paid ' + f(e.cost) + ' to rebuild it, and track record −4.';

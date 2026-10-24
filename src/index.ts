@@ -42,3 +42,4 @@ export * from './compat';
 export * from './books';
 export * from './coach';
 export * from './seasons';
+export * from './bulkRivals';

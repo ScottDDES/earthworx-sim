@@ -7,6 +7,7 @@ import { buy, canBuy, hasBulk, restore, useShop } from '../shop';
 import { adPrivacyOptions, adsAvailable } from '../ads';
 import { MOODS, TICKETS, inherit, TIER, canBuyOut, checks, checks2, checks3, checks4, checks5, ownedCounts, routeRung, rung, rvForm, rvPhase, stars, game, play } from '@engine';
 import { TICKET_CATS, TICKET_TEXT, checkWords, districtForm, starTxt, stepsFor } from '@engine/text/career';
+import { BULK_LINE, bulkRivalNow } from '@engine/text/bulk';
 import { diaryLines } from '@engine/text/diary';
 import { sfx } from '../sound';
 import { f, fk } from '../format';
@@ -115,6 +116,7 @@ function District({ c, act }: { c: Career; act: Act }) {
     <div className="card">
       <div className="row"><b className="grow">Around the district</b><span className={'chip ' + (md === 'boom' ? 'c-job' : md === 'bust' ? 'c-bad' : 'c-idle')}>{M.t.toUpperCase()}</span></div>
       <div className="small muted">{M.d}</div>
+      {(c.bulk?.rv?.length ?? 0) > 0 && (c.path === 'bulk' || !!c.packs?.bulk) && <div className="sub" style={{ marginTop: 6 }}>Road crews</div>}
       {rv.map((x) => (
         <div key={x.name}>
           <div className="kv">
@@ -126,6 +128,18 @@ function District({ c, act }: { c: Career; act: Act }) {
           )}
         </div>
       ))}
+      {(c.bulk?.rv?.length ?? 0) > 0 && (c.path === 'bulk' || !!c.packs?.bulk) && (
+        <>
+          <div className="sub" style={{ marginTop: 6 }}>Bulk and ag outfits</div>
+          <div className="tiny muted">The farm and developer work goes to them when it doesn't come to you. When they're all flat out, clients are keener on your price.</div>
+          {c.bulk!.rv!.map((x) => (
+            <div key={x.name} className="kv">
+              <span>{x.name}<br /><span className="tiny muted">{BULK_LINE[x.line]} · {x.fleet} machines · {bulkRivalNow(x)}{x.beat ? ' · beat you ' + x.beat + ' time' + (x.beat === 1 ? '' : 's') : ''}</span></span>
+              <span style={{ color: 'var(--gold)', letterSpacing: 1 }}>{starTxt(x.stars)}</span>
+            </div>
+          ))}
+        </>
+      )}
       {c.news?.length > 0 && (
         <>
           <div className="sub" style={{ marginTop: 6 }}>Lately</div>
