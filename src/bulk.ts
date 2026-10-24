@@ -463,7 +463,7 @@ export function bulkWeek(rand: Rand, b: B, fmul: number, events: BulkEvent[], mm
   const bulkN = compat.prototype ? 0 : b.fleet.filter((m) => isBulk(m.type) && m.status !== 'auction').length;
   const tries = 1 + (bulkN >= 6 ? 1 : 0) + (bulkN >= 12 ? 1 : 0);
   for (let t = 0; t < tries; t++) {
-    if (!(S.enq.filter((e) => !e.quoted).length < 2 + tries && rand() < (compat.prototype ? 0.5 : ENQ_ODDS))) continue;
+    if (!(S.enq.filter((e) => !e.quoted).length < 2 + tries && rand() < (compat.prototype ? 0.5 : Math.min(0.95, ENQ_ODDS * TOWNS[b.town].work.farm)))) continue;
     // the real game: a developer rings every so often once you're doing them
     const devDue = !compat.prototype && b.won2 && b.week - (S.devLast ??= b.week) >= DEV_GAP
       && !S.enq.some((e) => e.kind === 'dev') && !b.jobs.some((j) => j.kind === 'bulk' && j.dk === 'dev' && !j.finished);

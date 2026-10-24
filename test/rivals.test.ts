@@ -45,9 +45,9 @@ function randomRival(R: () => number, i: number): Rival {
 
 describe('the outfits', () => {
   it('tables match, and a new career starts with the same rivals', () => {
-    expect(RIVALS).toEqual(P.RIVALS);
+    expect({ gdi: RIVALS.gdi, ct: RIVALS.ct }).toEqual(P.RIVALS);
     expect(TIER).toEqual(P.TIER);
-    expect(NEW_NAMES).toEqual(P.NEW_NAMES);
+    expect({ gdi: NEW_NAMES.gdi, ct: NEW_NAMES.ct }).toEqual(P.NEW_NAMES);
     expect(BID_ODDS).toEqual(P.BID_ODDS);
     for (const town of ['gdi', 'ct'] as TownId[]) for (let seed = 1; seed < 100; seed++) {
       P.setS(protoCareer({ town }));

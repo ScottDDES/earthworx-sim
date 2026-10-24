@@ -2,12 +2,12 @@
 // at the default, quotes every bulk enquiry, answers each card with its first choice, and ends the week.
 // Kept simple and only uses moves every build has had, so old builds can make saves with it too.
 
-import { choose, game } from '../src';
+import { choose, game, type TownId } from '../src';
 
 type Career = game.Career;
 
 /** A new career with its first machine bought and the doors open. */
-export function startCareer(seed: number, o: { town: 'gdi' | 'ct'; loan: number; hc?: boolean; bulk?: boolean }): Career {
+export function startCareer(seed: number, o: { town: TownId; loan: number; hc?: boolean; bulk?: boolean }): Career {
   const g = game as any;
   const c = game.newCareer({ co: 'Save Bot ' + seed, loan: o.loan, town: o.town, hc: !!o.hc, ...(o.bulk ? { path: 'bulk', bulk: true } : {}) } as never, seed);
   const L = (c.market?.listings || []) as { id: string; type: string; price: number }[];

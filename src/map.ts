@@ -71,10 +71,39 @@ export const BOQ: Record<string, Area> = Object.fromEntries(Object.keys(AREA_SPE
 export const CT_ROADS = ['Lolworth', 'Hillgrove', 'Burdekin Falls', 'Fletcher Creek', 'Seventy Mile', 'Bluff Downs', 'Lyndhurst', 'Wando Vale', 'Clarke River', 'Gainsford', 'Mt Emu Plains', 'Torrens Creek', 'Balfes Creek', 'Pentland', 'Greenvale', 'Ravenswood', 'Mingela', 'Basalt', 'Homestead', 'Dreghorn', 'Kirk River', 'Cape River', 'Sellheim', 'Reedy Springs', 'Mosgiel', 'Blue Range', 'Glendon', 'Pajingo', 'Myrtle Vale', 'Natal Downs'];
 export const CT_PITS = ['Lolworth Pit', 'Fletcher Ck Pit', 'Basalt Pit', 'Sellheim Pit', 'Reedy Springs Pit', 'Kirk River Pit', 'Mingela Pit', 'Cape River Pit'];
 
+/** The other towns' roads and pits, the way Charters Towers does it: names around the real district, placed near its localities. */
+export const ROADS: Record<Exclude<TownId, 'gdi'>, readonly string[]> = {
+  ct: CT_ROADS,
+  stg: ['Bollon', 'Nindigully', 'Thallon', 'Hebel', 'Dirranbandi', 'Boolba', 'Wagoo', 'Ballandool', 'Noondoo', 'Bullamon', 'Whyenbah', 'Wycombe', 'Bonanza', 'Teelba', 'Weribone', 'Glenearn', 'Cubbie', 'Bendee', 'Euraba', 'Narran', 'Wallam', 'Kooroon', 'Yarrabee', 'Balonne River', 'Moonie River', 'Culgoa', 'Bokhara', 'Mourabie', 'Begonia', 'Fernlee'],
+  dby: ['Jandowae', 'Bell', 'Jimbour', 'Kogan', 'Cecil Plains', 'Warra', 'Macalister', 'Kaimkillenbun', 'Diamondy', 'Bunya Mountains', 'Irvingdale', 'Ducklo', 'Nandi', 'Ranges Bridge', 'Myall Creek', 'Kumbarilla', 'Moonie', 'Western Creek', 'Daandine', 'Kupunn', 'Grassdale', 'Tipton', 'Pirrinuan', 'Marnhull', 'Blaxland', 'Jinghi', 'Greenswamp', 'Cooranga', 'Brigalow Creek', 'St Ruth'],
+  emd: ['Capella', 'Comet', 'Gindie', 'Anakie', 'Rubyvale', 'Sapphire', 'Willows', 'Theresa Creek', 'Selma', 'Codenwarra', 'Fernlees', 'Yamala', 'Lochington', 'Retro', 'Cotherstone', 'Wyuna', 'Nogoa', 'Retreat Creek', 'Glenprairie', 'Orion Downs', 'Arcturus', 'Mackenzie River', 'Craven', 'Hibernia', 'Weemah', 'Bonnie Doon', 'Corona', 'Clermont Gap', 'Lake Maraboon', 'Duckworth'],
+  mbh: ['Coppabella', 'Glenden', 'Dysart', 'Middlemount', 'Clermont', 'Nebo', 'Peak Downs', 'Isaac River', 'Suttor', 'Denham', 'Lake Elphinstone', 'Kilcummin', 'Carmichael', 'Burton Gorge', 'Logan Creek', 'Saraji', 'Valkyrie', 'Winchester', 'Eaglefield', 'Lenton Downs', 'Fort Cooper', 'Mt Coolon', 'Bundarra', 'Phillips Creek', 'Cherwell', 'Grasstree', 'Annandale', 'Retreat', 'Moorvale', 'Strathmore'],
+  mky: ['Sarina', 'Walkerston', 'Mirani', 'Eton', 'Seaforth', 'Finch Hatton', 'Marian', 'Habana', 'Calen', 'Kuttabul', 'Owens Creek', 'Gargett', 'Pinnacle', 'Netherdale', 'Septimus', 'Victoria Plains', 'Homebush', 'Oakenden', 'Koumala', 'Alligator Creek', 'Balberra', 'Sunnyside', 'Kinchant Dam', 'Hampden', 'Mount Ossa', 'Sandy Creek', 'Eungella', 'Palmyra', 'Farleigh', 'Pleystowe'],
+  isa: ['Cloncurry', 'Camooweal', 'Dajarra', 'Duchess', 'Kajabbi', 'Mary Kathleen', 'Gunpowder', 'Lady Loretta', 'Yelvertoft', 'Selwyn', 'Malbon', 'Corella', 'Mount Guide', 'Calton Hills', 'Barkly', 'Buckley River', 'Lake Julius', 'Paroo Creek', 'Leichhardt', 'Rifle Creek', 'Gidgee', 'Chatsworth', 'Ardmore', 'Kalkadoon', 'Fountain Springs', 'Quamby', 'Toby', 'Mica Creek', 'Sybella', 'Waverley'],
+  wei: ['Napranum', 'Mapoon', 'Aurukun', 'Coen', 'Archer River', 'Batavia Downs', 'Moreton', 'Embley', 'Mission River', 'Pennefather', 'Wenlock', 'Peninsula', 'Watson River', 'Merluna', 'York Downs', 'Wolverton', 'Holroyd', 'Kendall', 'Ducie', 'Myall Lagoon', 'Port Musgrave', 'Andoom', 'Hey Point', 'Pine River', 'Wallaby Island', 'Sudley', 'Weipa South', 'Lorim Point', 'Camisaderra', 'Rocky Point'],
+};
+export const PITS: Record<Exclude<TownId, 'gdi'>, readonly string[]> = {
+  ct: CT_PITS,
+  stg: ['Bollon Pit', 'Boolba Pit', 'Nindigully Pit', 'Hebel Pit', 'Wagoo Pit', 'Bendee Pit', 'Begonia Pit', 'Teelba Pit'],
+  dby: ['Kogan Pit', 'Jimbour Pit', 'Warra Pit', 'Kumbarilla Pit', 'Bell Pit', 'Diamondy Pit', 'Tipton Pit', 'Daandine Pit'],
+  emd: ['Anakie Pit', 'Gindie Pit', 'Capella Pit', 'Comet Pit', 'Selma Pit', 'Retro Pit', 'Orion Pit', 'Willows Pit'],
+  mbh: ['Coppabella Pit', 'Dysart Pit', 'Nebo Pit', 'Suttor Pit', 'Denham Pit', 'Saraji Pit', 'Kilcummin Pit', 'Burton Pit'],
+  mky: ['Sarina Pit', 'Marian Pit', 'Calen Pit', 'Oakenden Pit', 'Koumala Pit', 'Gargett Pit', 'Hampden Pit', 'Mirani Pit'],
+  isa: ['Dajarra Pit', 'Duchess Pit', 'Kajabbi Pit', 'Gunpowder Pit', 'Selwyn Pit', 'Malbon Pit', 'Corella Pit', 'Mica Creek Pit'],
+  wei: ['Napranum Pit', 'Mapoon Pit', 'Embley Pit', 'Moreton Pit', 'Wenlock Pit', 'Merluna Pit', 'Batavia Pit', 'Andoom Pit'],
+};
+
 /** Where each locality sits on the map (km from town). */
 export const PLACE_POS: Record<TownId, Record<string, [number, number]>> = {
   gdi: { Talwood: [-101, 16], Toobeah: [-45, 31], Yelarbon: [23, 31], Texas: [88, -7], Bungunya: [-75, 40], 'Billa Billa': [-10, 55], Kindon: [-55, 55] },
   ct: { Pentland: [-105, -10], Homestead: [-60, 5], Basalt: [-10, 60], Greenvale: [-45, 140], Ravenswood: [75, 40], Mingela: [55, 62] },
+  stg: { Dirranbandi: [-34, -60], Thallon: [28, -65], Nindigully: [24, -34], Bollon: [-108, 1], Hebel: [-76, -103], Mungindi: [39, -104] },
+  dby: { Jandowae: [-15, 44], Bell: [19, 28], Jimbour: [-5, 24], Kogan: [-49, 16], 'Cecil Plains': [-7, -39], Warra: [-34, 28] },
+  emd: { Capella: [-14, 50], Comet: [40, -8], Gindie: [-3, -23], Anakie: [-42, -2], Rubyvale: [-47, 12], Blackwater: [73, -6] },
+  mbh: { Coppabella: [26, 7], Glenden: [6, 72], Dysart: [31, -65], Middlemount: [67, -90], Clermont: [-42, -91], Nebo: [66, 36] },
+  mky: { Sarina: [3, -31], Walkerston: [-13, -2], Mirani: [-34, -2], Eton: [-23, -13], Seaforth: [-23, 27], 'Finch Hatton': [-58, 0] },
+  isa: { Cloncurry: [106, 2], Camooweal: [-142, 90], Dajarra: [2, -107], Duchess: [39, -70], Kajabbi: [56, 78], 'Lake Moondarra': [7, 17] },
+  wei: { Napranum: [1, -6], Mapoon: [2, 73], Aurukun: [-16, -80], Coen: [143, -145], 'Archer River': [115, -90], 'Batavia Downs': [87, -3] },
 };
 
 /** dmg: flood damaged · work: your crews · done: fixed by you · rw: a rival's crews · rd: fixed by someone else · ok: sound */
@@ -121,9 +150,9 @@ export function dmap(rand: Rand, st: MapHolder): DistrictMap {
   if (st.town === 'gdi') {
     for (const k of Object.keys(BOQ)) for (const x of BOQ[k]!.roads) roads.push({ n: x[0], x: x[5] || 0, y: x[6] || 0, L: Math.max(0.5, Math.round((x[1] + x[2]) * 10) / 10), area: k } as MapRoad);
   } else {
-    const pl = Object.keys(PLACE_POS.ct);
-    CT_ROADS.forEach((nm, i) => {
-      const P = PLACE_POS.ct[pl[i % pl.length]!]!, h = hashN(nm);
+    const town = st.town as Exclude<TownId, 'gdi'>, pl = Object.keys(PLACE_POS[town]);
+    ROADS[town].forEach((nm, i) => {
+      const P = PLACE_POS[town][pl[i % pl.length]!]!, h = hashN(nm);
       roads.push({ n: nm + ' Rd', x: P[0] + ((h % 50) - 25), y: P[1] + (((h >> 6) % 40) - 20), L: 3 + (h % 20), area: pl[i % pl.length]! } as MapRoad);
     });
   }

@@ -99,7 +99,7 @@ export function SetupScreen({ onStart, saves }: { onStart: (s: game.Setup) => vo
     <div className="wrap setup">
       <div className="hero">
         <h1>Where's your yard?</h1>
-        <p>Queensland for now: the two towns where we have 30 years of real rainfall. Your town sets the weather.</p>
+        <p>Nine Queensland towns, each with 30 years of its own real rainfall. Your town sets the weather and the kind of work around you.</p>
       </div>
       {(Object.keys(TOWNS) as TownId[]).map((k) => (
         <button key={k} type="button" className={'pick' + (town === k ? ' on' : '')} onClick={() => setTown(k)}>

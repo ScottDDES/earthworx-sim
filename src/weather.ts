@@ -2,7 +2,8 @@
 // picked at random from 1995 to 2023, and wraps around at the end of the record.
 
 import { dayOffset } from './calendar';
-import { RAIN, RAIN_ALPHABET, RAIN_FROM } from './data/rain';
+import { RAIN as RAIN_OLD, RAIN_ALPHABET, RAIN_FROM } from './data/rain';
+import { RAIN_QLD } from './data/rainQld';
 import type { Rand } from './rng';
 import { TOWNS, type TownId } from './towns';
 
@@ -14,6 +15,7 @@ export interface WeatherCtx {
 }
 
 const DAY_MS = 864e5;
+const RAIN: Record<TownId, string> = { ...RAIN_OLD, ...RAIN_QLD };
 
 /** Where in the record 1 April of a given year falls. */
 export function wxStartFor(year: number): number {

@@ -326,7 +326,7 @@ describe('card words', () => {
         if (!idle.length) continue;
         q = { k: kind, id: (pick(R, idle) as any).id, by: pick(R, ['Leanne', 'Dave']) };
       } else {
-        S.branch = { town: pick(R, Object.keys(TOWNS)), mgr: { name: 'Mick', wage: 2400, skill: pick(R, ['green', 'solid', 'gun']) }, rep: 20 };
+        S.branch = { town: pick(R, ['gdi', 'ct']), mgr: { name: 'Mick', wage: 2400, skill: pick(R, ['green', 'solid', 'gun']) }, rep: 20 };
         b.branch = clone(S.branch);
         q = { k: kind };
       }

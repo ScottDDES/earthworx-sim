@@ -5,8 +5,8 @@
 
 import { jobRef, note } from './diary';
 import { BASE_YEAR, yearOf } from './calendar';
-import { TOWNS } from './towns';
-import { BOQ, CT_PITS, CT_ROADS, dmap, mapRival, mapWork, pickRoads, placePos } from './map';
+import { TOWNS, type TownId } from './towns';
+import { BOQ, PITS, ROADS, dmap, mapRival, mapWork, pickRoads, placePos } from './map';
 import type { Mood } from './market';
 import { int, pick, type Rand } from './rng';
 import { compat, shuffled } from './compat';
@@ -128,8 +128,8 @@ export function genMajor(rand: Rand, st: CouncilWorld, p: PlanCtx, fmul: number,
   } else {
     const pool: (typeof BOQ)[string]['roads'] = [];
     for (const k of Object.keys(BOQ)) pool.push(...BOQ[k]!.roads);
-    const names = shuffled(rand, CT_ROADS);
-    area = pick(rand, TOWNS.ct.places);
+    const town = st.town as Exclude<TownId, 'gdi'>, names = shuffled(rand, ROADS[town]);
+    area = pick(rand, TOWNS[town].places);
     const cx = int(rand, 30, 90) * (rand() < 0.5 ? -1 : 1), cy = int(rand, 20, 80) * (rand() < 0.5 ? -1 : 1);
     roads = names.slice(0, int(rand, 18, 30)).map((nm) => {
       const x = pick(rand, pool).slice() as (typeof pool)[number], k = 1.3 * (0.7 + rand() * 0.6);
@@ -142,7 +142,7 @@ export function genMajor(rand: Rand, st: CouncilWorld, p: PlanCtx, fmul: number,
       x[4] = Math.round(x[4] * 1.4 + 3);
       return x;
     });
-    pits = CT_PITS.map((nm) => [nm, int(rand, 2, 40)]);
+    pits = PITS[town].map((nm) => [nm, int(rand, 2, 40)]);
   }
   const prest = prestigeOk && rand() < 0.4, tot = roads.reduce((a, x) => a + x[1] + x[2], 0);
   // a lot is about 55–95 km in the prototype; the real game aims for 70–110 and rounds down, so no lot comes up short

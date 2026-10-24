@@ -236,7 +236,17 @@ export function offerMachine(b: Pick<Biz, 'fleet' | 'week'>, o: Offer): Machine 
 }
 
 /** The real game's mines: the big gear on six months or more, late-model and low-hour only. */
-export const MINES: Record<TownId, readonly string[]> = { gdi: ['Surat Basin Coal', 'Moonie Ridge Coal'], ct: ['Gilbert Range Gold', 'Ironstone Creek Gold'] };
+export const MINES: Record<TownId, readonly string[]> = {
+  gdi: ['Surat Basin Coal', 'Moonie Ridge Coal'],
+  ct: ['Gilbert Range Gold', 'Ironstone Creek Gold'],
+  stg: [],
+  dby: ['Myall Ridge Coal', 'Western Downs Gas'],
+  emd: ['Mackenzie River Coal', 'Sapphire Ridge Coal'],
+  mbh: ['Isaac River Coal', 'Suttor Creek Coal', 'Denham Range Coal'],
+  mky: ['Connors Range Coal', 'Eungella Range Coal'],
+  isa: ['Leichhardt Copper', 'Selwyn Range Copper', 'Gunpowder Creek Zinc'],
+  wei: ['Embley Ridge Bauxite', 'Mission River Bauxite'],
+};
 export const MINE_TYPES: readonly MachineType[] = ['d9', 'd10', 's651', 's657', 'c825', 'excavator', 'moxy'];
 /** The same as a developer's big job. */
 export const MINE_STD = STD_STRICT;
@@ -319,7 +329,7 @@ export function genOffers(rand: Rand, b: Biz, fmul: number, won: boolean, won2: 
   // the real game: a mine rings about your big gear, for six months or more
   if (!compat.prototype && won) {
     const big = b.fleet.filter((m) => MINE_TYPES.includes(m.type) && m.status !== 'auction');
-    if (big.length && rand() < MINE_ODDS) {
+    if (big.length && MINES[b.town].length && rand() < MINE_ODDS * TOWNS[b.town].work.mine) {
       const type = pick(rand, big).type, Ty = TYPES[type], wet = rand() < MINE_WET, wks = int(rand, MINE_WEEKS[0], MINE_WEEKS[1]), r = 0.95 + rand() * 0.1;
       const base = { id: uid(b), type, place: pick(rand, T.places), client: pick(rand, MINES[b.town]), terms: MINE_TERMS, mine: true, std: { ...MINE_STD } };
       out.push(wet ? { ...base, kind: 'wet', days: wks * 5, rate: round(Ty.wet * MINE_PREMIUM * r, 50), fuelPaid: false } : { ...base, kind: 'dry', days: wks, rate: round(Ty.dry * MINE_PREMIUM * r, 100) });

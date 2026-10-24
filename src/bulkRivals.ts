@@ -19,6 +19,13 @@ export const LINE_KINDS: Record<BulkLine, readonly BulkKind[]> = {
 export const BULK_RIVALS: Record<TownId, readonly [string, number, BulkLine, number][]> = {
   gdi: [['Yelarbon Dam Sinking', 1, 'dams', 4], ['Kindon Laser Levelling', 2, 'laser', 5], ['Toobeah Scrapers', 2, 'scrapers', 9], ['Darling Downs Bulk Earthworks', 3, 'dev', 16]],
   ct: [['Greenvale Dam Sinking', 1, 'dams', 4], ['Homestead Laser Levelling', 2, 'laser', 5], ['Star River Scrapers', 2, 'scrapers', 9], ['Kennedy Bulk Earthworks', 3, 'dev', 16]],
+  stg: [['Thallon Dam Sinking', 1, 'dams', 4], ['Nindigully Laser Levelling', 2, 'laser', 6], ['Culgoa Scrapers', 2, 'scrapers', 10], ['Balonne Bulk Earthworks', 3, 'dev', 16]],
+  dby: [['Warra Dam Sinking', 1, 'dams', 4], ['Cecil Plains Laser Levelling', 2, 'laser', 5], ['Jondaryan Scrapers', 2, 'scrapers', 9], ['Western Downs Bulk Earthworks', 3, 'dev', 16]],
+  emd: [['Gindie Dam Sinking', 1, 'dams', 4], ['Nogoa Laser Levelling', 2, 'laser', 5], ['Theresa Creek Scrapers', 2, 'scrapers', 9], ['Central Highlands Bulk Earthworks', 3, 'dev', 16]],
+  mbh: [['Nebo Dam Sinking', 1, 'dams', 4], ['Clermont Laser Levelling', 2, 'laser', 4], ['Suttor Scrapers', 2, 'scrapers', 10], ['Isaac Bulk Earthworks', 3, 'dev', 18]],
+  mky: [['Marian Dam Sinking', 1, 'dams', 4], ['Pioneer Laser Levelling', 2, 'laser', 5], ['Sarina Scrapers', 2, 'scrapers', 8], ['Mackay Bulk Earthworks', 3, 'dev', 16]],
+  isa: [['Dajarra Dam Sinking', 1, 'dams', 4], ['Cloncurry Laser Levelling', 2, 'laser', 3], ['Kajabbi Scrapers', 2, 'scrapers', 8], ['North West Bulk Earthworks', 3, 'dev', 16]],
+  wei: [['Batavia Dam Sinking', 1, 'dams', 3], ['Mapoon Laser Levelling', 2, 'laser', 3], ['Archer River Scrapers', 2, 'scrapers', 7], ['Wenlock Bulk Earthworks', 3, 'dev', 14]],
 };
 
 export interface BulkRival {

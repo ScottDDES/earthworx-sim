@@ -13,12 +13,26 @@ export type RivalTier = 'small' | 'mid' | 'big';
 export const RIVALS: Record<TownId, readonly [string, number, number, number][]> = {
   gdi: [['Weir River Plant', 2, 0.97, 0.10], ['Bluegum Earthworks', 1, 1.02, 0.06], ['Coolmunda Civil', 1, 1, 0.14], ['Redgum Grading', 2, 0.95, 0.17], ['Condamine Civil Group', 3, 0.95, 0.1]],
   ct: [['Burdekin Plant', 2, 0.97, 0.10], ['Basalt Earthmoving', 1, 1.02, 0.06], ['Ironbark Civil', 1, 1, 0.14], ['Spinifex Grading', 2, 0.95, 0.17], ['Flinders Civil Group', 3, 0.95, 0.1]],
+  stg: [['Balonne Plant', 2, 0.97, 0.10], ['Moonie Earthworks', 1, 1.02, 0.06], ['Narran Civil', 1, 1, 0.14], ['Culgoa Grading', 2, 0.95, 0.17], ['Beardmore Civil Group', 3, 0.95, 0.1]],
+  dby: [['Myall Creek Plant', 2, 0.97, 0.10], ['Jimbour Earthworks', 1, 1.02, 0.06], ['Bunya Civil', 1, 1, 0.14], ['Kogan Grading', 2, 0.95, 0.17], ['Wambo Civil Group', 3, 0.95, 0.1]],
+  emd: [['Nogoa Plant', 2, 0.97, 0.10], ['Fairbairn Earthworks', 1, 1.02, 0.06], ['Theresa Creek Civil', 1, 1, 0.14], ['Comet River Grading', 2, 0.95, 0.17], ['Highlands Civil Group', 3, 0.95, 0.1]],
+  mbh: [['Isaac River Plant', 2, 0.97, 0.10], ['Suttor Earthworks', 1, 1.02, 0.06], ['Denham Civil', 1, 1, 0.14], ['Connors Grading', 2, 0.95, 0.17], ['Bowen Basin Civil Group', 3, 0.95, 0.1]],
+  mky: [['Pioneer Plant', 2, 0.97, 0.10], ['Eimeo Earthworks', 1, 1.02, 0.06], ['Eungella Civil', 1, 1, 0.14], ['Sandy Creek Grading', 2, 0.95, 0.17], ['Hay Point Civil Group', 3, 0.95, 0.1]],
+  isa: [['Leichhardt Plant', 2, 0.97, 0.10], ['Selwyn Earthworks', 1, 1.02, 0.06], ['Corella Civil', 1, 1, 0.14], ['Gidgee Grading', 2, 0.95, 0.17], ['North West Civil Group', 3, 0.95, 0.1]],
+  wei: [['Embley Plant', 2, 0.97, 0.10], ['Mission River Earthworks', 1, 1.02, 0.06], ['Pennefather Civil', 1, 1, 0.14], ['Wenlock Grading', 2, 0.95, 0.17], ['Cape York Civil Group', 3, 0.95, 0.1]],
 };
 
 /** Names for new outfits: a local place, then a trade. */
 export const NEW_NAMES: Record<TownId, readonly string[]> = {
   gdi: ['Callandoon', 'Brigalow', 'Dumaresq', 'Mungindi', 'Kildonan', 'Bendidee', 'Wyaga', 'Lundavra', 'Billa Billa', 'Weengallon', 'Gradule', 'Kurumbul'],
   ct: ['Pentland', 'Fanning', 'Lolworth', 'Seventy Mile', 'Campaspe', 'Mingela', 'Cape River', 'Dalrymple', 'Sellheim', 'Balfes Creek', 'Torrens Creek', 'Hervey'],
+  stg: ['Boolba', 'Wagoo', 'Bollon', 'Hebel', 'Thallon', 'Whyenbah', 'Teelba', 'Bendee', 'Begonia', 'Weribone', 'Fernlee', 'Bokhara'],
+  dby: ['Warra', 'Bell', 'Macalister', 'Diamondy', 'Kumbarilla', 'Daandine', 'Tipton', 'Jinghi', 'Cooranga', 'Ducklo', 'Irvingdale', 'Kupunn'],
+  emd: ['Capella', 'Gindie', 'Anakie', 'Willows', 'Selma', 'Retro', 'Orion', 'Arcturus', 'Lochington', 'Yamala', 'Craven', 'Weemah'],
+  mbh: ['Coppabella', 'Glenden', 'Dysart', 'Nebo', 'Saraji', 'Kilcummin', 'Burton', 'Logan Creek', 'Moorvale', 'Lenton', 'Winchester', 'Peak Downs'],
+  mky: ['Sarina', 'Walkerston', 'Marian', 'Habana', 'Calen', 'Gargett', 'Koumala', 'Oakenden', 'Homebush', 'Farleigh', 'Pleystowe', 'Septimus'],
+  isa: ['Cloncurry', 'Dajarra', 'Duchess', 'Kajabbi', 'Malbon', 'Gunpowder', 'Mica Creek', 'Kalkadoon', 'Quamby', 'Chatsworth', 'Ardmore', 'Sybella'],
+  wei: ['Napranum', 'Mapoon', 'Embley', 'Moreton', 'Wenlock', 'Merluna', 'Batavia', 'Andoom', 'Ducie', 'Holroyd', 'Kendall', 'Wolverton'],
 };
 export const NEW_TAILS = ['Earthmoving', 'Plant Hire', 'Grading', 'Contracting', 'Civil', 'Earthworks'] as const;
 

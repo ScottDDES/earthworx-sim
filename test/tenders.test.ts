@@ -47,7 +47,7 @@ function standing(S: any, whs: any, d: Difficulty): Standing {
 describe('the district map', () => {
   it('the same roads, places and starting damage', () => {
     expect(BOQ).toEqual(P.BOQ);
-    expect(PLACE_POS).toEqual(P.PLACE_POS);
+    expect({ gdi: PLACE_POS.gdi, ct: PLACE_POS.ct }).toEqual(P.PLACE_POS);
     for (const town of ['gdi', 'ct'] as TownId[]) for (let seed = 1; seed < 60; seed++) {
       const st: any = { town, week: 1, jobs: [] }, S = protoCareer({ town });
       P.setS(S);
