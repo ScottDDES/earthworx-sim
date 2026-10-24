@@ -16,6 +16,7 @@ import { note } from './diary';
 import { fuelUse } from './fuel';
 import { STD_EASY, STD_STRICT } from './plantStd';
 import { bulkLapse, bulkLoss, bulkRivalsWeek, keenness, mkBulkRivals, type BulkRival } from './bulkRivals';
+import { ASK_BACK_Q, COTTON_BLOCKS, PLANT_DOCK, genProject, isProj, plantWeek, projOdds, type ProjKind, type Stage } from './projects';
 
 const round = (n: number, to: number) => Math.round(n / to) * to;
 
@@ -90,8 +91,8 @@ export const ATTACH: Record<Attachment, number> = { laser: 38000, rake: 45000, c
 // ---------- the kinds of work ----------
 
 export type DamKind = 'ringTank' | 'turkeyNest';
-export type BulkKind = DamKind | 'laser' | 'channel' | 'contour' | 'pad' | 'rake' | 'cutter' | 'dev';
-export type Unit = 'm3' | 'ha' | 'm' | 'km';
+export type BulkKind = DamKind | 'laser' | 'channel' | 'contour' | 'pad' | 'rake' | 'cutter' | 'dev' | ProjKind;
+export type Unit = 'm3' | 'ha' | 'm' | 'km' | 'hd';
 
 export interface KindSpec {
   unit: Unit;
@@ -105,6 +106,8 @@ export interface KindSpec {
   tested?: boolean;
   /** Only once you've run your own contract. */
   big?: boolean;
+  /** The real game: a project of stages (feedlots, cotton developments). */
+  proj?: boolean;
 }
 export const KINDS: Record<BulkKind, KindSpec> = {
   ringTank: { unit: 'm3', odds: 20, survey: true },
@@ -116,6 +119,9 @@ export const KINDS: Record<BulkKind, KindSpec> = {
   rake: { unit: 'ha', odds: 8, att: 'rake', survey: false },
   cutter: { unit: 'ha', odds: 6, att: 'cutter', survey: false },
   dev: { unit: 'm3', odds: 4, survey: true, tested: true, big: true },
+  // the real game: priced a head of cattle, or a hectare of cotton, and done stage by stage
+  feedlot: { unit: 'hd', odds: 4, survey: true, tested: true, big: true, proj: true },
+  cotton: { unit: 'ha', odds: 4, survey: true, tested: true, big: true, proj: true },
 };
 // the real game: developers ring more often once you're doing them
 onCompat(() => { KINDS.dev.odds = compat.prototype ? 4 : 7; });
@@ -153,6 +159,10 @@ export interface FarmEnquiry {
   area?: number;
   /** Developers: weeks allowed once you start. */
   weeks?: number;
+  /** The real game's projects: the stages, what a survey finds across them (1 is the plans), and which cotton block it is. */
+  stages?: Stage[];
+  smul?: number;
+  block?: number;
   /** The client's ceiling. Hidden. */
   budget: number;
   /** Your rate per unit, and the price once sent. */
@@ -185,6 +195,8 @@ export interface BulkBook {
   /** The real game: the bulk and ag outfits, and the last week a developer rang. */
   rv?: BulkRival[];
   devLast?: number;
+  /** The real game: a feedlot you built wants its pens cleaned (a loader on hire), from week w. */
+  pens?: { client: string; place: string; w: number };
 }
 export type BulkState = Biz & { bulk?: BulkBook; won2?: boolean; bulkDone?: number; devDone?: number; testsPassed?: number };
 type B = BulkState;
@@ -194,15 +206,18 @@ const DEVS = ['Macintyre Land', 'Border Solar', 'Weir Valley Estates', 'Downs Lo
 
 /** Someone rings about work. Developers only once you've run your own contract. */
 export function genEnquiry(rand: Rand, b: B, fmul: number, only?: BulkKind): FarmEnquiry {
-  const pool = (Object.keys(KINDS) as BulkKind[]).filter((k) => !KINDS[k].big || b.won2);
+  // the real game: feedlots and cotton growers ring as often as the town has them
+  const odds = (k: BulkKind) => (isProj(k) ? KINDS[k].odds * projOdds(b.town, k) : KINDS[k].odds);
+  const pool = (Object.keys(KINDS) as BulkKind[]).filter((k) => (!KINDS[k].big || b.won2) && (!KINDS[k].proj || (!compat.prototype && odds(k) > 0)));
   let kind = only ?? pool[0]!;
   if (!only) {
-    let x = rand() * pool.reduce((a, k) => a + KINDS[k].odds, 0);
-    for (const k of pool) if ((x -= KINDS[k].odds) < 0) { kind = k; break; }
+    let x = rand() * pool.reduce((a, k) => a + odds(k), 0);
+    for (const k of pool) if ((x -= odds(k)) < 0) { kind = k; break; }
   }
   const lift = compat.prototype ? 1 : PRICE_LIFT, mkt = (0.92 + 0.08 * fmul) * lift, place = pick(rand, TOWNS[b.town].places);
   const yourRate = (r: number) => { const s = rateStep({ kind }); return Math.round((r * lift) / s) * s; };
   const base = { id: uid(b), kind, place, week: b.week } as const;
+  if (isProj(kind)) return genProject(rand, kind, mkt, lift, base);
   const noise = (lo: number, hi: number) => lo + rand() * (hi - lo);
   if (isDam(kind)) {
     let dam: DamPit;
@@ -291,7 +306,7 @@ export function quotePrice(e: FarmEnquiry): number {
 /** Rate steps by unit: 10c a m³, $10 a hectare or km... */
 export function rateStep(e: Pick<FarmEnquiry, 'kind'>): number {
   const u = KINDS[e.kind].unit;
-  return u === 'm3' ? 0.1 : u === 'm' ? 0.5 : u === 'ha' ? 10 : 50;
+  return u === 'm3' ? 0.1 : u === 'm' ? 0.5 : u === 'ha' ? 10 : u === 'hd' ? 1 : 50;
 }
 
 export function setRate(b: B, id: string, steps: number): void {
@@ -362,11 +377,14 @@ export type BulkEvent =
   | { k: 'burnWait'; jobId: string }
   | { k: 'burnt'; jobId: string; price: number }
   | { k: 'devClaim'; jobId: string; amt: number }
+  | { k: 'stageDone'; jobId: string; stage: string; amt: number }
+  | { k: 'plantMissed'; jobId: string; dock: number }
   | { k: 'devBust'; jobId: string; lost: number };
 
 /** Once a week: clients answer last week's prices, comebacks ring, windrows get burnt, developers pay or fold, and the phone might ring. */
 export function bulkWeek(rand: Rand, b: B, fmul: number, events: BulkEvent[], mm = 0): void {
   const S = (b.bulk ??= { enq: [] });
+  if (!compat.prototype) plantCheck(b, events);
   if (!compat.prototype) bulkRivalsWeek(rand, (S.rv ??= mkBulkRivals(b.town)), TOWNS[b.town].places, fmul);
   for (const L of (S.leaks ?? []).slice()) {
     if (L.w <= b.week) {
@@ -480,7 +498,7 @@ export function bulkWeek(rand: Rand, b: B, fmul: number, events: BulkEvent[], mm
 /** The kinds of work the yard could start today, gear and attachments both. */
 export function doable(b: Pick<B, 'fleet' | 'bulk' | 'won2'>): BulkKind[] {
   const ms = b.fleet.filter((m) => m.status !== 'auction');
-  return (Object.keys(KINDS) as BulkKind[]).filter((k) => (!KINDS[k].big || b.won2) && workRate(ms, { dk: k, haul: 200, per: 3 }, b.bulk?.att).perHour > 0);
+  return (Object.keys(KINDS) as BulkKind[]).filter((k) => !KINDS[k].proj && (!KINDS[k].big || b.won2) && workRate(ms, { dk: k, haul: 200, per: 3 }, b.bulk?.att).perHour > 0);
 }
 
 function enq(b: B, id: string): FarmEnquiry | undefined {
@@ -495,11 +513,30 @@ function bulkJob(b: B, e: FarmEnquiry): Job {
     dk: e.kind, tested: !!e.tested, qsum: 0, dam: e.dam, haul: e.haul, per: e.per, rock: e.rock, truth: e.truth, est: pricingVol(e), m3: 0, won: b.week,
     weeks: e.weeks, claimed: 0, retained: 0, spread: [] as string[], crew: {} as Record<string, string>, ...(e.std ? { std: e.std } : {}),
   };
+  // the real game: a project starts on its first stage
+  if (e.stages) {
+    const mul = e.surveyed ? e.smul ?? 1 : 1;
+    j.proj = e.kind;
+    j.stages = e.stages.map((s) => ({ ...s, est: Math.round(s.qty * mul * 100) / 100 }));
+    j.si = 0;
+    j.paid = 0;
+    if (e.block) j.block = e.block;
+    if (e.kind === 'cotton') j.plantBy = plantWeek(b.week);
+    setStage(j, 0);
+  }
   b.jobs.push(j);
   return j;
 }
 
-// ---------- the spread ----------
+/** A project moves on to a stage: its kind of work, its quantities, and a fresh start on quality and the tests. */
+function setStage(j: Job, i: number): void {
+  const s = (j.stages as (Stage & { est: number })[])[i]!;
+  j.si = i;
+  Object.assign(j, { dk: s.dk, truth: s.truth, est: s.est, haul: s.haul, per: s.per, dam: s.dam, tested: !!s.tested, m3: 0, qsum: 0 });
+  for (const k of ['precon', 'signAsked', 'signed', 'slowest', 'wetPush', 'dry']) delete (j as Record<string, unknown>)[k];
+  if (s.dk === 'laser') j.lzr = true;
+  else delete j.lzr;
+}
 
 const bulkScraper = (t: MachineType) => SCRAPER_SPEC[t as BulkType];
 const has = (b: B, a: Attachment) => !!b.bulk?.att?.[a];
@@ -628,7 +665,12 @@ export function freeFor(b: Pick<B, 'fleet'> & { week?: number }, kind: BulkKind,
   const idle = b.fleet.filter((m) => m.status === 'idle' && m.down === 0 && meetsStd(m, std, b.week ?? 1));
   const pickN = (f: (m: Machine) => boolean, n: number) => idle.filter(f).slice(0, n);
   switch (kind) {
-    case 'laser': return [...idle.filter((m) => bulkScraper(m.type) && (compat.prototype || m.laser)), ...pickN((m) => m.type === 'grader', 1)];
+    case 'laser': {
+      const scr = idle.filter((m) => bulkScraper(m.type) && (compat.prototype || m.laser));
+      // the real game: open-bowl scrapers take a dozer to push them, one for every two
+      const push = compat.prototype ? 0 : Math.ceil(scr.filter((m) => bulkScraper(m.type)!.pushed).length / 2);
+      return [...scr, ...pickN((m) => !!DOZE[m.type as BulkType], push), ...pickN((m) => m.type === 'grader', 1)];
+    }
     case 'channel': return [...idle.filter((m) => m.type === 'excavator'), ...pickN((m) => !!DOZE[m.type as BulkType], 1)];
     case 'contour': return pickN((m) => !!CONTOUR_KM[m.type], 2);
     case 'rake': return pickN((m) => !!RAKE_HA[m.type as BulkType], 1);
@@ -724,7 +766,7 @@ function startOne(b: B, j: Job, events: BulkEvent[]): void {
   if (j.state === 'waiting') {
     j.state = 'running';
     j.started = b.week;
-    if (j.dk === 'dev') j.due = b.week + (j.weeks as number);
+    if (j.dk === 'dev' || j.proj === 'feedlot') j.due = b.week + (j.weeks as number);
     events.push({ k: 'damStarted', jobId: j.id });
     note(b, { k: 'damStarted', farm: j.client, place: j.place, dk: j.dk });
   }
@@ -807,7 +849,80 @@ export function damDay(rand: Rand, b: B, j: Job, wet: boolean, w: WorkshopCtx, r
   j.spent = (j.spent || 0) + cost;
   book(b.acc, 'jobCosts', cost);
   fuelUse(b, going.reduce((a, m) => a + TYPES[m.type].fuel, 0));
-  if ((j.m3 as number) >= (j.truth as number)) finishJob(rand, b, j, rep, events);
+  if ((j.m3 as number) >= (j.truth as number)) (j.proj ? stageDone : finishJob)(rand, b, j, rep, events);
+}
+
+/** A project's stage is done: tested if it's tested, paid for, and on to the next (or finished). */
+function stageDone(rand: Rand, b: B, j: Job, rep: WeekReport, events: BulkEvent[]): void {
+  const S = j.stages as (Stage & { est: number })[], i = j.si as number, s = S[i]!, last = i === S.length - 1;
+  const q = wallQuality(j);
+  // quality across the job, by its share of the price
+  j.qw = ((j.qw as number) || 0) + q * s.share;
+  if (s.tested) {
+    if (j.signed || rand() < passOdds(q)) {
+      b.rep += 1;
+      b.testsPassed = (b.testsPassed || 0) + 1;
+      events.push({ k: 'damPassed', jobId: j.id });
+      if (j.signed && rand() >= passOdds(q)) laterBulk(b, 'signFail', int(rand, 12, 40), { farm: j.client, place: j.place, cost: round((j.fixed as number) * s.share * REWORK * 2, 100) });
+    } else {
+      const cost = round((j.fixed as number) * s.share * REWORK, 100);
+      b.bank -= cost;
+      rep.costs += cost;
+      j.spent = (j.spent || 0) + cost;
+      b.rep = Math.max(0, b.rep - 1);
+      events.push({ k: 'damFailed', jobId: j.id, cost });
+    }
+  }
+  // paid for the stage; the last payment carries the dock for a late cotton block and a feedlot's damages
+  let amt = last ? (j.fixed as number) - ((j.paid as number) || 0) : round((j.fixed as number) * s.share, 100);
+  if (last) {
+    const ld = j.proj === 'feedlot' && j.due != null ? round(Math.max(0, b.week - (j.due as number)) * DEV_LD * (j.fixed as number), 100) : 0;
+    j.ld = ld;
+    amt -= ((j.dock as number) || 0) + ld;
+  }
+  j.paid = ((j.paid as number) || 0) + amt;
+  invoice(b, j.client, amt, j.terms, rep);
+  events.push({ k: 'stageDone', jobId: j.id, stage: s.id, amt });
+  note(b, { k: 'stageDone', farm: j.client, place: j.place, pk: j.proj, stage: s.id, amt, n: i + 1, of: S.length });
+  if (!last) {
+    // the gear goes back to the yard, and the next stage takes what it needs
+    for (const m of b.fleet) if (m.jobId === j.id) {
+      m.jobId = null;
+      if (m.status === 'job') m.status = 'idle';
+    }
+    for (const p of b.staff) if (p.jobId === j.id) p.jobId = null;
+    if (b.youJob === j.id) b.youJob = null;
+    setStage(j, i + 1);
+    startOne(b, j, events);
+    return;
+  }
+  endJob(b, j);
+  j.earned = j.fixed as number;
+  j.dk = j.proj;
+  b.bulkDone = (b.bulkDone || 0) + 1;
+  (b as { projDone?: number }).projDone = ((b as { projDone?: number }).projDone || 0) + 1;
+  events.push({ k: 'damDone', jobId: j.id, price: j.fixed as number, m3: 0, est: 0 });
+  note(b, { k: 'damDone', farm: j.client, place: j.place, dk: j.proj, price: j.fixed, m3: 0, est: 0, spent: Math.round(j.spent || 0) });
+  // done well, they're back: the next cotton block next year, or the pens cleaned and the yard grown
+  const good = ((j.qw as number) || 0) >= ASK_BACK_Q;
+  if (j.proj === 'cotton' && good && !j.late && ((j.block as number) || 1) < COTTON_BLOCKS) laterBulk(b, 'cottonBlock', int(rand, 30, 44), { farm: j.client, place: j.place, block: ((j.block as number) || 1) + 1 });
+  if (j.proj === 'feedlot' && good) {
+    (b.bulk ??= { enq: [] }).pens = { client: j.client, place: j.place, w: b.week + int(rand, 2, 6) };
+    laterBulk(b, 'feedlotMore', int(rand, 40, 70), { farm: j.client, place: j.place });
+  }
+}
+
+/** The real game: a cotton block not levelled by planting. The grower docks you, and there's no next block. */
+export function plantCheck(b: B, events: BulkEvent[]): void {
+  for (const j of b.jobs) {
+    if (j.kind !== 'bulk' || j.proj !== 'cotton' || j.finished || j.late || b.week < (j.plantBy as number)) continue;
+    const S = j.stages as Stage[], lv = S.findIndex((s) => s.id === 'level');
+    if ((j.si as number) > lv) continue;
+    j.late = true;
+    j.dock = round((j.fixed as number) * PLANT_DOCK, 100);
+    events.push({ k: 'plantMissed', jobId: j.id, dock: j.dock as number });
+    note(b, { k: 'plantMissed', farm: j.client, place: j.place, dock: j.dock });
+  }
 }
 
 function endJob(b: B, j: Job): void {

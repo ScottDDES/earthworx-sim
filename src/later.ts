@@ -11,13 +11,16 @@ import { TOWNS } from './towns';
 import { int, pick, type Rand } from './rng';
 import { COMP_AFTER, NAMES, ROLES, SKILLS, type Person } from './staff';
 import { RTW_ADVISORY } from './advisory';
+import { genProject } from './projects';
+import { PRICE_LIFT } from './bulk';
+import { uid } from './hire';
 
 const round = (n: number, to: number) => Math.round(n / to) * to;
 
 export interface Later {
   /** The week it lands. */
   w: number;
-  k: 'quit' | 'ufd' | 'rzDam' | 'audit' | 'tipOut' | 'signFail';
+  k: 'quit' | 'ufd' | 'rzDam' | 'audit' | 'tipOut' | 'signFail' | 'cottonBlock' | 'feedlotMore';
   [x: string]: unknown;
 }
 
@@ -100,6 +103,16 @@ export function laterWeek(rand: Rand, c: Career): void {
         relAdd(c as never, hc, -6);
         c.rep = Math.max(0, c.rep - 3);
         note(c, { k: 'tipOut', hc, rival: x.rival });
+        break;
+      }
+      case 'cottonBlock':
+      case 'feedlotMore': {
+        // the real game: a happy client's next stage of development, theirs at anything reasonable
+        const S = (c.bulk ??= { enq: [] }), cot = x.k === 'cottonBlock';
+        const e = genProject(rand, cot ? 'cotton' : 'feedlot', PRICE_LIFT, PRICE_LIFT, { id: uid(c as never), place: x.place as string, week: c.week }, { farm: x.farm as string, ...(cot ? { block: x.block as number } : { size: int(rand, 10, 40) * 100 }) });
+        S.enq.push(e);
+        S.promise = { farm: e.farm, until: c.week + 26 };
+        note(c, { k: cot ? 'cottonBlockRang' : 'feedlotMoreRang', farm: e.farm, place: e.place, block: e.block });
         break;
       }
       case 'signFail': {

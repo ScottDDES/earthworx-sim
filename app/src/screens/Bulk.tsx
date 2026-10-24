@@ -2,9 +2,9 @@
 
 import {
   ATTACH, BULK_CASUAL, laserFree, laserOwned, FIRE_MONTHS, KINDS, SURVEY_COST, TYPES, WAIT_WEEKS, damVolume, freeFor, isDam, jobEstimate, monthIdx, pricingVol, quotePrice,
-  rateStep, wallQuality, meetsStd, game, type PlantStd, type Attachment, type BulkKind, type FarmEnquiry, type Job,
+  rateStep, wallQuality, meetsStd, projDone, game, type PlantStd, type Attachment, type BulkKind, type FarmEnquiry, type Job, type Stage,
 } from '@engine';
-import { ATTACH_NAME, ATTACH_NOTE, DAM_KIND, SLOWEST, UNIT, damTitle, enquiryLine, needs, qty, surveyFind, surveyLabel, surveyRisk, wallWord } from '@engine/text/bulk';
+import { ATTACH_NAME, ATTACH_NOTE, DAM_KIND, SLOWEST, STAGE_NAME, STAGE_NOTE, UNIT, damTitle, enquiryLine, needs, qty, surveyFind, surveyLabel, surveyRisk, wallWord } from '@engine/text/bulk';
 import { jobTitle } from '@engine/text/work';
 import { f } from '../format';
 
@@ -66,14 +66,44 @@ function heldUp(c: Career, j: Job): string[] {
   });
 }
 
+/** A project's stages, each with what your free gear would take for it. */
+function stageEstimates(c: Career, e: FarmEnquiry) {
+  const mul = e.surveyed ? e.smul ?? 1 : 1;
+  return (e.stages ?? []).map((s) => {
+    const q = Math.round(s.qty * mul * 100) / 100;
+    return { s, q, x: jobEstimate(c as never, freeFor(c, s.dk), { kind: s.dk, haul: s.haul, per: s.per, rock: false }, q) };
+  });
+}
+
+/** The stages of a feedlot or cotton development, as a list. */
+function StageList({ c, e }: { c: Career; e: FarmEnquiry }) {
+  return (
+    <div style={{ display: 'grid', gap: 4 }}>
+      {stageEstimates(c, e).map(({ s, q, x }, i) => (
+        <div key={s.id} className="row tiny" style={{ alignItems: 'flex-start', gap: 8, flexWrap: 'nowrap' }}>
+          <b className="num" style={{ minWidth: 14 }}>{i + 1}</b>
+          <span className="grow"><b>{STAGE_NAME[s.id]}</b>{s.tested ? ' · tested' : ''}<br /><span className="muted">{qty(q, KINDS[s.dk].unit)}. {STAGE_NOTE[s.id]}</span></span>
+          <span className="num" style={{ whiteSpace: 'nowrap', color: x.perDay > 0 ? 'inherit' : 'var(--rust)' }}>{x.perDay > 0 ? x.days + ' day' + (x.days === 1 ? '' : 's') : 'No gear'}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** A client's enquiry: the quantity, the survey, what your spread would take, and your price. */
 export function EnquiryCard({ c, e, act }: { c: Career; e: FarmEnquiry; act: Act }) {
-  const K = KINDS[e.kind], u = K.unit, vol = pricingVol(e), spread = freeFor(c, e.kind), est = jobEstimate(c as never, spread, e, vol), price = quotePrice(e);
+  const K = KINDS[e.kind], u = K.unit, vol = pricingVol(e), spread = freeFor(c, e.kind), price = quotePrice(e);
+  const ps = e.stages ? stageEstimates(c, e) : null;
+  // a project: the stages' days and costs added up, and it can only be done if every stage can
+  const est = ps
+    ? { perDay: ps.every((p) => p.x.perDay > 0) ? 1 : 0, days: ps.reduce((a, p) => a + p.x.days, 0), cost: ps.reduce((a, p) => a + p.x.cost, 0), dayCost: 0, casuals: 0, slowest: '' }
+    : jobEstimate(c as never, spread, e, vol);
   const att = K.att && !c.bulk?.att?.[K.att] ? K.att : null;
+  const chip = e.kind === 'dev' ? 'DEVELOPER' : e.kind === 'feedlot' ? 'FEEDLOT' : e.kind === 'cotton' ? 'GROWER' : 'FARM';
   return (
     <div className="card">
       <div className="row" style={{ flexWrap: 'wrap' }}>
-        <span className="chip c-job">{e.kind === 'dev' ? 'DEVELOPER' : 'FARM'}</span><span className="chip c-idle">{DAM_KIND[e.kind].toUpperCase()}</span>
+        <span className="chip c-job">{chip}</span><span className="chip c-idle">{DAM_KIND[e.kind].toUpperCase()}</span>
         {e.tested && <span className="chip c-rain">TESTED</span>}<span className="grow" /><span className="tiny muted">{e.quoted ? 'Price sent' : 'Rang week ' + e.week}</span>
       </div>
       <b>{damTitle(e)}</b>
@@ -88,10 +118,14 @@ export function EnquiryCard({ c, e, act }: { c: Career; e: FarmEnquiry; act: Act
       {e.kind === 'rake' && <div className="tiny">Windrows can't be burnt in fire season (August and September). Finish then and you wait for your money.</div>}
       {att && <div className="tiny" style={{ color: 'var(--rust)' }}>Needs the {ATTACH_NAME[att]} ({f(ATTACH[att])} in the Market).</div>}
       {e.std && <StdLine c={c} kind={e.kind} std={e.std} />}
+      {e.stages && <StageList c={c} e={e} />}
       {e.kind === 'laser' && !att && laserFree(c as never) <= 0 && <div className="tiny" style={{ color: 'var(--rust)' }}>Your Laser Gear is on another job. Win this and it waits for it, or buy another in the Market.</div>}
       {e.kind === 'laser' && !c.fleet.some((m) => m.laser && TYPES[m.type] && ['pull', 's623', 's627', 's631', 's637', 's651', 's657'].includes(m.type)) && <div className="tiny" style={{ color: 'var(--rust)' }}>Needs Laser Buckets or scrapers fitted with laser control (in the Yard).</div>}
       <div className="tiny" style={{ background: 'var(--soft)', borderRadius: 10, padding: '10px 12px' }}>
-        {est.perDay > 0
+        {ps ? (est.perDay > 0
+          ? <>With what's free in your yard: about <b>{est.days} working days</b> across the {ps.length} stages, one after another. The spreads cost about {f(est.cost)} all up in fuel, servicing and labour hire.</>
+          : <>Not every stage can be done with your gear yet. {needs(e.kind)}</>)
+        : est.perDay > 0
           ? <>With what's free in your yard: about <b>{est.days} working day{est.days === 1 ? '' : 's'}</b> at {qty(Math.round(est.perDay * 10) / 10, u)} a day, held up by {SLOWEST[est.slowest] ?? est.slowest}. The spread costs about {f(est.dayCost)} a day in fuel, servicing{est.casuals ? ' and ' + est.casuals + ' labour-hire operator' + (est.casuals > 1 ? 's' : '') + ' at ' + f(BULK_CASUAL) : ''}: {f(est.cost)} all up.</>
           : <>Nothing free in your yard can do it yet. {needs(e.kind)}</>}
       </div>
@@ -122,10 +156,24 @@ export function DamJobCard({ c, j, act }: { c: Career; j: Job; act: Act }) {
   const est = j.est as number, done = Math.min(j.m3 as number, j.truth as number), pct = Math.min(100, Math.round((done / est) * 100));
   const who = (id: string) => (id === 'you' ? 'You' : id === 'casual' ? 'labour hire' : c.staff.find((p) => p.id === id)?.name ?? '?');
   const left = WAIT_WEEKS - (c.week - (j.won as number));
+  const S = j.stages as Stage[] | undefined, si = (j.si as number) ?? 0;
   return (
     <div className="card">
+      {S && (
+        <>
+          <div className="row"><span className="chip c-job">{DAM_KIND[j.proj as BulkKind].toUpperCase()}</span><span className="grow" /><span className="tiny muted">Contract {f(j.fixed as number)}</span></div>
+          <b>{damTitle(j as never)}</b>
+          <div className="row tiny"><span className="grow">Stage {si + 1} of {S.length}: <b>{STAGE_NAME[S[si]!.id]}</b></span><span className="num">{Math.round(projDone(j as never) * 100)}% of the job</span></div>
+          <div className="bar"><i style={{ width: Math.round(projDone(j as never) * 100) + '%', background: 'var(--teal)' }} /></div>
+          <div className="tiny muted">{STAGE_NOTE[S[si]!.id]} Paid {f((j.paid as number) || 0)} so far, each stage as it's done.</div>
+          {j.plantBy != null && <div className="tiny" style={{ color: j.late ? 'var(--rust)' : 'inherit' }}>{j.late ? 'Not level for planting: ' + f((j.dock as number) || 0) + ' docked, and no next block.' : 'Fields level by week ' + (j.plantBy as number) + ' for planting' + (si > S.findIndex((x) => x.id === 'level') ? ': done.' : ', ' + ((j.plantBy as number) - c.week) + ' weeks away.')}</div>}
+          {j.proj === 'feedlot' && j.due != null && <div className="tiny" style={{ color: c.week > (j.due as number) ? 'var(--rust)' : 'inherit' }}>Due by the end of week {j.due as number}{c.week > (j.due as number) ? ': late, damages are running' : ''}.</div>}
+        </>
+      )}
+      {!S && <>
       <div className="row"><span className="chip c-job">{DAM_KIND[kind].toUpperCase()}</span>{j.tested ? <span className="chip c-rain">TESTED</span> : null}<span className="grow" /><span className="tiny muted">{kind === 'dev' ? 'Contract ' : 'Fixed '}{f(j.fixed as number)}</span></div>
       <b>{damTitle(j as never)}</b>
+      </>}
       {j.state === 'waiting' ? (
         <>
           <div className="small muted">Waiting to start. {needs(kind)} {left} week{left === 1 ? '' : 's'} before {j.client} gets someone else.</div>

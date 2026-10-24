@@ -21,6 +21,7 @@ import { TOWNS, type TownId } from './towns';
 import { forecast, type WeatherCtx } from './weather';
 import { yearOf } from './calendar';
 import { STD_STRICT } from './plantStd';
+import { PENS_PREMIUM, PENS_WEEKS } from './projects';
 
 /** Head contractors: weeks to pay, and how often they pay late. */
 export const CLIENTS: Record<string, { terms: number; late: number }> = {
@@ -61,6 +62,8 @@ export interface Offer {
   rock?: 0 | 1 | 2;
   /** The real game: a mine's long hire, and the plant standard its machine has to meet. */
   mine?: boolean;
+  /** The real game: cleaning pens at a feedlot you built. */
+  pens?: boolean;
   std?: { age: number; hrs: number };
 }
 
@@ -335,6 +338,11 @@ export function genOffers(rand: Rand, b: Biz, fmul: number, won: boolean, won2: 
       out.push(wet ? { ...base, kind: 'wet', days: wks * 5, rate: round(Ty.wet * MINE_PREMIUM * r, 50), fuelPaid: false } : { ...base, kind: 'dry', days: wks, rate: round(Ty.dry * MINE_PREMIUM * r, 100) });
     }
   }
+  // the real game: a feedlot you built wants its pens cleaned
+  const P = (b as { bulk?: { pens?: { client: string; place: string; w: number } } }).bulk?.pens;
+  if (!compat.prototype && P && b.week >= P.w && b.fleet.some((m) => m.type === 'loader' && m.status !== 'auction')) {
+    out.push({ id: uid(b), kind: 'wet', type: 'loader', place: P.place, client: P.client, days: PENS_WEEKS * 5, rate: round(TYPES.loader.wet * PENS_PREMIUM, 50), terms: 4, fuelPaid: false, pens: true });
+  }
   return out;
 }
 
@@ -378,6 +386,10 @@ export function accept(b: Biz, id: string): Job | null {
   const j = newJob(b, { ...o, type: m.type }, m.id);
   if (o.gravel) j.gravel = o.gravel;
   if (o.mine) j.mine = true;
+  if (o.pens) {
+    j.pens = true;
+    delete (b as { bulk?: { pens?: unknown } }).bulk?.pens;
+  }
   m.status = 'job';
   m.jobId = j.id;
   if (o.kind !== 'dry') {
@@ -662,7 +674,11 @@ export function hireDay(rand: Rand, b: Biz, j: Job, d: number, wet: boolean, w: 
       const rl = b.fleet.find((x) => x.id === j.rollerId);
       if (rl) wear(rl, 1, b.acc);
     }
-    if (j.done >= j.days) j.finished = true;
+    if (j.done >= j.days) {
+      j.finished = true;
+      // the real game: the feedlot's happy, and wants you back for the next six months
+      if (j.pens) ((b as { bulk?: { enq: unknown[]; pens?: unknown } }).bulk ??= { enq: [] }).pens = { client: j.client, place: j.place, w: b.week + 1 };
+    }
     return true;
   };
   const ok = run();

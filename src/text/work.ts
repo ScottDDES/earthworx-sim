@@ -14,8 +14,8 @@ export const KIND_LABEL: Record<string, string> = { wet: 'WET HIRE', dry: 'DRY H
 export const KIND_CHIP: Record<string, string> = { wet: 'c-dark', council: 'c-rain', dry: 'c-idle', private: 'c-job', sub: 'c-dark', own: 'c-rain', bulk: 'c-job' };
 
 /** An offer's chip: a mine's hire says so. */
-export function offerLabel(o: Pick<Offer, 'kind' | 'mine'>): string {
-  return o.mine ? (o.kind === 'wet' ? 'MINE, WET' : 'MINE, DRY') : KIND_LABEL[o.kind]!;
+export function offerLabel(o: Pick<Offer, 'kind' | 'mine' | 'pens'>): string {
+  return o.pens ? 'FEEDLOT, WET' : o.mine ? (o.kind === 'wet' ? 'MINE, WET' : 'MINE, DRY') : KIND_LABEL[o.kind]!;
 }
 
 /** A private client is "Shed pad, Talwood": the job, then the place. */
@@ -37,6 +37,7 @@ const PIT_WORD = ['soft ripping', 'firm ripping', 'hard rock, slow going'];
 const n0 = (n: number) => Math.round(n).toLocaleString('en-AU');
 
 export function offerDetail(o: Offer): string {
+  if (o.pens) return Math.round(o.days / 5) + ' weeks cleaning pens at the feedlot you built near ' + o.place + ', your loader and operator. Do it well and they keep you on.';
   if (o.mine) {
     const wks = o.kind === 'wet' ? Math.round(o.days / 5) : o.days;
     return wks + ' weeks on the mine near ' + o.place + (o.kind === 'wet' ? ', your operator on their roster. They supply fuel.' : '. Their operators, your machine.')
@@ -50,6 +51,7 @@ export function offerDetail(o: Offer): string {
 }
 
 export function offerCatch(o: Offer): string {
+  if (o.pens) return 'Steady work, but the loader and its operator are gone for six months. You pay the fuel. Paid at ' + o.terms * 7 + ' days.';
   if (o.mine) return (o.kind === 'wet' ? 'Your operator and machine are gone for the lot.' : 'Long hours on a mine: the hours pile up and it comes back worn.') + ' Paid at ' + o.terms * 7 + ' days.';
   if (o.kind === 'wet') return o.client + ' pays at ' + o.terms * 7 + ' days.' + ((CLIENTS[o.client]?.late ?? 0) > 0.3 ? ' Known for paying late.' : '');
   if (o.kind === 'dry') return 'Their operator, your wear: about twice the usual. Paid at ' + o.terms * 7 + ' days.';

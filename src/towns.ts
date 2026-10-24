@@ -9,6 +9,9 @@ export interface TownWork {
   farm: number;
   /** Mines ringing about big gear. */
   mine: number;
+  /** Feedlot companies and cotton growers ringing about developments (the real game). */
+  feed: number;
+  cotton: number;
 }
 
 export interface Town {
@@ -29,7 +32,6 @@ export interface Town {
   work: TownWork;
 }
 
-const OLD: TownWork = { farm: 1, mine: 1 };
 
 export const TOWNS: Record<TownId, Town> = {
   gdi: {
@@ -41,7 +43,7 @@ export const TOWNS: Record<TownId, Town> = {
     council: 'Goondiwindi council',
     blurb: 'Black-soil plains on the border. Rain spread through the year, heavier in summer.',
     ll: [-28.55, 150.31],
-    work: OLD,
+    work: { farm: 1, mine: 1, feed: 0.6, cotton: 1 },
   },
   ct: {
     name: 'Charters Towers',
@@ -52,7 +54,7 @@ export const TOWNS: Record<TownId, Town> = {
     council: 'Charters Towers council',
     blurb: 'Big country, long hauls. A hard wet season, then months of dry.',
     ll: [-20.08, 146.26],
-    work: OLD,
+    work: { farm: 1, mine: 1, feed: 0.2, cotton: 0 },
   },
   stg: {
     name: 'St George',
@@ -63,7 +65,7 @@ export const TOWNS: Record<TownId, Town> = {
     council: 'Balonne council',
     blurb: 'Irrigation country on the Balonne. The driest of the cotton towns: farm work, big storages, laser fields.',
     ll: [-28.04, 148.58],
-    work: { farm: 1.4, mine: 0 },
+    work: { farm: 1.4, mine: 0, feed: 0.3, cotton: 1.5 },
   },
   dby: {
     name: 'Dalby',
@@ -74,7 +76,7 @@ export const TOWNS: Record<TownId, Town> = {
     council: 'Western Downs council',
     blurb: 'The Western Downs. Grain, feedlots and gas fields, and steady rain through the summer.',
     ll: [-27.18, 151.26],
-    work: { farm: 1.2, mine: 0.6 },
+    work: { farm: 1.2, mine: 0.6, feed: 1.5, cotton: 0.6 },
   },
   emd: {
     name: 'Emerald',
@@ -85,7 +87,7 @@ export const TOWNS: Record<TownId, Town> = {
     council: 'Central Highlands council',
     blurb: 'The Central Highlands. Irrigated cotton below the dam, coal mines to the east.',
     ll: [-23.53, 148.16],
-    work: { farm: 1, mine: 1.4 },
+    work: { farm: 1, mine: 1.4, feed: 0.5, cotton: 1.3 },
   },
   mbh: {
     name: 'Moranbah',
@@ -96,7 +98,7 @@ export const TOWNS: Record<TownId, Town> = {
     council: 'Isaac council',
     blurb: 'Bowen Basin coal. The mines want big gear, late-model and low-hour. Little farm work.',
     ll: [-22.0, 148.05],
-    work: { farm: 0.5, mine: 2.5 },
+    work: { farm: 0.5, mine: 2.5, feed: 0.1, cotton: 0 },
   },
   mky: {
     name: 'Mackay',
@@ -107,7 +109,7 @@ export const TOWNS: Record<TownId, Town> = {
     council: 'Mackay council',
     blurb: 'Cane farms on the coast and the service town for the coal mines. The wettest town in the game.',
     ll: [-21.14, 149.19],
-    work: { farm: 1, mine: 0.8 },
+    work: { farm: 1, mine: 0.8, feed: 0, cotton: 0 },
   },
   isa: {
     name: 'Mount Isa',
@@ -118,7 +120,7 @@ export const TOWNS: Record<TownId, Town> = {
     council: 'Mount Isa council',
     blurb: 'Hard-rock mining in the north-west. Long road programs and long floats: everything is a long way.',
     ll: [-20.73, 139.49],
-    work: { farm: 0.4, mine: 2 },
+    work: { farm: 0.4, mine: 2, feed: 0, cotton: 0 },
   },
   wei: {
     name: 'Weipa',
@@ -129,7 +131,7 @@ export const TOWNS: Record<TownId, Town> = {
     council: 'Weipa council',
     blurb: 'Bauxite on Cape York. Road work only in the dry: from December to April the rain stops nearly everything.',
     ll: [-12.63, 141.88],
-    work: { farm: 0.15, mine: 2 },
+    work: { farm: 0.15, mine: 2, feed: 0, cotton: 0 },
   },
 };
 

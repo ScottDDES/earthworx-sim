@@ -10,9 +10,9 @@ import type { TownId } from './towns';
 export type BulkLine = 'dams' | 'laser' | 'scrapers' | 'dev';
 export const LINE_KINDS: Record<BulkLine, readonly BulkKind[]> = {
   dams: ['ringTank', 'turkeyNest', 'channel', 'contour', 'rake', 'cutter'],
-  laser: ['laser', 'channel', 'contour'],
-  scrapers: ['ringTank', 'turkeyNest', 'pad', 'laser', 'channel'],
-  dev: ['dev', 'pad', 'ringTank'],
+  laser: ['laser', 'channel', 'contour', 'cotton'],
+  scrapers: ['ringTank', 'turkeyNest', 'pad', 'laser', 'channel', 'cotton', 'feedlot'],
+  dev: ['dev', 'pad', 'ringTank', 'feedlot'],
 };
 
 /** The outfits in each town: name, stars, what they do, machines. */
@@ -52,7 +52,7 @@ export const does = (x: BulkRival, k: BulkKind) => LINE_KINDS[x.line].includes(k
 
 /** Weeks an outfit's tied up on a job of this kind. */
 function weeksFor(rand: Rand, k: BulkKind, weeks?: number): number {
-  return k === 'dev' ? (weeks ?? int(rand, 12, 30)) : int(rand, 2, 6);
+  return k === 'dev' || k === 'feedlot' ? (weeks ?? int(rand, 12, 30)) : k === 'cotton' ? int(rand, 16, 30) : int(rand, 2, 6);
 }
 
 /** The week: jobs finish, and outfits with nothing on find some. */
@@ -61,7 +61,7 @@ export function bulkRivalsWeek(rand: Rand, rv: BulkRival[], places: readonly str
     if (x.busy > 0 && --x.busy === 0) delete x.on;
     if (x.busy > 0) continue;
     if (rand() < BR_SIDE * Math.max(0.6, Math.min(fmul, 1.2))) {
-      const ks = LINE_KINDS[x.line].filter((k) => k !== 'dev' || rand() < 0.3), dk = ks.length ? pick(rand, ks) : LINE_KINDS[x.line][1]!;
+      const ks = LINE_KINDS[x.line].filter((k) => (k !== 'dev' && k !== 'feedlot' && k !== 'cotton') || rand() < 0.3), dk = ks.length ? pick(rand, ks) : LINE_KINDS[x.line][1]!;
       x.busy = weeksFor(rand, dk);
       x.on = { dk, place: pick(rand, places) };
       x.wins++;
