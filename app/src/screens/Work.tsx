@@ -8,6 +8,7 @@ import {
 } from '@engine';
 import { KIND_CHIP, councilTitle, jobTitle, offerCatch, offerDetail, offerLabel, offerPay, offerTitle, pmOf, subTenderTitle } from '@engine/text/work';
 import { Mentor } from '../Mentor';
+import { Figs } from '../Figs';
 import { f, fk } from '../format';
 import { AdviceRow, CouncilCard, MarginRow, PlanSheet } from './Plan';
 import { DamJobCard, EnquiryCard, HoldWarning, waitingOn } from './Bulk';
@@ -39,8 +40,9 @@ function OfferCard({ c, o, act, onMsg }: { c: Career; o: Offer; act: Act; onMsg:
   const left = bk ? bk.days - bk.done : 0;
   return (
     <div className="card">
-      <div className="row"><span className={'chip ' + (o.mine ? 'c-bad' : KIND_CHIP[o.kind])}>{offerLabel(o)}</span><span className="grow" /><span className="num" style={{ fontWeight: 600 }}>{offerPay(o)}</span></div>
+      <div className="row"><span className={'chip ' + (o.mine ? 'c-bad' : KIND_CHIP[o.kind])}>{offerLabel(o)}</span></div>
       <b>{offerTitle(o)}</b>
+      <Figs items={[['Pays', offerPay(o)], ['Length', o.days + ' day' + (o.days === 1 ? '' : 's')], o.kind === 'private' ? ['Works out at', f(Math.round((o.fixed ?? 0) / Math.max(1, o.days))) + '/day'] : null]} />
       <div className="small muted">{offerDetail(o)}</div>
       <div className="small" style={{ color: 'var(--rust)' }}>{offerCatch(o)}</div>
       {why && bk ? (
@@ -313,7 +315,7 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
         <>
           <div className="sub">Bulk and Ag: who's ringing</div>
           {(c.bulk?.enq ?? []).length ? c.bulk!.enq.map((e) => <EnquiryCard key={e.id} c={c} e={e} act={act} />)
-            : <div className="card"><div className="small muted">Nobody's rung this week. Farmers and developers ring most weeks.</div></div>}
+            : <p className="empty">Nobody's rung this week. Farmers and developers ring most weeks.</p>}
         </>
   ) : null;
   // council and head contractors' tenders: first for a roads outfit; after its own bulk work for a bulk one
@@ -324,14 +326,14 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
           <div className="sub">Council tenders</div>
           {c.ctenders.length ? c.ctenders.map((t) => (
             <CouncilCard key={t.id} t={t} onPlan={() => act((x) => { play.openProgram(x, t.id); setPlanning(t.id); })} />
-          )) : <div className="card"><div className="small muted">No council packages out right now. They come out most months.</div></div>}
+          )) : <p className="empty">No council packages out right now. They come out most months.</p>}
         </>
       )}
       {(can || c.tenders.length > 0 || c.subsWon > 0) && (
         <>
           <div className="sub">Tenders</div>
           {c.tenders.length ? c.tenders.map((t) => <TenderCard key={t.id} t={t} onPrice={() => setPricing(t.id)} />)
-            : <div className="card"><div className="small muted">{can ? 'No packages out to price this week. Head contractors send them out most weeks.' : 'You need a grader, roller, water truck and 1 star to be asked to price.'}</div></div>}
+            : <p className="empty">{can ? 'No packages out to price this week. Head contractors send them out most weeks.' : 'You need a grader, roller, water truck and 1 star to be asked to price.'}</p>}
         </>
       )}
     </>
@@ -341,12 +343,12 @@ export function WorkTab({ c, act }: { c: Career; act: Act }) {
       {msg && <div className="card" style={{ borderColor: 'var(--teal)', borderWidth: 2 }}><div className="small">{msg}</div><div className="btns"><button type="button" className="btn" onClick={() => setMsg(null)}>OK</button></div></div>}
       {c.path !== 'bulk' && tendersBlock}
       <div className="sub">On the go</div>
-      {!c.jobs.length && <div className="card"><b>Nothing on.</b><div className="small muted">Idle machines still cost you repayments. Take some work below.</div></div>}
+      {!c.jobs.length && <p className="empty">Nothing on. Idle machines still cost you repayments.</p>}
       {c.jobs.map((j) => <JobCard key={j.id} c={c} j={j} act={act} />)}
       {c.path === 'bulk' && bulkRinging}
       {c.path === 'bulk' && tendersBlock}
       <div className="sub">Work on offer this week</div>
-      {!c.offers.length && <div className="card"><div className="small muted">Nothing else this week. New work comes up every Monday.</div></div>}
+      {!c.offers.length && <p className="empty">Nothing else this week. New work comes up every Monday.</p>}
       {c.packs?.bulk && <HoldWarning c={c} types={offersNow.filter((o) => !whyNot(c as never, o)).map((o) => o.type)} />}
       {/* the work you can take (or ring about) first; the rest fold away under one line */}
       {offersNow.map((o) => <OfferCard key={o.id} c={c} o={o} act={act} onMsg={setMsg} />)}

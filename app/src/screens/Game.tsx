@@ -199,7 +199,7 @@ function Docket({ c, r, onClose }: { c: Career; r: game.Report & { run?: RunSumm
           <div className="kv"><span>Paid in</span><span className="num" style={{ color: 'var(--teal)' }}>{f(r.paid)}</span></div>
           <div className="kv"><span>Costs out</span><span className="num" style={{ color: 'var(--rust)' }}>−{f(r.costs)}</span></div>
           {held > 0 && <div className="kv"><span>GST held for the tax office</span><span className="num">{f(held)}</span></div>}
-          <div className="kv"><b>In the bank</b><b className="num">{f(c.bank)}</b></div>
+          <div className="kv dk-total"><b>In the bank</b><b className="num">{f(c.bank)}</b></div>
           <div className="kv"><span>The market</span><b>{MOODS[game.mood(c)].t}</b></div>
         </div>
         {r.tix.length > 0 && (

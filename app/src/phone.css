@@ -182,3 +182,40 @@ body{padding-bottom:calc(128px + env(safe-area-inset-bottom,0px))}
 .fcwrap .fcd .tiny{font-size:11px}
 .fcwrap .fcd.wet{background:var(--rain-soft);color:var(--rain)}
 .fcwrap .fcd.wet b{color:var(--rain)}
+
+/* the figure grid: two to a line, hairlines between, a narrow label over each figure */
+.figs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--line)}
+.figs>div{display:flex;flex-direction:column;gap:2px;padding:7px 0;border-bottom:1px solid var(--line);min-width:0}
+.figs>div:nth-child(odd){padding-right:10px;border-right:1px solid var(--line)}
+.figs>div:nth-child(even){padding-left:10px}
+.figs>div:nth-last-child(-n+2):nth-child(odd),.figs>div:last-child{border-bottom:none}
+.figs small{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-stretch:75%;color:var(--muted)}
+.figs b{font-size:14px;font-weight:500;overflow-wrap:anywhere}
+
+/* an empty section: one muted line, no box */
+.empty{margin:-4px 0 0;font-size:13px;color:var(--muted)}
+
+/* the docket: a printed docket book. Paper, the figure face right through, ruled lines, one stamp, a day strip. */
+.sheet.docket{background:#F5F3EE;color:#17181A;border-top:none;border-radius:4px;position:relative;font-family:var(--mono);gap:12px}
+.sheet.docket::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:radial-gradient(circle at 5px -1px,transparent 4px,#F5F3EE 4.5px) 0 0/10px 6px repeat-x}
+.sheet.docket h2{font-family:var(--sans);font-size:22px}
+.sheet.docket .big{font-family:var(--sans)}
+.sheet.docket .sub{font-family:var(--mono);font-stretch:normal;letter-spacing:.06em;font-weight:600;font-size:11px}
+.docket-head{border-bottom:1px dashed #BDB9AE}
+.sheet.docket .card{background:none;border:none;padding:0;gap:0}
+.sheet.docket .card[style]{border:1.5px solid #17181A!important;padding:10px 12px;gap:6px}
+.sheet.docket .kv{font-size:13px;padding:6px 0;border-bottom:1px solid #E1DED6}
+.sheet.docket .kv.dk-total{border-top:1.5px solid #17181A;border-bottom:1.5px solid #17181A;font-size:14px}
+.sheet.docket .small,.sheet.docket .tiny{font-family:var(--mono);letter-spacing:-.01em}
+.sheet.docket .docket-net .small{font-size:12px}
+.stamp{border-width:2px;border-radius:3px;font-family:var(--sans);font-size:12px;letter-spacing:.12em;transform:rotate(-3deg)}
+.sheet.docket .fc{gap:0;border:1px solid #E1DED6;margin:6px 0}
+.sheet.docket .fcd{border-radius:0;background:none;color:#17181A;border-right:1px solid #E1DED6;padding:6px 0;gap:2px}
+.sheet.docket .fcd:last-child{border-right:none}
+.sheet.docket .fcd b{font-size:10px;color:#64625B}
+.sheet.docket .fcd svg.i{width:16px;height:16px}
+.sheet.docket .fcd.wet{background:#E4ECF1;color:var(--rain)}
+.sheet.docket .fcp{font-family:var(--mono);font-weight:600;font-stretch:normal}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .sheet.docket{color-scheme:light}}
+/* the docket's prose (tickets, the week's events) reads in the body face; labels and figures stay typed */
+.sheet.docket .card .small,.sheet.docket .card b:not(.num){font-family:var(--sans);letter-spacing:0}

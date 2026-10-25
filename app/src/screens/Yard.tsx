@@ -11,6 +11,7 @@ import {
 import { ERP_NAME, alertText } from '@engine/text/office';
 import { ERP_MODS, PLANT_BRK, PLANT_MIN, SITE_WORK, hasMod, modOk, type ErpMod } from '@engine';
 import { jobTitle } from '@engine/text/work';
+import { Figs } from '../Figs';
 import { MachineIcon, WeatherIcon } from '../Icon';
 import { FuelCard } from './Fuel';
 import { MONTHS, f, fk } from '../format';
@@ -242,16 +243,15 @@ function MachineCard({ c, m, act, onSell, onClose }: { c: Career; m: Machine; ac
       {onClose && <button type="button" className="btn" onClick={onClose}>Close</button>}
       {j && <div className="small muted">{jobTitle(j)}</div>}
       {m.status === 'listed' && m.sale ? <div className="small muted">Listed at {f((m.sale as { price: number }).price)}. Sells in about {(m.sale as { weeks: number }).weeks} weeks.</div> : null}
-      <div className="row tiny"><span className="grow">Condition</span><span className="num">{Math.round(m.cond)}%</span></div>
-      <div className="bar"><i style={{ width: m.cond + '%', background: condColour(m) }} /></div>
-      <div className="row tiny muted">
-        <span className="grow num">{m.hours.toLocaleString('en-AU')} hrs</span>
-        <span style={{ color: left < 0 ? 'var(--rust)' : left <= 45 ? 'var(--warn)' : 'inherit', fontWeight: left <= 45 ? 700 : 400 }}>{left < 0 ? 'Service overdue by ' + -left + ' hrs' : 'Service due in ' + left + ' hrs'}</span>
-      </div>
-      <div className="row tiny muted">
-        <span className="grow">Worth about {fk(value(m, c.week))}{paid.paid ? ' · bought week ' + paid.paidWk + ' for ' + fk(paid.paid) : ''}</span>
-        {m.warranty >= c.week && <span>Warranty to week {m.warranty}</span>}
-      </div>
+      <Figs items={[
+        ['Condition', Math.round(m.cond) + '%', m.cond < 45 ? 'var(--rust)' : m.cond < 65 ? 'var(--warn)' : undefined],
+        ['Hours', m.hours.toLocaleString('en-AU')],
+        [left < 0 ? 'Service overdue' : 'Service due in', (left < 0 ? -left : left) + ' h', left < 0 ? 'var(--rust)' : left <= 45 ? 'var(--warn)' : undefined],
+        ['Worth about', fk(value(m, c.week))],
+        paid.paid ? ['Bought', 'wk ' + paid.paidWk + ' · ' + fk(paid.paid)] : null,
+        m.warranty >= c.week ? ['Warranty to', 'week ' + m.warranty] : null,
+      ]} />
+      <div className="bar" style={{ height: 4 }}><i style={{ width: m.cond + '%', height: 4, background: condColour(m) }} /></div>
       {m.band && <div className="why">Patched-up {m.band.part} (week {m.band.w}). Breakdown odds are up until it's fixed properly{m.status === 'job' ? ', and fixing it stands the machine down 2 days' : ''}.</div>}
       <div className="btns" style={{ flexWrap: 'wrap' }}>
         <button type="button" className="btn" disabled={!(c.bank + odLimit(c) >= cost && m.status !== 'auction' && m.status !== 'listed')} onClick={() => act((x) => play.service(x, m.id))}>Service · {f(cost)}</button>
