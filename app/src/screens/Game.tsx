@@ -36,7 +36,7 @@ const TABS: { k: Tab; label: string; icon: string }[] = [
   { k: 'career', label: 'Career', icon: 'career' },
 ];
 
-export function TopBar({ c }: { c: Career }) {
+export function TopBar({ c, goal }: { c: Career; goal?: { tip?: boolean; t: string; go: () => void } | null }) {
   const L = c.loan, td = forecast({ town: c.town, wxStart: c.wxStart }, c.week, 0);
   return (
     <header className="top">
@@ -55,6 +55,11 @@ export function TopBar({ c }: { c: Career }) {
           )}
         </div>
       </div>
+      {goal && (
+        <button type="button" className="hgoal" onClick={goal.go}>
+          <div className="wrap"><i aria-hidden="true" /><span className="hgoal-k">{goal.tip ? 'Tip' : 'Next'}</span><span className="hgoal-t">{goal.t.replace(/^Next:\s*/, '')}</span></div>
+        </button>
+      )}
     </header>
   );
 }
@@ -263,7 +268,7 @@ export function GameScreen({ c, act, onNew, saves, saveFailed, demo }: { c: Care
   const NG = nextGoal(c);
   return (
     <>
-      <TopBar c={c} />
+      <TopBar c={c} goal={NG ? { tip: NG.tip, t: NG.t, go: () => setTab(NG.tab as Tab) } : null} />
       <div className="wrap">
         <main>
           {c.hardcore && c.under ? (
@@ -291,11 +296,6 @@ export function GameScreen({ c, act, onNew, saves, saveFailed, demo }: { c: Care
       </div>
       <div className="dock">
         <div className="wrap">
-          {NG && (
-            <button type="button" className="goal" onClick={() => setTab(NG.tab as Tab)}>
-              <span className="goal-k">{NG.tip ? 'Tip' : 'Goal'}</span><span className="goal-t">{NG.t}</span>
-            </button>
-          )}
           <div className="endrow">
             <button type="button" className="big" disabled={c.queue.length > 0} onClick={endWeek}>End week {c.week}<Icon k="go" /></button>
             {!coachOn(c) && (

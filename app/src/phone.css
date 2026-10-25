@@ -88,3 +88,97 @@ svg.art rect.dm{fill:#F4F3EF;stroke:none}
 svg.art .belt{fill:#45474B}svg.art .link{fill:none;stroke:#2A2B2E;stroke-width:.7}
 svg.art .rd{fill:#A8261E}svg.art .rdh{fill:#CC4136}svg.art .rdd{fill:#7E1B15}
 svg.art .rdk{fill:none;stroke:#7E1B15;stroke-width:.5}svg.art .rr{fill:none;stroke:#A8261E;stroke-width:1.1;stroke-linejoin:round}
+
+
+/* ---------- the style guide (25 Oct 2026, claude.ai/artifact/9E9JKcnxE88gibtUWVFMLc): site office, not sandpit ----------
+   Square corners, hairlines, no shadows; colour only where it means something; figures in a figure face; four text sizes. */
+:root{
+  --ground:#EDECE8; --line:#D8D5CD; --soft:#E8E6E0; --muted:#64625B;
+  --teal:#1E6A4B; --teal-soft:#E3EFE8; --rust:#A8401A; --rust-soft:#F6E4DB; --warn:#9A6B00; --rain:#2F5D7C; --rain-soft:#E2EBF1;
+  --shadow:none; --r:6px;
+  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--shadow:none}}
+:root[data-theme="dark"]{--shadow:none}
+body{font-size:15px;line-height:1.45}
+.small{font-size:13.5px;line-height:1.45}
+.tiny{font-size:12.5px;line-height:1.45}
+
+/* figures: the figure face, tabular */
+.num,.mono{font-family:var(--mono);font-weight:500;font-stretch:normal;letter-spacing:-.01em}
+.top .bank .num{font-weight:600;font-size:24px;letter-spacing:-.03em}
+.docket-net{font-family:var(--mono);font-weight:600;font-stretch:normal;letter-spacing:-.03em}
+
+/* section labels: narrow capitals, the only spaced capitals */
+.sub{font-size:11px;letter-spacing:.14em;font-stretch:75%;font-weight:800}
+
+/* boxes: square, hairline, no shadow */
+.card{border-radius:var(--r);box-shadow:none;padding:14px;gap:10px}
+.btn{border-radius:var(--r);border-width:1px;min-height:46px}
+.btn.ink{border-width:1.5px}
+.runon,.goal{border-radius:var(--r)}
+.goal-k{border-radius:3px}
+.bar,.bar i{border-radius:2px}
+.tab{border-radius:var(--r)}
+.tab.on::before{border-radius:0;left:25%;right:25%}
+
+/* status: a dot and a word, never a filled pill. The word takes the colour only for problems and waiting. */
+.chip{background:none!important;padding:0;height:auto;gap:5px;font-stretch:75%;font-size:11px;letter-spacing:.08em;color:var(--ink)}
+.chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--muted);flex:none}
+.c-job::before{background:var(--teal)}
+.c-bad{color:var(--rust)!important}.c-bad::before{background:var(--rust)}
+.c-rain{color:var(--rain)!important}.c-rain::before{background:var(--rain)}
+.c-dark::before{background:var(--hi)}
+
+/* a warning: a square rust mark and one line */
+.why{display:flex;gap:7px;align-items:flex-start;font-weight:500}
+.why::before{content:"";width:7px;height:7px;background:var(--rust);flex:none;margin-top:5px}
+
+/* the hazard stripe is for warnings, not wallpaper: a plain safety-yellow rule under the header */
+.top::after{height:3px;background:var(--hi)}
+.fcd,.big,.seg button,.choice,.pick,.field,.hero,.tile,.fh,.mentor,.ycard,.note,.ticket{border-radius:var(--r)}
+.sheet{border-radius:10px}
+.tile,.fh{box-shadow:none}
+.mentor{border-left-width:3px}
+/* inline grey hint boxes in the screens */
+[style*="border-radius: 10px"],[style*="border-radius: 12px"],[style*="border-radius: 14px"],[style*="border-radius: 18px"]{border-radius:var(--r)!important}
+
+/* the header: one line of company and week, the bank; the goal under it in small type; a slim yellow rule */
+.top .wrap{padding-block:10px 8px}
+.top .co b{font-size:16px}
+.top .co span{font-family:var(--mono);font-size:11px;letter-spacing:-.01em}
+.top .bank small{font-size:9.5px;margin-bottom:2px;font-stretch:75%;letter-spacing:.14em}
+.hgoal{display:block;width:100%;border:none;border-top:1px solid #2C2E31;background:none;color:#D6D3CA;font:inherit;text-align:left;cursor:pointer;padding:0}
+.hgoal .wrap{display:flex;align-items:center;gap:7px;padding-block:6px 7px}
+.hgoal i{width:6px;height:6px;background:var(--hi);flex:none}
+.hgoal-k{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-stretch:75%;color:var(--hi);flex:none}
+.hgoal-t{font-size:12.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* the dock: a slim action bar over the tabs */
+.dock{box-shadow:none}
+.dock .wrap{gap:6px;padding-block:8px 2px}
+.big{min-height:48px;font-size:17px}
+.runon{min-height:48px;border-width:1.5px}
+.tab{min-height:46px;font-size:10.5px;font-stretch:85%;letter-spacing:.04em}
+.tab svg.i{width:20px;height:20px}
+.tab.on{background:none}
+.tab.on::before{top:-2px;left:22%;right:22%;height:2px;background:var(--ink)}
+body{padding-bottom:calc(128px + env(safe-area-inset-bottom,0px))}
+.ad-on body{padding-bottom:calc(128px + var(--ad-h) + env(safe-area-inset-bottom,0px))}
+@media (max-height: 700px) {
+  .hgoal .wrap { padding-block: 4px 5px; }
+  .tab { min-height: 40px; }
+  .big, .runon { min-height: 44px; }
+  body { padding-bottom: calc(118px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* the forecast: one ruled strip, rain in the rain colour only where it's likely */
+.fcwrap{display:flex;flex-direction:column;gap:8px}
+.fcwrap .fc{gap:0;margin:0;background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.fcwrap .fcd{border-radius:0;background:none;color:var(--ink);padding:8px 0 7px;gap:3px;border-right:1px solid var(--line)}
+.fcwrap .fcd:last-child{border-right:none}
+.fcwrap .fcd b{font-size:10.5px;letter-spacing:.12em;font-stretch:75%;color:var(--muted)}
+.fcwrap .fcd svg.i{width:18px;height:18px}
+.fcwrap .fcp{font-family:var(--mono);font-weight:500;font-size:13px;font-stretch:normal}
+.fcwrap .fcd .tiny{font-size:11px}
+.fcwrap .fcd.wet{background:var(--rain-soft);color:var(--rain)}
+.fcwrap .fcd.wet b{color:var(--rain)}

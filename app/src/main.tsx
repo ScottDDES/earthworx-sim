@@ -2,6 +2,9 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 // the font ships inside the app, so it works offline and nothing is fetched from Google
 import '@fontsource-variable/archivo/wdth.css';
+import '@fontsource/ibm-plex-mono/latin-400.css';
+import '@fontsource/ibm-plex-mono/latin-500.css';
+import '@fontsource/ibm-plex-mono/latin-600.css';
 import './prototype.css';
 import './phone.css';
 import { App } from './App';

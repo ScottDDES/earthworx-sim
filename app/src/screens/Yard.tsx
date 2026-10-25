@@ -26,11 +26,11 @@ const fks = (n: number) => (n < 0 ? '−' : '') + fk(Math.abs(n));
 function Forecast({ c }: { c: Career }) {
   const wx = { town: c.town, wxStart: c.wxStart }, fc = DN.map((_, d) => forecast(wx, c.week, d));
   return (
-    <div className="card" style={{ background: 'var(--rain-soft)', borderColor: 'transparent' }}>
-      <div className="row"><span className="sub grow" style={{ color: 'var(--rain)' }}>Forecast · {TOWNS[c.town].name}</span><span className="chip c-rain">{MONTHS[monthIdx(c.week)]}</span></div>
+    <div className="fcwrap">
+      <div className="row"><span className="sub grow">Forecast · {TOWNS[c.town].name}</span><span className="tiny muted num">{MONTHS[monthIdx(c.week)]} · ≥ 4 mm</span></div>
       <div className="fc">
         {fc.map((x, d) => (
-          <div key={d} className="fcd">
+          <div key={d} className={'fcd' + (x.wetGround || x.pc >= 55 ? ' wet' : '')}>
             <b>{DN[d]}</b>
             <WeatherIcon pc={x.pc} wetGround={x.wetGround} />
             <span className="fcp">{x.wetGround ? 'Wet' : x.pc + '%'}</span>
