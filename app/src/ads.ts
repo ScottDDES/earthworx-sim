@@ -51,7 +51,7 @@ export async function startAds(): Promise<void> {
     }
     await AdMob.initialize();
     canAsk = true;
-    await AdMob.addListener(BannerAdPluginEvents.SizeChanged, (s) => setInset(s.height));
+    await AdMob.addListener(BannerAdPluginEvents.SizeChanged, (s) => onBannerSize(s.height));
     onShop(() => { if (noAds()) hideBanner(); });
     loadReward();
   } catch {
@@ -106,18 +106,34 @@ export async function watchReward(): Promise<boolean> {
 let bannerUp = false;
 /** What the screens last asked for; the banner catches up to it one call at a time. */
 let want = false, busy = false;
+/**
+ * Lift the dock above the banner by its real height. Whatever the game wanted, if the banner is on screen the dock
+ * sits above it, so it can never cover the tabs.
+ */
 function setInset(h: number): void {
-  const root = document.documentElement;
-  // a size that lands after the banner was hidden doesn't count
-  const on = h > 0 && want;
+  const root = document.documentElement, on = h > 0;
   root.style.setProperty('--ad-h', (on ? h : 0) + 'px');
   root.classList.toggle('ad-on', on);
 }
+/** The banner turned up (or changed size). If it isn't wanted any more (it finished loading after a hide), take it down. */
+function onBannerSize(h: number): void {
+  setInset(h);
+  if (h > 0 && !want) void takeDown();
+}
+async function takeDown(): Promise<void> {
+  try {
+    await AdMob.removeBanner();
+  } catch {
+    // nothing up
+  }
+  bannerUp = false;
+  if (!want) setInset(0);
+}
 
 /**
- * Show or hide the banner: the screens say when (menu tabs, no card open). The plugin's calls are slow and can
- * cross (a hide landing before the show it should undo, leaving the banner up on the Work tab), so they're run
- * one at a time until the banner matches the last ask.
+ * Show or hide the banner: the screens say when (menu tabs, no card open). The plugin's calls are slow and the ad
+ * loads after the show call returns, so the calls run one at a time until the banner matches the last ask, and a
+ * banner that arrives after it was no longer wanted is taken down as it appears (onBannerSize).
  */
 export async function showBanner(on: boolean): Promise<void> {
   if (!canAsk || !IDS.banner) return;
@@ -128,15 +144,12 @@ export async function showBanner(on: boolean): Promise<void> {
     while (bannerUp !== want) {
       const go = want;
       try {
-        if (go) await AdMob.showBanner({ adId: IDS.banner, adSize: BannerAdSize.ADAPTIVE_BANNER, position: BannerAdPosition.BOTTOM_CENTER, margin: 0, isTesting: BETA });
-        else {
-          await AdMob.removeBanner();
-          setInset(0);
-        }
-        bannerUp = go;
+        if (go) {
+          await AdMob.showBanner({ adId: IDS.banner, adSize: BannerAdSize.ADAPTIVE_BANNER, position: BannerAdPosition.BOTTOM_CENTER, margin: 0, isTesting: BETA });
+          bannerUp = true;
+        } else await takeDown();
       } catch {
         bannerUp = false;
-        setInset(0);
         if (go) break;
       }
     }
