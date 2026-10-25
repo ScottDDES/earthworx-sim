@@ -1,11 +1,15 @@
-NEW: the Bulk and Ag pack, free in the beta. When you start a new career, choose Bulk earthworks: you start with a dozer or an excavator instead of a grader, and farmers and developers ring on the Work tab about dams, channels, contour banks, clearing, laser levelling, shed pads and bulk earthworks. Or start on Roads and add bulk work alongside (Career tab).
+NEW LOOK: every machine has been redrawn, from the grader to the 657 scraper, and GPS and laser gear now show on the machine. The screens are calmer and squarer, with figures in a typewriter face, your next goal under the header and a slimmer bottom bar. Job dockets print like a real docket.
 
-Also new: diesel. Put a bulk fuel tank in your yard (Yard tab) and buy loads cheaper than the pump, but keep it topped up: run dry and your machines sit idle waiting on the fuel truck. The price moves every week, and a war overseas can send it through the roof. An operations manager can keep the tank full for you.
+The Map tab now draws real highways, country roads, rivers and coastline (road names are still made up).
 
-And: DDES Advisory on every safety decision and to check tender prices; ProActive by DDES for regional depots; a Christmas shutdown; type your own margin; council suspensions now stop council work; free drivers cover for injured ones; clearer incident and buy-out cards; Run on handles the small stuff.
+Politely decline: turn down a job or a farm enquiry you can't do. A head contractor remembers a polite no when you haven't got the gear for it, and your standing with them goes up a little.
 
-Machine rates now follow a real 2022-23 hire schedule on a 10-hour day, and the 627 scraper is in. Council gravel jobs now plan a loader at the pit: yours, dry hire or a subbie. Leave it off and the trucks wait their turn. Roadtrains: buy one, or put a second trailer behind a side tipper you own, or hire them in on council jobs. Some roads are singles only. With a fitter of your own, breakdowns get two more choices (they patch it, or fix it properly), and Run on makes that call for you by how good they are. Fixed: finished bulk jobs now clear off the Work screen, and the rain card talks wet dirt when bulk work is going.
+Fixed from your feedback: the ad banner no longer covers the tabs; a break-in with no GPS in the fleet now drains diesel instead; laser levelling no longer needs a grader.
 
-NEW for launch: ads and the shop. The first time you open it, iPhone asks whether to allow tracking (either answer is fine). Google's TEST ads show in this build: a banner on the Market and Office tabs, and ads you choose to watch for a free mechanic on a breakdown, a late invoice paid now, or a weekly cash top-up (Office tab). Tap Ad choices in the Career tab to see Google's settings. The Bulk and Ag pack stays free in the beta.
+Bigger game: seven more Queensland towns (St George, Dalby, Emerald, Moranbah, Mackay, Mount Isa, Weipa) and up to three branches in any town. Feedlot and cotton field developments. Mines hire gear, but want late-model machines (5 years, 6,000 hours). Flood recovery programs are bigger than council packages and plan each road's pit, water and crew. DDES helps later in the game: a retainer, claims, tender writing, ERP modules and getting the business ready to sell. Bigger fuel tanks: 110,000 litres and a 200,000 litre fuel farm.
 
-Tell us: do the bulk rates and job speeds feel right against real work? Anything that reads wrong, adds up wrong or doesn't fit your screen? Screenshot it and tap Share Beta Feedback.
+Also: laser and GPS machine control on bulk gear; the council rings for the right size dozer (D6 to D10) to push up gravel at its pit; hard calls where doing the right thing costs something and comes back later; rivals win work you never see; bulk work pays a bit more; jobs you can take come first on the Work tab; small phones get a slimmer bottom bar.
+
+Ads are still Google's TEST ads in this build, and the Bulk and Ag pack stays free in the beta.
+
+Tell us: do the new machines and screens look right? Does the map feel like the real country? Anything that reads wrong, adds up wrong or doesn't fit your screen? Screenshot it and tap Share Beta Feedback.
