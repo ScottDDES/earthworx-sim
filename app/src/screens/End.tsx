@@ -18,7 +18,7 @@ export function EndScreen({ c, onNew, onNextGen }: { c: game.Career; onNew: () =
     return (
       <div className="wrap setup">
         <div className="hero">
-          <div className="row"><span className="tiny grow" style={{ color: 'var(--head-muted)' }}>Hardcore · career over</span><span style={{ color: '#FFC700' }}><MachineIcon type="grader" /></span></div>
+          <div className="row"><span className="tiny grow" style={{ color: 'var(--head-muted)' }}>Hardcore · career over</span><span style={{ color: '#FFC700' }}><MachineIcon type="grader" mono /></span></div>
           <h1>{c.co} is in administration</h1>
           <p>Four weeks under water. In week {u.week} the administrators changed the locks on the yard. The gear goes to auction to pay the bank.</p>
         </div>
@@ -39,7 +39,7 @@ export function EndScreen({ c, onNew, onNextGen }: { c: game.Career; onNew: () =
   return (
     <div className="wrap setup">
       <div className="hero">
-        <div className="row"><span className="tiny grow" style={{ color: 'var(--head-muted)' }}>Career over</span><span style={{ color: '#FFC700' }}><MachineIcon type="grader" /></span></div>
+        <div className="row"><span className="tiny grow" style={{ color: 'var(--head-muted)' }}>Career over</span><span style={{ color: '#FFC700' }}><MachineIcon type="grader" mono /></span></div>
         <h1>{c.co}{u.legacy ? ' goes to the next generation' : u.retired ? " is sold. You've retired." : ' is sold'}</h1>
         <p>{u.to.charAt(0).toUpperCase() + u.to.slice(1)} took over in week {u.week}. {u.walk >= 0 ? 'You walked away with ' + f(u.walk) + '.' : 'Even after the sale you still owe the bank ' + f(-u.walk) + '.'}</p>
       </div>

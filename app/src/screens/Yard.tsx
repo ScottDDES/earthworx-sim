@@ -64,7 +64,7 @@ function Alerts({ c, act }: { c: Career; act: Act }) {
         const cost = svcCost(g.m, w);
         return (
           <div key={g.m.id} className={'alert ' + (g.bad ? 'bad' : 'warn')}>
-            <span className="flag" /><MachineIcon type={g.m.type} rt={g.m.rt} />
+            <span className="flag" /><MachineIcon type={g.m.type} rt={g.m.rt} gps={g.m.gps} laser={g.m.laser} />
             <div className="grow"><b>{machineName(g.m)}, {g.m.year}</b><ul>{g.t.map((x) => <li key={x}>{x}</li>)}</ul></div>
             <button type="button" className="btn" disabled={c.bank + odLimit(c) < cost} onClick={() => act((x) => play.service(x, g.m.id))}>Service · {fk(cost)}</button>
           </div>
@@ -238,7 +238,7 @@ function MachineCard({ c, m, act, onSell, onClose }: { c: Career; m: Machine; ac
   const paid = m as Machine & { paid?: number; paidWk?: number }, at = brTownOf(c as never, m);
   return (
     <div className="card">
-      <div className="mhead"><MachineIcon type={m.type} rt={m.rt} /><div className="grow"><b>{machineName(m)}</b>{m.laser && !m.gps && <> <span className="chip c-rain">LASER</span></>}{m.gps && <> <span className="chip c-rain">{m.laser ? 'LASER + GPS' : 'GPS'}</span></>}<span className="tiny muted" style={{ display: 'block' }}>{m.year} model</span></div>{statusChip(m, c)}</div>
+      <div className="mhead"><MachineIcon type={m.type} rt={m.rt} gps={m.gps} laser={m.laser} /><div className="grow"><b>{machineName(m)}</b>{m.laser && !m.gps && <> <span className="chip c-rain">LASER</span></>}{m.gps && <> <span className="chip c-rain">{m.laser ? 'LASER + GPS' : 'GPS'}</span></>}<span className="tiny muted" style={{ display: 'block' }}>{m.year} model</span></div>{statusChip(m, c)}</div>
       {onClose && <button type="button" className="btn" onClick={onClose}>Close</button>}
       {j && <div className="small muted">{jobTitle(j)}</div>}
       {m.status === 'listed' && m.sale ? <div className="small muted">Listed at {f((m.sale as { price: number }).price)}. Sells in about {(m.sale as { weeks: number }).weeks} weeks.</div> : null}
@@ -276,7 +276,7 @@ function MachineRow({ c, m, onOpen }: { c: Career; m: Machine; onOpen: () => voi
   const left = svcLeftOf(m), j = m.jobId ? c.jobs.find((x) => x.id === m.jobId) : undefined;
   return (
     <button type="button" className="card" onClick={onOpen} style={{ textAlign: 'left', cursor: 'pointer', padding: '10px 14px', gap: 4, font: 'inherit', color: 'inherit', width: '100%' }}>
-      <span className="mhead"><MachineIcon type={m.type} rt={m.rt} /><span className="grow"><b>{machineName(m)}, {m.year}</b>{m.laser && !m.gps && <> <span className="chip c-rain">LASER</span></>}{m.gps && <> <span className="chip c-rain">{m.laser ? 'LASER + GPS' : 'GPS'}</span></>}<br /><span className="tiny muted">{j ? jobTitle(j) : m.status === 'idle' ? 'In the yard' : ''}</span></span>{statusChip(m, c)}</span>
+      <span className="mhead"><MachineIcon type={m.type} rt={m.rt} gps={m.gps} laser={m.laser} /><span className="grow"><b>{machineName(m)}, {m.year}</b>{m.laser && !m.gps && <> <span className="chip c-rain">LASER</span></>}{m.gps && <> <span className="chip c-rain">{m.laser ? 'LASER + GPS' : 'GPS'}</span></>}<br /><span className="tiny muted">{j ? jobTitle(j) : m.status === 'idle' ? 'In the yard' : ''}</span></span>{statusChip(m, c)}</span>
       <span className="row tiny">
         <span className="grow" style={{ color: condColour(m), fontWeight: 600 }}>{Math.round(m.cond)}%</span>
         <span style={{ color: left < 0 ? 'var(--rust)' : left <= 45 ? 'var(--warn)' : 'var(--muted)' }}>{left < 0 ? 'Service overdue' : 'Service in ' + left + ' hrs'}</span>

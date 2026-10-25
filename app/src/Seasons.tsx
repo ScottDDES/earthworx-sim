@@ -53,7 +53,7 @@ export function SeasonEndScreen({ c, saves, hasCareer }: { c: game.Career; saves
   return (
     <div className="wrap setup">
       <div className="hero">
-        <div className="row"><span className="tiny grow" style={{ color: 'var(--head-muted)' }}>Season over · {SEASON_TEXT[S.id].n}</span><span style={{ color: '#FFC700' }}><MachineIcon type="grader" /></span></div>
+        <div className="row"><span className="tiny grow" style={{ color: 'var(--head-muted)' }}>Season over · {SEASON_TEXT[S.id].n}</span><span style={{ color: '#FFC700' }}><MachineIcon type="grader" mono /></span></div>
         <h1>{signed(sc)}</h1>
         <p>Net worth gained by {c.co} in {S.done} weeks of real {TOWNS[D.town].name} weather, {D.year} to {D.year + 1}.</p>
       </div>
